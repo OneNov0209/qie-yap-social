@@ -122,9 +122,9 @@ function ProfilePage() {
             </div>
 
             <div className="mt-4 rounded-xl bg-brand-soft/60 px-3 py-2 text-xs text-foreground/80">
-              <span className="font-bold">{BADGE_META[profile.badge].emoji} {BADGE_META[profile.badge].label}</span>
+              <span className="font-bold">{BADGE_META[profile.badge as keyof typeof BADGE_META].emoji} {BADGE_META[profile.badge as keyof typeof BADGE_META].label}</span>
               {" "}staker ·{" "}
-              <span className="text-muted-foreground">badge unlocked at {BADGE_META[profile.badge].min.toLocaleString()} QIE staked</span>
+              <span className="text-muted-foreground">badge unlocked at {BADGE_META[profile.badge as keyof typeof BADGE_META].min.toLocaleString()} QIE staked</span>
             </div>
           </div>
 
