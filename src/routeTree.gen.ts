@@ -9,38 +9,75 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as LeaderboardRouteImport } from './routes/leaderboard'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as YapIdRouteImport } from './routes/yap.$id'
+import { Route as ProfileAddressRouteImport } from './routes/profile.$address'
 
+const LeaderboardRoute = LeaderboardRouteImport.update({
+  id: '/leaderboard',
+  path: '/leaderboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const YapIdRoute = YapIdRouteImport.update({
+  id: '/yap/$id',
+  path: '/yap/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileAddressRoute = ProfileAddressRouteImport.update({
+  id: '/profile/$address',
+  path: '/profile/$address',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/leaderboard': typeof LeaderboardRoute
+  '/profile/$address': typeof ProfileAddressRoute
+  '/yap/$id': typeof YapIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/leaderboard': typeof LeaderboardRoute
+  '/profile/$address': typeof ProfileAddressRoute
+  '/yap/$id': typeof YapIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/leaderboard': typeof LeaderboardRoute
+  '/profile/$address': typeof ProfileAddressRoute
+  '/yap/$id': typeof YapIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/leaderboard' | '/profile/$address' | '/yap/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/leaderboard' | '/profile/$address' | '/yap/$id'
+  id: '__root__' | '/' | '/leaderboard' | '/profile/$address' | '/yap/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  LeaderboardRoute: typeof LeaderboardRoute
+  ProfileAddressRoute: typeof ProfileAddressRoute
+  YapIdRoute: typeof YapIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/leaderboard': {
+      id: '/leaderboard'
+      path: '/leaderboard'
+      fullPath: '/leaderboard'
+      preLoaderRoute: typeof LeaderboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,22 +85,29 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/yap/$id': {
+      id: '/yap/$id'
+      path: '/yap/$id'
+      fullPath: '/yap/$id'
+      preLoaderRoute: typeof YapIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile/$address': {
+      id: '/profile/$address'
+      path: '/profile/$address'
+      fullPath: '/profile/$address'
+      preLoaderRoute: typeof ProfileAddressRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  LeaderboardRoute: LeaderboardRoute,
+  ProfileAddressRoute: ProfileAddressRoute,
+  YapIdRoute: YapIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
