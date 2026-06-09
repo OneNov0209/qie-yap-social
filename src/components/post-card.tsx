@@ -1,45 +1,41 @@
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { Heart, MessageCircle, Pin, Sparkles, BadgeCheck } from "lucide-react";
-import { type MockPost, relativeTime, shortAddr } from "@/lib/mock-data";
 import { StakingBadgeChip } from "./staking-badge";
 import { Avatar } from "./avatar-img";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth-store";
+import { toggleLike, type FeedPost, relativeTime, shortAddr } from "@/lib/posts";
 
 function compact(n: number) {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1000) return `${(n / 1000).toFixed(n >= 10_000 ? 0 : 1)}k`;
   return n.toString();
 }
 
-export function PostCard({ post }: { post: MockPost }) {
-  const [liked, setLiked] = useState(!!post.liked);
+export function PostCard({ post }: { post: FeedPost }) {
+  const [liked, setLiked] = useState(post.liked);
   const [likes, setLikes] = useState(post.likes);
-  const [pollVoted, setPollVoted] = useState<number | undefined>(post.pollVotedIndex);
   const { user } = useAuth();
 
-  const totalVotes = post.poll?.reduce((s, o) => s + o.votes, 0) ?? 0;
-  const liveTotal = totalVotes + (pollVoted !== undefined && post.pollVotedIndex === undefined ? 1 : 0);
-
-  const toggleLike = () => {
+  const onToggleLike = async () => {
     if (!user) return toast("Connect your wallet to like yaps");
-    setLiked((v) => !v);
-    setLikes((n) => n + (liked ? -1 : 1));
+    const wasLiked = liked;
+    setLiked(!wasLiked);
+    setLikes((n) => n + (wasLiked ? -1 : 1));
+    try {
+      await toggleLike(post.id, wasLiked);
+    } catch {
+      setLiked(wasLiked);
+      setLikes((n) => n + (wasLiked ? 1 : -1));
+      toast.error("Couldn't update like");
+    }
   };
 
   const handleTip = () => {
     if (!user) return toast("Connect your wallet to tip");
-    toast.success(`Sent 1 QIE tip to ${post.author.displayName}`, {
-      description: "Tx submitted on QIE Mainnet",
-    });
-  };
-
-  const handleVote = (i: number) => {
-    if (pollVoted !== undefined) return;
-    if (!user) return toast("Connect your wallet to vote");
-    setPollVoted(i);
-    toast.success("Vote recorded");
+    toast.info("Tipping coming next — contract integration in progress");
   };
 
   return (
@@ -78,9 +74,7 @@ export function PostCard({ post }: { post: MockPost }) {
               {post.author.displayName}
             </Link>
             <StakingBadgeChip badge={post.author.badge} />
-            {post.author.isValidator && (
-              <BadgeCheck className="size-4 text-brand" />
-            )}
+            {post.author.isValidator && <BadgeCheck className="size-4 text-brand" />}
             <span className="font-mono text-[11px] text-muted-foreground">
               {shortAddr(post.author.address)}
             </span>
@@ -95,55 +89,13 @@ export function PostCard({ post }: { post: MockPost }) {
             {post.content}
           </Link>
 
-          {post.poll && (
-            <div className="mt-4 space-y-2">
-              {post.poll.map((opt, i) => {
-                const showResult = pollVoted !== undefined;
-                const optVotes = opt.votes + (pollVoted === i && post.pollVotedIndex === undefined ? 1 : 0);
-                const pct = showResult && liveTotal > 0 ? Math.round((optVotes / liveTotal) * 100) : 0;
-                const isPick = pollVoted === i;
-                return (
-                  <button
-                    key={i}
-                    onClick={() => handleVote(i)}
-                    disabled={showResult}
-                    className={cn(
-                      "relative block h-10 w-full overflow-hidden rounded-xl border text-left transition-colors",
-                      showResult
-                        ? isPick ? "border-brand" : "border-border"
-                        : "border-border hover:border-brand/40 hover:bg-brand-soft/30",
-                    )}
-                  >
-                    {showResult && (
-                      <div
-                        className={cn("absolute inset-y-0 left-0", isPick ? "bg-brand/15" : "bg-muted")}
-                        style={{ width: `${pct}%` }}
-                      />
-                    )}
-                    <div className="relative flex h-full items-center justify-between px-4 text-sm">
-                      <span className={cn("font-medium", isPick && "text-brand")}>{opt.label}</span>
-                      {showResult && (
-                        <span className={cn("font-mono text-xs font-bold", isPick ? "text-brand" : "text-muted-foreground")}>
-                          {pct}%
-                        </span>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
-              <p className="text-[11px] text-muted-foreground">
-                {liveTotal.toLocaleString()} votes
-              </p>
-            </div>
-          )}
-
           <div className="mt-4 flex items-center gap-7 text-muted-foreground">
             <button className="group flex items-center gap-1.5 text-xs transition-colors hover:text-brand">
               <MessageCircle className="size-4" />
               <span className="font-medium">{compact(post.replies)}</span>
             </button>
             <button
-              onClick={toggleLike}
+              onClick={onToggleLike}
               className={cn(
                 "group flex items-center gap-1.5 text-xs transition-colors hover:text-brand",
                 liked && "text-brand",

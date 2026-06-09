@@ -11,6 +11,7 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { useAuth } from "@/lib/auth-store";
 import { Toaster } from "sonner";
 
 function NotFoundComponent() {
@@ -115,6 +116,9 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const init = useAuth((s) => s.init);
+
+  useEffect(() => { void init(); }, [init]);
 
   return (
     <QueryClientProvider client={queryClient}>

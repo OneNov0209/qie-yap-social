@@ -10,12 +10,12 @@ const LOGO = "https://raw.githubusercontent.com/OneNov0209/logo/refs/heads/main/
 export function Header() {
   const { user } = useAuth();
   const path = useRouterState({ select: (s) => s.location.pathname });
-  const profilePath = user ? `/profile/${user.address}` : "/profile/0x109b7C2c8B5A4D11FCE8FbE26A77f0B5DCEcFa7a";
+  const profilePath = user?.address ?? "0x0000000000000000000000000000000000000000";
 
   const navItems: Array<{ to: string; label: string; icon: typeof Home; active: boolean }> = [
     { to: "/", label: "Feed", icon: Home, active: path === "/" },
     { to: "/leaderboard", label: "Leaderboard", icon: Trophy, active: path.startsWith("/leaderboard") },
-    { to: profilePath, label: "Profile", icon: User, active: path.startsWith("/profile") },
+    { to: `/profile/${profilePath}`, label: "Profile", icon: User, active: path.startsWith("/profile") },
   ];
 
   return (
@@ -36,9 +36,7 @@ export function Header() {
                 to={it.to}
                 className={cn(
                   "rounded-full px-4 py-1.5 text-sm font-medium transition-colors",
-                  it.active
-                    ? "bg-brand-soft text-brand"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                  it.active ? "bg-brand-soft text-brand" : "text-muted-foreground hover:bg-muted hover:text-foreground",
                 )}
               >
                 {it.label}
@@ -53,7 +51,6 @@ export function Header() {
         </div>
       </header>
 
-      {/* Mobile bottom nav */}
       <nav className="fixed bottom-0 inset-x-0 z-40 grid grid-cols-4 border-t border-border bg-background/95 backdrop-blur-md md:hidden">
         {navItems.map((it) => (
           <Link

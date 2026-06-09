@@ -1,49 +1,59 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { Trophy, BadgeCheck } from "lucide-react";
 import { Header } from "@/components/header";
 import { Avatar } from "@/components/avatar-img";
 import { StakingBadgeChip } from "@/components/staking-badge";
-import { MOCK_USERS, shortAddr } from "@/lib/mock-data";
+import { supabase } from "@/integrations/supabase/client";
+import { shortAddr } from "@/lib/posts";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/leaderboard")({
   head: () => ({
     meta: [
       { title: "Leaderboard — QIE Yap" },
-      { name: "description", content: "Top yappers, stakers, and earners on the QIE blockchain ecosystem." },
+      { name: "description", content: "Top yappers on the QIE blockchain ecosystem." },
     ],
   }),
   component: LeaderboardPage,
 });
 
-type Metric = "yaps" | "stakers" | "earners";
-type Period = "weekly" | "monthly" | "all";
+interface Row {
+  id: string;
+  address: string;
+  display_name: string;
+  username: string;
+  avatar_seed: string;
+  is_validator: boolean;
+  yap_count: number;
+}
 
 function LeaderboardPage() {
-  const [metric, setMetric] = useState<Metric>("yaps");
-  const [period, setPeriod] = useState<Period>("weekly");
+  const [rows, setRows] = useState<Row[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const factor = period === "weekly" ? 0.15 : period === "monthly" ? 0.55 : 1;
-
-  const ranked = useMemo(() => {
-    const arr = [...MOCK_USERS];
-    arr.sort((a, b) => {
-      if (metric === "yaps") return b.yaps - a.yaps;
-      if (metric === "stakers") {
-        const order = ["shrimp", "fish", "dolphin", "shark", "whale"];
-        return order.indexOf(b.badge) - order.indexOf(a.badge) || b.followers - a.followers;
-      }
-      return b.tipsReceived - a.tipsReceived;
-    });
-    return arr;
-  }, [metric]);
-
-  const value = (u: typeof MOCK_USERS[0]) => {
-    if (metric === "yaps") return `${Math.round(u.yaps * factor).toLocaleString()} yaps`;
-    if (metric === "stakers") return `${Math.round(u.followers * 12 * factor).toLocaleString()} QIE`;
-    return `${Math.round(u.tipsReceived * factor).toLocaleString()} QIE`;
-  };
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      const { data: profiles } = await supabase.from("profiles").select("*").limit(100);
+      const { data: posts } = await supabase.from("posts").select("author_id").is("reply_to", null);
+      if (!active) return;
+      const counts = new Map<string, number>();
+      (posts ?? []).forEach((p) => counts.set(p.author_id as string, (counts.get(p.author_id as string) ?? 0) + 1));
+      const merged: Row[] = (profiles ?? []).map((p) => ({
+        id: p.id as string,
+        address: p.address as string,
+        display_name: p.display_name as string,
+        username: p.username as string,
+        avatar_seed: (p.avatar_seed as string) ?? (p.address as string),
+        is_validator: !!p.is_validator,
+        yap_count: counts.get(p.id as string) ?? 0,
+      })).sort((a, b) => b.yap_count - a.yap_count);
+      setRows(merged);
+      setLoading(false);
+    })();
+    return () => { active = false; };
+  }, []);
 
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-12">
@@ -59,73 +69,42 @@ function LeaderboardPage() {
           </div>
         </div>
 
-        <div className="mb-4 flex flex-wrap items-center gap-2">
-          <div className="flex rounded-full border border-border bg-card p-0.5">
-            {(["yaps", "stakers", "earners"] as Metric[]).map((m) => (
-              <button
-                key={m}
-                onClick={() => setMetric(m)}
-                className={cn(
-                  "rounded-full px-3.5 py-1.5 text-xs font-semibold capitalize transition-colors",
-                  metric === m ? "bg-brand text-primary-foreground" : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                Top {m}
-              </button>
-            ))}
+        {loading ? (
+          <div className="p-12 text-center text-muted-foreground">Loading…</div>
+        ) : rows.length === 0 ? (
+          <div className="yap-card p-12 text-center text-muted-foreground">
+            No yappers yet. Be the first to sign in.
           </div>
-          <div className="ml-auto flex rounded-full border border-border bg-card p-0.5">
-            {(["weekly", "monthly", "all"] as Period[]).map((p) => (
-              <button
-                key={p}
-                onClick={() => setPeriod(p)}
-                className={cn(
-                  "rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wider transition-colors",
-                  period === p ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {p === "all" ? "All-time" : p}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <ol className="yap-card divide-y divide-border overflow-hidden p-0">
-          {ranked.map((u, i) => (
-            <li key={u.address}>
-              <Link
-                to="/profile/$address"
-                params={{ address: u.address }}
-                className="flex items-center gap-4 px-4 py-3 transition-colors hover:bg-brand-soft/40"
-              >
-                <span
-                  className={cn(
+        ) : (
+          <ol className="yap-card divide-y divide-border overflow-hidden p-0">
+            {rows.map((u, i) => (
+              <li key={u.id}>
+                <Link to="/profile/$address" params={{ address: u.address }}
+                  className="flex items-center gap-4 px-4 py-3 transition-colors hover:bg-brand-soft/40">
+                  <span className={cn(
                     "w-8 text-center font-display text-lg font-bold",
-                    i === 0 && "text-2xl",
-                    i === 0 ? "text-gold" : i === 1 ? "text-slate-400" : i === 2 ? "text-amber-600" : "text-muted-foreground",
-                  )}
-                >
-                  {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `#${i + 1}`}
-                </span>
-                <Avatar seed={u.avatarSeed} size={44} />
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="font-semibold">{u.displayName}</span>
-                    {u.isValidator && <BadgeCheck className="size-4 text-brand" />}
-                    <StakingBadgeChip badge={u.badge} />
+                    i === 0 ? "text-gold text-2xl" : i === 1 ? "text-slate-400" : i === 2 ? "text-amber-600" : "text-muted-foreground",
+                  )}>
+                    {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `#${i + 1}`}
+                  </span>
+                  <Avatar seed={u.avatar_seed} size={44} />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="font-semibold">{u.display_name}</span>
+                      {u.is_validator && <BadgeCheck className="size-4 text-brand" />}
+                      <StakingBadgeChip badge="shrimp" />
+                    </div>
+                    <div className="font-mono text-[11px] text-muted-foreground">{shortAddr(u.address)}</div>
                   </div>
-                  <div className="font-mono text-[11px] text-muted-foreground">
-                    {shortAddr(u.address)}
+                  <div className="text-right">
+                    <div className="font-display font-bold text-foreground">{u.yap_count}</div>
+                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground">yaps</div>
                   </div>
-                </div>
-                <div className="text-right">
-                  <div className="font-display font-bold text-foreground">{value(u)}</div>
-                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{period}</div>
-                </div>
-              </Link>
-            </li>
-          ))}
-        </ol>
+                </Link>
+              </li>
+            ))}
+          </ol>
+        )}
       </main>
     </div>
   );

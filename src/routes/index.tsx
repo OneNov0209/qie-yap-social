@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, useMemo } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Flame, Clock, Users, Sparkles } from "lucide-react";
 import { Header } from "@/components/header";
 import { Composer } from "@/components/composer";
 import { PostCard } from "@/components/post-card";
-import { MOCK_POSTS } from "@/lib/mock-data";
 import { useAuth } from "@/lib/auth-store";
+import { fetchFeed, type FeedPost } from "@/lib/posts";
+import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({
@@ -30,23 +31,38 @@ const TABS: Array<{ id: Tab; label: string; icon: typeof Flame }> = [
 ];
 
 function FeedPage() {
-  const [tab, setTab] = useState<Tab>("trending");
-  const { user } = useAuth();
+  const [tab, setTab] = useState<Tab>("latest");
+  const [posts, setPosts] = useState<FeedPost[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { user, hydrated } = useAuth();
 
-  const posts = useMemo(() => {
-    const all = [...MOCK_POSTS];
-    if (tab === "trending") return all.sort((a, b) => (b.likes + b.tipTotal * 5) - (a.likes + a.tipTotal * 5));
-    if (tab === "latest")   return all.sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
-    if (tab === "super")    return all.filter((p) => p.isSuperYap);
-    if (tab === "following")return user ? all.slice(0, 3) : [];
-    return all;
-  }, [tab, user]);
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await fetchFeed(tab, user?.id ?? null);
+      setPosts(data);
+    } finally {
+      setLoading(false);
+    }
+  }, [tab, user?.id]);
+
+  useEffect(() => { if (hydrated) load(); }, [hydrated, load]);
+
+  // Realtime: new posts and like changes refresh the feed.
+  useEffect(() => {
+    const ch = supabase
+      .channel("feed")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "posts" }, load)
+      .on("postgres_changes", { event: "*", schema: "public", table: "likes" }, load)
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [load]);
 
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-12">
       <Header />
       <main className="mx-auto max-w-2xl px-4 py-6">
-        <Composer />
+        <Composer onPosted={load} />
 
         <div className="mb-4 flex items-center gap-1 overflow-x-auto border-b border-border">
           {TABS.map((t) => (
@@ -68,23 +84,34 @@ function FeedPage() {
           ))}
         </div>
 
-        {posts.length === 0 ? (
+        {loading ? (
+          <div className="space-y-4">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="yap-card p-5 animate-pulse">
+                <div className="flex gap-4">
+                  <div className="size-12 rounded-full bg-muted" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-3 w-32 rounded bg-muted" />
+                    <div className="h-3 w-full rounded bg-muted" />
+                    <div className="h-3 w-3/4 rounded bg-muted" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : posts.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border bg-card p-12 text-center">
-            <div className="mx-auto mb-3 grid size-12 place-items-center rounded-full bg-brand-soft text-2xl">
-              🚀
-            </div>
+            <div className="mx-auto mb-3 grid size-12 place-items-center rounded-full bg-brand-soft text-2xl">🚀</div>
             <h3 className="font-display text-lg font-semibold">No yaps here yet</h3>
             <p className="mt-1 text-sm text-muted-foreground">
               {tab === "following"
-                ? "Follow some yappers to see their posts here."
+                ? user ? "Follow some yappers to see their posts here." : "Connect your wallet to see who you follow."
                 : "Be the first to yap!"}
             </p>
           </div>
         ) : (
           <div className="space-y-4">
-            {posts.map((p) => (
-              <PostCard key={p.id} post={p} />
-            ))}
+            {posts.map((p) => <PostCard key={p.id} post={p} />)}
           </div>
         )}
       </main>
