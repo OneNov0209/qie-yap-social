@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { avatarUrl } from "@/lib/mock-data";
+import { avatarUrl } from "@/lib/posts";
 
 export function Avatar({
   seed,
@@ -14,7 +14,7 @@ export function Avatar({
 }) {
   return (
     <img
-      src={avatarUrl(seed, size * 2)}
+      src={avatarUrl(seed)}
       alt={seed}
       width={size}
       height={size}
