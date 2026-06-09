@@ -14,7 +14,183 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      follows: {
+        Row: {
+          created_at: string
+          follower_id: string
+          following_id: string
+        }
+        Insert: {
+          created_at?: string
+          follower_id: string
+          following_id: string
+        }
+        Update: {
+          created_at?: string
+          follower_id?: string
+          following_id?: string
+        }
+        Relationships: []
+      }
+      likes: {
+        Row: {
+          created_at: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "likes_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      login_nonces: {
+        Row: {
+          address: string
+          expires_at: string
+          nonce: string
+        }
+        Insert: {
+          address: string
+          expires_at?: string
+          nonce: string
+        }
+        Update: {
+          address?: string
+          expires_at?: string
+          nonce?: string
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          amount: number | null
+          created_at: string
+          from_user_id: string | null
+          id: string
+          post_id: string | null
+          read: boolean
+          type: string
+          user_id: string
+        }
+        Insert: {
+          amount?: number | null
+          created_at?: string
+          from_user_id?: string | null
+          id?: string
+          post_id?: string | null
+          read?: boolean
+          type: string
+          user_id: string
+        }
+        Update: {
+          amount?: number | null
+          created_at?: string
+          from_user_id?: string | null
+          id?: string
+          post_id?: string | null
+          read?: boolean
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      posts: {
+        Row: {
+          author_id: string
+          boost_expires_at: string | null
+          content: string
+          created_at: string
+          id: string
+          is_boosted: boolean
+          is_super_yap: boolean
+          reply_to: string | null
+        }
+        Insert: {
+          author_id: string
+          boost_expires_at?: string | null
+          content: string
+          created_at?: string
+          id?: string
+          is_boosted?: boolean
+          is_super_yap?: boolean
+          reply_to?: string | null
+        }
+        Update: {
+          author_id?: string
+          boost_expires_at?: string | null
+          content?: string
+          created_at?: string
+          id?: string
+          is_boosted?: boolean
+          is_super_yap?: boolean
+          reply_to?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "posts_reply_to_fkey"
+            columns: ["reply_to"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          address: string
+          avatar_seed: string
+          bio: string | null
+          created_at: string
+          display_name: string
+          id: string
+          is_validator: boolean
+          username: string
+        }
+        Insert: {
+          address: string
+          avatar_seed: string
+          bio?: string | null
+          created_at?: string
+          display_name: string
+          id: string
+          is_validator?: boolean
+          username: string
+        }
+        Update: {
+          address?: string
+          avatar_seed?: string
+          bio?: string | null
+          created_at?: string
+          display_name?: string
+          id?: string
+          is_validator?: boolean
+          username?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
