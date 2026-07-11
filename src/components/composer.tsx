@@ -16,6 +16,7 @@ export function Composer({ onPosted }: { onPosted?: () => void }) {
   const [text, setText] = useState("");
   const [superYap, setSuperYap] = useState(false);
   const [boostHours, setBoostHours] = useState<0 | 1 | 6 | 24>(0);
+  const [onChain, setOnChain] = useState<boolean>(!!YAP_CONTRACT);
   const [submitting, setSubmitting] = useState(false);
   const ref = useRef<HTMLTextAreaElement>(null);
 
