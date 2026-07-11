@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Sparkles, Rocket } from "lucide-react";
+import { Sparkles, Rocket, Link2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Avatar } from "./avatar-img";
@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth-store";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { createPost } from "@/lib/posts";
+import { submitYapOnChain, YAP_CONTRACT, hashContent } from "@/lib/yap-onchain";
 
 const MAX = 280;
 

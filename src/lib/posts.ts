@@ -120,6 +120,8 @@ export async function createPost(input: {
   isSuperYap?: boolean;
   isBoosted?: boolean;
   boostHours?: number;
+  txHash?: string | null;
+  contentHash?: string | null;
 }) {
   const { data: session } = await supabase.auth.getSession();
   const userId = session.session?.user.id;
@@ -134,6 +136,9 @@ export async function createPost(input: {
     is_super_yap: !!input.isSuperYap,
     is_boosted: !!input.isBoosted,
     boost_expires_at: boostExpires,
+    tx_hash: input.txHash ?? null,
+    content_hash: input.contentHash ?? null,
+    on_chain: !!input.txHash,
   });
   if (error) throw error;
 }
