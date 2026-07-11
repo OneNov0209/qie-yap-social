@@ -123,17 +123,19 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <Outlet />
-      <Toaster
-        position="bottom-right"
-        toastOptions={{
-          classNames: {
-            toast: "border border-brand/20 bg-card text-card-foreground shadow-lg shadow-brand/10",
-            title: "font-semibold",
-            description: "text-muted-foreground",
-          },
-        }}
-      />
+      <ThemeProvider>
+        <Outlet />
+        <Toaster
+          position="bottom-right"
+          toastOptions={{
+            classNames: {
+              toast: "border border-brand/20 bg-card text-card-foreground shadow-lg shadow-brand/10",
+              title: "font-semibold",
+              description: "text-muted-foreground",
+            },
+          }}
+        />
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }
