@@ -62,7 +62,7 @@ function YapDetail() {
       id: data.id as string, author, content: data.content as string, createdAt: data.created_at as string,
       isSuperYap: !!data.is_super_yap, isBoosted: !!data.is_boosted,
       likes: likes.count ?? 0, replies: (replyRows.data ?? []).length, liked: !!viewerLike.data,
-      tipTotal: 0, tips: 0,
+      tipTotal: 0, tips: 0, txHash: null, onChain: false,
     });
     setReplies((replyRows.data ?? []) as unknown as ReplyRow[]);
   };

@@ -24,6 +24,8 @@ export interface FeedPost {
   liked: boolean;
   tipTotal: number;
   tips: number;
+  txHash: string | null;
+  onChain: boolean;
 }
 
 interface ProfileRow {
@@ -56,7 +58,7 @@ export async function fetchFeed(
 ): Promise<FeedPost[]> {
   let query = supabase
     .from("posts")
-    .select("id, content, is_super_yap, is_boosted, created_at, author:profiles!posts_author_id_fkey(*)")
+    .select("id, content, is_super_yap, is_boosted, created_at, tx_hash, on_chain, author:profiles!posts_author_id_fkey(*)")
     .is("reply_to", null)
     .order("created_at", { ascending: false })
     .limit(50);
@@ -100,6 +102,8 @@ export async function fetchFeed(
       liked: likedSet.has(p.id as string),
       tipTotal: 0,
       tips: 0,
+      txHash: (p.tx_hash as string | null) ?? null,
+      onChain: !!p.on_chain,
     }));
 
   if (filter === "trending") {
@@ -120,6 +124,8 @@ export async function createPost(input: {
   isSuperYap?: boolean;
   isBoosted?: boolean;
   boostHours?: number;
+  txHash?: string | null;
+  contentHash?: string | null;
 }) {
   const { data: session } = await supabase.auth.getSession();
   const userId = session.session?.user.id;
@@ -134,6 +140,9 @@ export async function createPost(input: {
     is_super_yap: !!input.isSuperYap,
     is_boosted: !!input.isBoosted,
     boost_expires_at: boostExpires,
+    tx_hash: input.txHash ?? null,
+    content_hash: input.contentHash ?? null,
+    on_chain: !!input.txHash,
   });
   if (error) throw error;
 }

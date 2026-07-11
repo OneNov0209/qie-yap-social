@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Sparkles, Rocket } from "lucide-react";
+import { Sparkles, Rocket, Link2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Avatar } from "./avatar-img";
@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth-store";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { createPost } from "@/lib/posts";
+import { submitYapOnChain, YAP_CONTRACT, hashContent } from "@/lib/yap-onchain";
 
 const MAX = 280;
 
@@ -15,6 +16,7 @@ export function Composer({ onPosted }: { onPosted?: () => void }) {
   const [text, setText] = useState("");
   const [superYap, setSuperYap] = useState(false);
   const [boostHours, setBoostHours] = useState<0 | 1 | 6 | 24>(0);
+  const [onChain, setOnChain] = useState<boolean>(!!YAP_CONTRACT);
   const [submitting, setSubmitting] = useState(false);
   const ref = useRef<HTMLTextAreaElement>(null);
 
@@ -38,13 +40,31 @@ export function Composer({ onPosted }: { onPosted?: () => void }) {
     if (!text.trim()) return;
     setSubmitting(true);
     try {
+      let txHash: string | null = null;
+      let cHash: string | null = null;
+      if (onChain && YAP_CONTRACT) {
+        try {
+          toast("Sign the on-chain yap in your wallet…");
+          const r = await submitYapOnChain(user.address as `0x${string}`, text.trim());
+          txHash = r.txHash;
+          cHash = r.contentHash;
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : "On-chain yap failed — posting off-chain");
+          cHash = hashContent(text.trim());
+        }
+      } else {
+        cHash = hashContent(text.trim());
+      }
       await createPost({
         content: text.trim(),
         isSuperYap: superYap,
         isBoosted: boostHours > 0,
         boostHours,
+        txHash,
+        contentHash: cHash,
       });
       const desc: string[] = [];
+      if (txHash) desc.push("On-chain ✓");
       if (superYap) desc.push("Super Yap");
       if (boostHours) desc.push(`Boost ${boostHours}h`);
       toast.success("Yap posted!", { description: desc.join(" · ") || "Visible to the QIE feed" });
@@ -102,6 +122,16 @@ export function Composer({ onPosted }: { onPosted?: () => void }) {
                   </button>
                 ))}
               </div>
+
+              {YAP_CONTRACT && (
+                <label className="inline-flex items-center gap-2 rounded-full border border-border px-2.5 py-1 text-xs">
+                  <Link2 className={cn("size-3.5", onChain ? "text-brand" : "text-muted-foreground")} />
+                  <span className={cn("font-bold uppercase tracking-wider", onChain ? "text-brand" : "text-muted-foreground")}>
+                    On-chain
+                  </span>
+                  <Switch checked={onChain} onCheckedChange={setOnChain} className="data-[state=checked]:bg-brand" />
+                </label>
+              )}
             </div>
 
             <div className="flex items-center gap-3">

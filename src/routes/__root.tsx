@@ -12,6 +12,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { useAuth } from "@/lib/auth-store";
+import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "sonner";
 
 function NotFoundComponent() {
@@ -122,17 +123,19 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <Outlet />
-      <Toaster
-        position="bottom-right"
-        toastOptions={{
-          classNames: {
-            toast: "border border-brand/20 bg-card text-card-foreground shadow-lg shadow-brand/10",
-            title: "font-semibold",
-            description: "text-muted-foreground",
-          },
-        }}
-      />
+      <ThemeProvider>
+        <Outlet />
+        <Toaster
+          position="bottom-right"
+          toastOptions={{
+            classNames: {
+              toast: "border border-brand/20 bg-card text-card-foreground shadow-lg shadow-brand/10",
+              title: "font-semibold",
+              description: "text-muted-foreground",
+            },
+          }}
+        />
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

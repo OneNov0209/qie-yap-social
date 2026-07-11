@@ -75,7 +75,7 @@ function ProfilePage() {
       setYaps((posts.data ?? []).map((post) => ({
         id: post.id, author: fp, content: post.content as string, createdAt: post.created_at as string,
         isSuperYap: !!post.is_super_yap, isBoosted: !!post.is_boosted,
-        likes: 0, replies: 0, liked: false, tipTotal: 0, tips: 0,
+        likes: 0, replies: 0, liked: false, tipTotal: 0, tips: 0, txHash: null, onChain: false,
       })));
       setCounts({
         followers: followers.count ?? 0,
