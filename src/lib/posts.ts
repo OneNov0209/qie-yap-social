@@ -101,7 +101,7 @@ export async function fetchFeed(
       replies: replyCount.get(p.id as string) ?? 0,
       liked: likedSet.has(p.id as string),
       tipTotal: 0,
-      tips: 0,
+      tips: 0, txHash: null, onChain: false,
     }));
 
   if (filter === "trending") {
