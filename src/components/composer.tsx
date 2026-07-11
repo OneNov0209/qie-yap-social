@@ -122,6 +122,16 @@ export function Composer({ onPosted }: { onPosted?: () => void }) {
                   </button>
                 ))}
               </div>
+
+              {YAP_CONTRACT && (
+                <label className="inline-flex items-center gap-2 rounded-full border border-border px-2.5 py-1 text-xs">
+                  <Link2 className={cn("size-3.5", onChain ? "text-brand" : "text-muted-foreground")} />
+                  <span className={cn("font-bold uppercase tracking-wider", onChain ? "text-brand" : "text-muted-foreground")}>
+                    On-chain
+                  </span>
+                  <Switch checked={onChain} onCheckedChange={setOnChain} className="data-[state=checked]:bg-brand" />
+                </label>
+              )}
             </div>
 
             <div className="flex items-center gap-3">
