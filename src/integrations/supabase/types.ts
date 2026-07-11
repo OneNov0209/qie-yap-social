@@ -122,31 +122,40 @@ export type Database = {
           author_id: string
           boost_expires_at: string | null
           content: string
+          content_hash: string | null
           created_at: string
           id: string
           is_boosted: boolean
           is_super_yap: boolean
+          on_chain: boolean
           reply_to: string | null
+          tx_hash: string | null
         }
         Insert: {
           author_id: string
           boost_expires_at?: string | null
           content: string
+          content_hash?: string | null
           created_at?: string
           id?: string
           is_boosted?: boolean
           is_super_yap?: boolean
+          on_chain?: boolean
           reply_to?: string | null
+          tx_hash?: string | null
         }
         Update: {
           author_id?: string
           boost_expires_at?: string | null
           content?: string
+          content_hash?: string | null
           created_at?: string
           id?: string
           is_boosted?: boolean
           is_super_yap?: boolean
+          on_chain?: boolean
           reply_to?: string | null
+          tx_hash?: string | null
         }
         Relationships: [
           {
@@ -188,6 +197,95 @@ export type Database = {
           id?: string
           is_validator?: boolean
           username?: string
+        }
+        Relationships: []
+      }
+      tips: {
+        Row: {
+          amount: number
+          created_at: string
+          from_user_id: string
+          id: string
+          post_id: string
+          to_user_id: string
+          tx_hash: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          from_user_id: string
+          id?: string
+          post_id: string
+          to_user_id: string
+          tx_hash: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          from_user_id?: string
+          id?: string
+          post_id?: string
+          to_user_id?: string
+          tx_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tips_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      twitter_oauth_states: {
+        Row: {
+          code_verifier: string
+          created_at: string
+          expires_at: string
+          state: string
+          wallet_address: string | null
+        }
+        Insert: {
+          code_verifier: string
+          created_at?: string
+          expires_at?: string
+          state: string
+          wallet_address?: string | null
+        }
+        Update: {
+          code_verifier?: string
+          created_at?: string
+          expires_at?: string
+          state?: string
+          wallet_address?: string | null
+        }
+        Relationships: []
+      }
+      wallet_twitter_links: {
+        Row: {
+          linked_at: string
+          twitter_id: string
+          twitter_username: string
+          tx_hash: string | null
+          user_id: string
+          wallet_address: string
+        }
+        Insert: {
+          linked_at?: string
+          twitter_id: string
+          twitter_username: string
+          tx_hash?: string | null
+          user_id: string
+          wallet_address: string
+        }
+        Update: {
+          linked_at?: string
+          twitter_id?: string
+          twitter_username?: string
+          tx_hash?: string | null
+          user_id?: string
+          wallet_address?: string
         }
         Relationships: []
       }
