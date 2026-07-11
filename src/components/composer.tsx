@@ -40,13 +40,31 @@ export function Composer({ onPosted }: { onPosted?: () => void }) {
     if (!text.trim()) return;
     setSubmitting(true);
     try {
+      let txHash: string | null = null;
+      let cHash: string | null = null;
+      if (onChain && YAP_CONTRACT) {
+        try {
+          toast("Sign the on-chain yap in your wallet…");
+          const r = await submitYapOnChain(user.address as `0x${string}`, text.trim());
+          txHash = r.txHash;
+          cHash = r.contentHash;
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : "On-chain yap failed — posting off-chain");
+          cHash = hashContent(text.trim());
+        }
+      } else {
+        cHash = hashContent(text.trim());
+      }
       await createPost({
         content: text.trim(),
         isSuperYap: superYap,
         isBoosted: boostHours > 0,
         boostHours,
+        txHash,
+        contentHash: cHash,
       });
       const desc: string[] = [];
+      if (txHash) desc.push("On-chain ✓");
       if (superYap) desc.push("Super Yap");
       if (boostHours) desc.push(`Boost ${boostHours}h`);
       toast.success("Yap posted!", { description: desc.join(" · ") || "Visible to the QIE feed" });
