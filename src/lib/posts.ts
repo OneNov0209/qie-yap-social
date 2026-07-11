@@ -24,6 +24,8 @@ export interface FeedPost {
   liked: boolean;
   tipTotal: number;
   tips: number;
+  txHash: string | null;
+  onChain: boolean;
 }
 
 interface ProfileRow {
