@@ -58,7 +58,7 @@ export async function fetchFeed(
 ): Promise<FeedPost[]> {
   let query = supabase
     .from("posts")
-    .select("id, content, is_super_yap, is_boosted, created_at, author:profiles!posts_author_id_fkey(*)")
+    .select("id, content, is_super_yap, is_boosted, created_at, tx_hash, on_chain, author:profiles!posts_author_id_fkey(*)")
     .is("reply_to", null)
     .order("created_at", { ascending: false })
     .limit(50);
@@ -101,7 +101,9 @@ export async function fetchFeed(
       replies: replyCount.get(p.id as string) ?? 0,
       liked: likedSet.has(p.id as string),
       tipTotal: 0,
-      tips: 0, txHash: null, onChain: false,
+      tips: 0,
+      txHash: (p.tx_hash as string | null) ?? null,
+      onChain: !!p.on_chain,
     }));
 
   if (filter === "trending") {
