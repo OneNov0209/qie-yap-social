@@ -3,7 +3,7 @@ import { Bell, Home, Trophy, User } from "lucide-react";
 import { ConnectWalletButton } from "./connect-wallet-button";
 import { NotificationsPopover } from "./notifications-popover";
 import { ThemeToggle } from "./theme-toggle";
-import { RegisterXButton } from "./register-x-button";
+
 import { useAuth } from "@/lib/auth-store";
 import { cn } from "@/lib/utils";
 
@@ -47,7 +47,7 @@ export function Header() {
           </nav>
 
           <div className="flex items-center gap-2">
-            {user && <div className="hidden sm:block"><RegisterXButton /></div>}
+            
             {user && <NotificationsPopover />}
             <ThemeToggle />
             <ConnectWalletButton />
