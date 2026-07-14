@@ -13,7 +13,6 @@ import { Route as LeaderboardRouteImport } from './routes/leaderboard'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as YapIdRouteImport } from './routes/yap.$id'
 import { Route as ProfileAddressRouteImport } from './routes/profile.$address'
-import { Route as ApiPublicTwitterCallbackRouteImport } from './routes/api/public/twitter.callback'
 
 const LeaderboardRoute = LeaderboardRouteImport.update({
   id: '/leaderboard',
@@ -35,26 +34,18 @@ const ProfileAddressRoute = ProfileAddressRouteImport.update({
   path: '/profile/$address',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicTwitterCallbackRoute =
-  ApiPublicTwitterCallbackRouteImport.update({
-    id: '/api/public/twitter/callback',
-    path: '/api/public/twitter/callback',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/leaderboard': typeof LeaderboardRoute
   '/profile/$address': typeof ProfileAddressRoute
   '/yap/$id': typeof YapIdRoute
-  '/api/public/twitter/callback': typeof ApiPublicTwitterCallbackRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/leaderboard': typeof LeaderboardRoute
   '/profile/$address': typeof ProfileAddressRoute
   '/yap/$id': typeof YapIdRoute
-  '/api/public/twitter/callback': typeof ApiPublicTwitterCallbackRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -62,30 +53,13 @@ export interface FileRoutesById {
   '/leaderboard': typeof LeaderboardRoute
   '/profile/$address': typeof ProfileAddressRoute
   '/yap/$id': typeof YapIdRoute
-  '/api/public/twitter/callback': typeof ApiPublicTwitterCallbackRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/leaderboard'
-    | '/profile/$address'
-    | '/yap/$id'
-    | '/api/public/twitter/callback'
+  fullPaths: '/' | '/leaderboard' | '/profile/$address' | '/yap/$id'
   fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | '/leaderboard'
-    | '/profile/$address'
-    | '/yap/$id'
-    | '/api/public/twitter/callback'
-  id:
-    | '__root__'
-    | '/'
-    | '/leaderboard'
-    | '/profile/$address'
-    | '/yap/$id'
-    | '/api/public/twitter/callback'
+  to: '/' | '/leaderboard' | '/profile/$address' | '/yap/$id'
+  id: '__root__' | '/' | '/leaderboard' | '/profile/$address' | '/yap/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -93,7 +67,6 @@ export interface RootRouteChildren {
   LeaderboardRoute: typeof LeaderboardRoute
   ProfileAddressRoute: typeof ProfileAddressRoute
   YapIdRoute: typeof YapIdRoute
-  ApiPublicTwitterCallbackRoute: typeof ApiPublicTwitterCallbackRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -126,13 +99,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProfileAddressRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/twitter/callback': {
-      id: '/api/public/twitter/callback'
-      path: '/api/public/twitter/callback'
-      fullPath: '/api/public/twitter/callback'
-      preLoaderRoute: typeof ApiPublicTwitterCallbackRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
@@ -141,7 +107,6 @@ const rootRouteChildren: RootRouteChildren = {
   LeaderboardRoute: LeaderboardRoute,
   ProfileAddressRoute: ProfileAddressRoute,
   YapIdRoute: YapIdRoute,
-  ApiPublicTwitterCallbackRoute: ApiPublicTwitterCallbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
