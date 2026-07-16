@@ -1,12 +1,14 @@
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { Heart, MessageCircle, Pin, Sparkles, BadgeCheck } from "lucide-react";
+import { Heart, MessageCircle, Pin, Sparkles, BadgeCheck, Flame, Zap } from "lucide-react";
 import { StakingBadgeChip } from "./staking-badge";
 import { Avatar } from "./avatar-img";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth-store";
 import { toggleLike, type FeedPost, relativeTime, shortAddr } from "@/lib/posts";
+import { createWalletClient, custom, parseEther } from "viem";
+import { QIE_CHAIN, sendTip, boostPost, createSuperYap } from "@/lib/qie-chain";
 
 function compact(n: number) {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -17,7 +19,18 @@ function compact(n: number) {
 export function PostCard({ post }: { post: FeedPost }) {
   const [liked, setLiked] = useState(post.liked);
   const [likes, setLikes] = useState(post.likes);
+  const [isProcessing, setIsProcessing] = useState(false);
   const { user } = useAuth();
+
+  const contractAddress = import.meta.env.VITE_QIE_YAP_CONTRACT as `0x${string}`;
+
+  const getWalletClient = async () => {
+    if (!window.ethereum) throw new Error("No wallet detected");
+    return createWalletClient({
+      chain: QIE_CHAIN,
+      transport: custom(window.ethereum),
+    });
+  };
 
   const onToggleLike = async () => {
     if (!user) return toast("Connect your wallet to like yaps");
@@ -33,9 +46,85 @@ export function PostCard({ post }: { post: FeedPost }) {
     }
   };
 
-  const handleTip = () => {
-    if (!user) return toast("Connect your wallet to tip");
-    toast.info("Tipping coming next — contract integration in progress");
+  const handleTip = async () => {
+    if (!user) return toast.error("Connect your wallet to tip");
+    if (!contractAddress || contractAddress === "") return toast.error("Contract not deployed yet");
+    if (isProcessing) return;
+    
+    try {
+      setIsProcessing(true);
+      const walletClient = await getWalletClient();
+      const amount = prompt("Enter tip amount in QIE (e.g. 0.1):", "0.1");
+      if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
+        toast.error("Invalid amount");
+        setIsProcessing(false);
+        return;
+      }
+      
+      const hash = await sendTip(
+        walletClient,
+        contractAddress,
+        post.author.address as `0x${string}`,
+        amount,
+        `Tip for post ${post.id}`
+      );
+      
+      toast.success(`Tip sent! Tx: ${hash.slice(0, 10)}...`);
+      setIsProcessing(false);
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error.message || "Tip failed");
+      setIsProcessing(false);
+    }
+  };
+
+  const handleBoost = async () => {
+    if (!user) return toast.error("Connect your wallet to boost");
+    if (!contractAddress || contractAddress === "") return toast.error("Contract not deployed yet");
+    if (isProcessing) return;
+
+    try {
+      setIsProcessing(true);
+      const walletClient = await getWalletClient();
+      const hours = prompt("Boost duration (1-72 hours):", "24");
+      if (!hours || isNaN(parseInt(hours)) || parseInt(hours) < 1 || parseInt(hours) > 72) {
+        toast.error("Duration must be 1-72 hours");
+        setIsProcessing(false);
+        return;
+      }
+      
+      const hash = await boostPost(
+        walletClient,
+        contractAddress,
+        BigInt(parseInt(post.id.toString())),
+        BigInt(parseInt(hours))
+      );
+      
+      toast.success(`Post boosted for ${hours}h! Tx: ${hash.slice(0, 10)}...`);
+      setIsProcessing(false);
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error.message || "Boost failed");
+      setIsProcessing(false);
+    }
+  };
+
+  const handleSuperYap = async () => {
+    if (!user) return toast.error("Connect your wallet to create Super Yap");
+    if (!contractAddress || contractAddress === "") return toast.error("Contract not deployed yet");
+    if (isProcessing) return;
+
+    try {
+      setIsProcessing(true);
+      const walletClient = await getWalletClient();
+      const hash = await createSuperYap(walletClient, contractAddress);
+      toast.success(`Super Yap created! Tx: ${hash.slice(0, 10)}...`);
+      setIsProcessing(false);
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error.message || "Super Yap failed");
+      setIsProcessing(false);
+    }
   };
 
   return (
@@ -89,7 +178,7 @@ export function PostCard({ post }: { post: FeedPost }) {
             {post.content}
           </Link>
 
-          <div className="mt-4 flex items-center gap-7 text-muted-foreground">
+          <div className="mt-4 flex flex-wrap items-center gap-4 text-muted-foreground">
             <button className="group flex items-center gap-1.5 text-xs transition-colors hover:text-brand">
               <MessageCircle className="size-4" />
               <span className="font-medium">{compact(post.replies)}</span>
@@ -104,11 +193,33 @@ export function PostCard({ post }: { post: FeedPost }) {
               <Heart className={cn("size-4 transition-transform group-active:scale-90", liked && "fill-current")} />
               <span className="font-medium">{compact(likes)}</span>
             </button>
+            
             <button
               onClick={handleTip}
-              className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-brand/30 px-3 py-1 text-xs font-semibold text-brand transition-colors hover:bg-brand hover:text-primary-foreground"
+              disabled={isProcessing}
+              className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-brand/30 px-3 py-1 text-xs font-semibold text-brand transition-colors hover:bg-brand hover:text-primary-foreground disabled:opacity-50"
             >
               💎 {post.tipTotal > 0 ? `${post.tipTotal} QIE` : "Tip"}
+            </button>
+
+            {user?.address === post.author.address && (
+              <button
+                onClick={handleSuperYap}
+                disabled={isProcessing}
+                className="inline-flex items-center gap-1.5 rounded-full border border-gold/40 px-3 py-1 text-xs font-semibold text-gold transition-colors hover:bg-gold hover:text-white disabled:opacity-50"
+              >
+                <Flame className="size-3" />
+                Super Yap
+              </button>
+            )}
+
+            <button
+              onClick={handleBoost}
+              disabled={isProcessing}
+              className="inline-flex items-center gap-1.5 rounded-full border border-brand/20 px-3 py-1 text-xs font-semibold text-muted-foreground transition-colors hover:bg-brand/10 hover:text-brand disabled:opacity-50"
+            >
+              <Zap className="size-3" />
+              Boost
             </button>
           </div>
         </div>
