@@ -1,4 +1,5 @@
-import { createPublicClient, defineChain, http, formatEther } from "viem";
+import { createPublicClient, createWalletClient, defineChain, http, formatEther, parseEther, getContract } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
 
 export const QIE_CHAIN = defineChain({
   id: 1990,
@@ -10,12 +11,6 @@ export const QIE_CHAIN = defineChain({
 
 export const QIE_REST = "https://api.qie.onenov.xyz";
 
-export const CONTRACTS = {
-  tip:      "0x1276f46a7885cD68c1AB1f4d6cFec1966a0b3aEB" as const,
-  superYap: "0x9B0DBB1f751A4ACD81B5f9f9926e8f4ddA594Ec6" as const,
-  boost:    "0xf3460007C1dBD2FA3B301be65C3C5BC3D694d56e" as const,
-};
-
 export const qiePublicClient = createPublicClient({
   chain: QIE_CHAIN,
   transport: http(),
@@ -26,7 +21,6 @@ export async function getQieBalance(address: `0x${string}`): Promise<number> {
   return parseFloat(formatEther(wei));
 }
 
-/** Derive a "staking badge" tier from a QIE balance (placeholder until real staking RPC). */
 export type StakingBadge = "shrimp" | "fish" | "dolphin" | "shark" | "whale";
 export function badgeFor(qie: number): StakingBadge {
   if (qie >= 100_000) return "whale";
@@ -36,7 +30,6 @@ export function badgeFor(qie: number): StakingBadge {
   return "shrimp";
 }
 
-/** Read QIE staking total from the Cosmos REST endpoint, if available, else fall back to balance. */
 export async function getStakedQie(address: string): Promise<number | null> {
   try {
     const res = await fetch(`${QIE_REST}/cosmos/staking/v1beta1/delegations/${address}`);
@@ -50,4 +43,93 @@ export async function getStakedQie(address: string): Promise<number | null> {
   } catch {
     return null;
   }
+}
+
+export const QIE_YAP_ABI = [
+  { inputs: [{ internalType: "address", name: "_treasury", type: "address" }, { internalType: "address", name: "_devWallet", type: "address" }], stateMutability: "nonpayable", type: "constructor" },
+  { inputs: [], name: "BOOST_PRICE_PER_HOUR", outputs: [{ internalType: "uint256", name: "", type: "uint256" }], stateMutability: "view", type: "function" },
+  { inputs: [], name: "PLATFORM_FEE_PERCENT", outputs: [{ internalType: "uint256", name: "", type: "uint256" }], stateMutability: "view", type: "function" },
+  { inputs: [], name: "SUPER_YAP_PRICE", outputs: [{ internalType: "uint256", name: "", type: "uint256" }], stateMutability: "view", type: "function" },
+  { inputs: [], name: "boostsCreated", outputs: [{ internalType: "uint256", name: "", type: "uint256" }], stateMutability: "view", type: "function" },
+  { inputs: [{ internalType: "address", name: "", type: "address" }], name: "boostsCreated", outputs: [{ internalType: "uint256", name: "", type: "uint256" }], stateMutability: "view", type: "function" },
+  { inputs: [{ internalType: "uint256", name: "postId", type: "uint256" }, { internalType: "uint256", name: "durationHours", type: "uint256" }], name: "boost", outputs: [], stateMutability: "payable", type: "function" },
+  { inputs: [], name: "createSuperYap", outputs: [], stateMutability: "payable", type: "function" },
+  { inputs: [], name: "devWallet", outputs: [{ internalType: "address", name: "", type: "address" }], stateMutability: "view", type: "function" },
+  { inputs: [], name: "getGlobalStats", outputs: [{ internalType: "uint256", name: "_totalTips", type: "uint256" }, { internalType: "uint256", name: "_totalSuperYaps", type: "uint256" }, { internalType: "uint256", name: "_totalBoosts", type: "uint256" }], stateMutability: "view", type: "function" },
+  { inputs: [{ internalType: "address", name: "user", type: "address" }], name: "getUserStats", outputs: [{ internalType: "uint256", name: "_tipsSent", type: "uint256" }, { internalType: "uint256", name: "_tipsReceived", type: "uint256" }, { internalType: "uint256", name: "_superYaps", type: "uint256" }, { internalType: "uint256", name: "_boosts", type: "uint256" }], stateMutability: "view", type: "function" },
+  { inputs: [], name: "owner", outputs: [{ internalType: "address", name: "", type: "address" }], stateMutability: "view", type: "function" },
+  { inputs: [], name: "superYapsCreated", outputs: [{ internalType: "uint256", name: "", type: "uint256" }], stateMutability: "view", type: "function" },
+  { inputs: [{ internalType: "address", name: "", type: "address" }], name: "superYapsCreated", outputs: [{ internalType: "uint256", name: "", type: "uint256" }], stateMutability: "view", type: "function" },
+  { inputs: [{ internalType: "address", name: "recipient", type: "address" }, { internalType: "string", name: "message", type: "string" }], name: "tip", outputs: [], stateMutability: "payable", type: "function" },
+  { inputs: [], name: "tipsReceived", outputs: [{ internalType: "uint256", name: "", type: "uint256" }], stateMutability: "view", type: "function" },
+  { inputs: [{ internalType: "address", name: "", type: "address" }], name: "tipsReceived", outputs: [{ internalType: "uint256", name: "", type: "uint256" }], stateMutability: "view", type: "function" },
+  { inputs: [], name: "tipsSent", outputs: [{ internalType: "uint256", name: "", type: "uint256" }], stateMutability: "view", type: "function" },
+  { inputs: [{ internalType: "address", name: "", type: "address" }], name: "tipsSent", outputs: [{ internalType: "uint256", name: "", type: "uint256" }], stateMutability: "view", type: "function" },
+  { inputs: [], name: "totalBoosts", outputs: [{ internalType: "uint256", name: "", type: "uint256" }], stateMutability: "view", type: "function" },
+  { inputs: [], name: "totalSuperYaps", outputs: [{ internalType: "uint256", name: "", type: "uint256" }], stateMutability: "view", type: "function" },
+  { inputs: [], name: "totalTipsSent", outputs: [{ internalType: "uint256", name: "", type: "uint256" }], stateMutability: "view", type: "function" },
+  { inputs: [], name: "treasury", outputs: [{ internalType: "address", name: "", type: "address" }], stateMutability: "view", type: "function" },
+  { inputs: [{ internalType: "address", name: "_devWallet", type: "address" }], name: "updateDevWallet", outputs: [], stateMutability: "nonpayable", type: "function" },
+  { inputs: [{ internalType: "address", name: "_treasury", type: "address" }], name: "updateTreasury", outputs: [], stateMutability: "nonpayable", type: "function" },
+  { inputs: [], name: "withdrawTips", outputs: [], stateMutability: "nonpayable", type: "function" },
+  { inputs: [{ internalType: "bytes32", name: "contentHash", type: "bytes32" }, { internalType: "string", name: "cid", type: "string" }], name: "yap", outputs: [], stateMutability: "nonpayable", type: "function" },
+  { anonymous: false, inputs: [{ indexed: true, internalType: "address", name: "user", type: "address" }, { indexed: true, internalType: "uint256", name: "postId", type: "uint256" }, { indexed: false, internalType: "uint256", name: "durationHours", type: "uint256" }, { indexed: false, internalType: "uint256", name: "amount", type: "uint256" }], name: "PostBoosted", type: "event" },
+  { anonymous: false, inputs: [{ indexed: true, internalType: "address", name: "user", type: "address" }, { indexed: false, internalType: "uint256", name: "timestamp", type: "uint256" }], name: "SuperYapCreated", type: "event" },
+  { anonymous: false, inputs: [{ indexed: true, internalType: "address", name: "from", type: "address" }, { indexed: true, internalType: "address", name: "to", type: "address" }, { indexed: false, internalType: "uint256", name: "amount", type: "uint256" }, { indexed: false, internalType: "string", name: "message", type: "string" }], name: "TipSent", type: "event" },
+  { anonymous: false, inputs: [{ indexed: true, internalType: "address", name: "author", type: "address" }, { indexed: true, internalType: "bytes32", name: "contentHash", type: "bytes32" }, { indexed: false, internalType: "uint256", name: "timestamp", type: "uint256" }, { indexed: false, internalType: "string", name: "cid", type: "string" }], name: "Yapped", type: "event" },
+] as const;
+
+export async function getQieYapContract(contractAddress: `0x${string}`) {
+  return getContract({
+    address: contractAddress,
+    abi: QIE_YAP_ABI,
+    client: qiePublicClient,
+  });
+}
+
+export async function sendTip(
+  walletClient: any,
+  contractAddress: `0x${string}`,
+  recipient: `0x${string}`,
+  amountInQie: string,
+  message: string
+) {
+  const hash = await walletClient.writeContract({
+    address: contractAddress,
+    abi: QIE_YAP_ABI,
+    functionName: "tip",
+    args: [recipient, message],
+    value: parseEther(amountInQie),
+  });
+  return hash;
+}
+
+export async function createSuperYap(
+  walletClient: any,
+  contractAddress: `0x${string}`
+) {
+  const hash = await walletClient.writeContract({
+    address: contractAddress,
+    abi: QIE_YAP_ABI,
+    functionName: "createSuperYap",
+    value: parseEther("0.01"),
+  });
+  return hash;
+}
+
+export async function boostPost(
+  walletClient: any,
+  contractAddress: `0x${string}`,
+  postId: bigint,
+  durationHours: bigint
+) {
+  const cost = 0.005 * Number(durationHours);
+  const hash = await walletClient.writeContract({
+    address: contractAddress,
+    abi: QIE_YAP_ABI,
+    functionName: "boost",
+    args: [postId, durationHours],
+    value: parseEther(cost.toString()),
+  });
+  return hash;
 }
