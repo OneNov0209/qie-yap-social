@@ -23,6 +23,26 @@ export interface FeedPost {
   };
 }
 
+export async function createPost(content: string): Promise<{ id: string } | null> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const { data, error } = await supabase
+    .from("posts")
+    .insert({
+      content,
+      author_id: user.id,
+    })
+    .select("id")
+    .single();
+
+  if (error) {
+    console.error("Failed to create post:", error);
+    throw error;
+  }
+  return data;
+}
+
 export async function fetchFeed(tab: string, userId: string | null): Promise<FeedPost[]> {
   const client = typeof window === 'undefined' ? supabaseAdmin : supabase;
 
