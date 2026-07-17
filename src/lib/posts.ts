@@ -23,21 +23,28 @@ export interface FeedPost {
 }
 
 export async function createPost(
-  content: string, 
-  authorId?: string
+  postData: {
+    content: string;
+    isSuperYap: boolean;
+    isBoosted: boolean;
+    boostHours: number;
+    txHash?: string | null;
+    contentHash?: string | null;
+  },
+  authorId: string
 ): Promise<{ id: string } | null> {
-  let userId = authorId;
-  if (!userId) {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error("Not authenticated");
-    userId = user.id;
-  }
-
   const { data, error } = await supabase
     .from("posts")
     .insert({
-      content,
-      author_id: userId,
+      content: postData.content,
+      author_id: authorId,
+      is_super_yap: postData.isSuperYap,
+      is_boosted: postData.isBoosted,
+      boost_expires_at: postData.boostHours > 0 
+        ? new Date(Date.now() + postData.boostHours * 60 * 60 * 1000).toISOString() 
+        : null,
+      tx_hash: postData.txHash || null,
+      content_hash: postData.contentHash || null,
     })
     .select("id")
     .single();
