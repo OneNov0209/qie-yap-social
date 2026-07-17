@@ -24,7 +24,6 @@ export interface FeedPost {
 }
 
 export async function fetchFeed(tab: string, userId: string | null): Promise<FeedPost[]> {
-  // Gunakan admin client untuk mengambil data agar tidak kena error 403
   const client = typeof window === 'undefined' ? supabaseAdmin : supabase;
 
   let query = client
@@ -55,7 +54,6 @@ export async function fetchFeed(tab: string, userId: string | null): Promise<Fee
     query = query.eq("is_super_yap", true);
   }
 
-  // Jika user login, kita cek likes yang dia berikan
   let userLikes: Set<string> = new Set();
   if (userId) {
     const { data: likesData } = await supabase
@@ -77,9 +75,8 @@ export async function fetchFeed(tab: string, userId: string | null): Promise<Fee
   if (!data) return [];
 
   return data.map((item: any) => {
-    // Hitung total tip dari tabel tips
-    const tipTotal = 0; // Sementara 0, nanti bisa dihitung terpisah
-    const repliesCount = 0; // Sementara 0, nanti dihitung terpisah
+    const tipTotal = 0;
+    const repliesCount = 0;
 
     return {
       id: item.id,
@@ -97,7 +94,7 @@ export async function fetchFeed(tab: string, userId: string | null): Promise<Fee
         address: item.profiles?.address || item.author_id || "unknown",
         displayName: item.profiles?.display_name || "Anonymous",
         avatarSeed: item.profiles?.avatar_seed || item.author_id || "0x0",
-        badge: badgeFor(0), // Sementara 0, nanti bisa dihitung dari balance QIE
+        badge: badgeFor(0),
         isValidator: item.profiles?.is_validator || false,
       },
     };
@@ -132,4 +129,9 @@ export function relativeTime(dateString: string): string {
 export function shortAddr(addr: string): string {
   if (!addr || addr.length < 10) return addr;
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
+}
+
+export function avatarUrl(seed: string): string {
+  if (!seed) return "";
+  return `https://api.dicebear.com/9.x/avataaars/svg?seed=${encodeURIComponent(seed)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffdfbf,ffd5dc`;
 }
