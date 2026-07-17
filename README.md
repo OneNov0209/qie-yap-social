@@ -144,12 +144,19 @@ GRANT SELECT ON public.likes TO authenticated;
 ✅ Features
 
 · ✅ Connect wallet (MetaMask / QIE Wallet)
+
 · ✅ Display QIE balance
+
 · ✅ Post Yaps with Super Yap and Boost options
+
 · ✅ On-chain + off-chain post storage
+
 · ✅ Like posts
+
 · ✅ Send QIE tips to post authors
+
 · ✅ Boost posts (for post owners)
+
 · ✅ Real-time feed updates via Supabase Realtime
 
 ---
