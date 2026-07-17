@@ -56,15 +56,11 @@ export function Composer({ onPosted }: { onPosted?: () => void }) {
         cHash = hashContent(text.trim());
       }
       
-      // PERBAIKAN: Kirim authorId langsung dari user
-      await createPost({
-        content: text.trim(),
-        isSuperYap: superYap,
-        isBoosted: boostHours > 0,
-        boostHours,
-        txHash,
-        contentHash: cHash,
-      }, user.id); // <-- Tambahkan user.id di sini
+      // ✅ PERBAIKAN: Kirim parameter dengan benar (content, authorId)
+      await createPost(
+        text.trim(), // parameter 1: content
+        user.id      // parameter 2: authorId
+      );
 
       const desc: string[] = [];
       if (txHash) desc.push("On-chain ✓");
