@@ -145,8 +145,8 @@ export function Composer({ onPosted }: { onPosted?: () => void }) {
               </span>
               {(superYap || boostHours > 0) && (
                 <span className="hidden sm:inline font-mono text-[11px] text-muted-foreground">
-                  ≈ {(superYap ? 10 : 0) + boostCost} QIE
-                </span>
+                 ✦ Premium Yap
+                 </span>
               )}
               <Button
                 onClick={submit}
