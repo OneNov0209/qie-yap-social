@@ -56,10 +56,16 @@ export function Composer({ onPosted }: { onPosted?: () => void }) {
         cHash = hashContent(text.trim());
       }
       
-      // ✅ PERBAIKAN: Kirim parameter dengan benar (content, authorId)
       await createPost(
-        text.trim(), // parameter 1: content
-        user.id      // parameter 2: authorId
+        {
+          content: text.trim(),
+          isSuperYap: superYap,
+          isBoosted: boostHours > 0,
+          boostHours,
+          txHash,
+          contentHash: cHash,
+        },
+        user.id
       );
 
       const desc: string[] = [];
@@ -79,7 +85,6 @@ export function Composer({ onPosted }: { onPosted?: () => void }) {
   };
 
   const remaining = MAX - text.length;
-  const boostCost = boostHours === 1 ? 50 : boostHours === 6 ? 200 : boostHours === 24 ? 500 : 0;
 
   return (
     <div className="mb-6 yap-card p-4">
