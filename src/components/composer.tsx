@@ -55,6 +55,8 @@ export function Composer({ onPosted }: { onPosted?: () => void }) {
       } else {
         cHash = hashContent(text.trim());
       }
+      
+      // PERBAIKAN: Kirim authorId langsung dari user
       await createPost({
         content: text.trim(),
         isSuperYap: superYap,
@@ -62,7 +64,8 @@ export function Composer({ onPosted }: { onPosted?: () => void }) {
         boostHours,
         txHash,
         contentHash: cHash,
-      });
+      }, user.id); // <-- Tambahkan user.id di sini
+
       const desc: string[] = [];
       if (txHash) desc.push("On-chain ✓");
       if (superYap) desc.push("Super Yap");
@@ -145,8 +148,8 @@ export function Composer({ onPosted }: { onPosted?: () => void }) {
               </span>
               {(superYap || boostHours > 0) && (
                 <span className="hidden sm:inline font-mono text-[11px] text-muted-foreground">
-                 ✦ Premium Yap
-                 </span>
+                  ✦ Premium Yap
+                </span>
               )}
               <Button
                 onClick={submit}
