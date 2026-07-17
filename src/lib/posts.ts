@@ -1,5 +1,4 @@
 import { supabase } from "@/integrations/supabase/client";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { badgeFor } from "@/lib/qie-chain";
 
 export interface FeedPost {
@@ -44,9 +43,8 @@ export async function createPost(content: string): Promise<{ id: string } | null
 }
 
 export async function fetchFeed(tab: string, userId: string | null): Promise<FeedPost[]> {
-  const client = typeof window === 'undefined' ? supabaseAdmin : supabase;
-
-  let query = client
+  // Kita hanya pakai supabase (client publik), tanpa admin
+  let query = supabase
     .from("posts")
     .select(`
       id,
