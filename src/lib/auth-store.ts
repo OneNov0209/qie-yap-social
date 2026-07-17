@@ -17,6 +17,7 @@ interface AuthState {
   user: User | null;
   hydrated: boolean;
   connecting: boolean;
+  init: () => Promise<void>;
   connect: () => Promise<void>;
   disconnect: () => Promise<void>;
   refreshBalance: () => Promise<void>;
@@ -27,19 +28,49 @@ export const useAuth = create<AuthState>((set, get) => ({
   hydrated: false,
   connecting: false,
 
+  // --- TAMBAHKAN INIT DI SINI ---
+  init: async () => {
+    // Cek apakah ada sesi yang tersimpan di browser
+    const { data } = await supabase.auth.getSession();
+    if (data.session?.user) {
+      // Jika ada sesi, ambil profile dari database
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', data.session.user.id)
+        .maybeSingle();
+
+      if (profile) {
+        const balance = await getQieBalance(profile.address as `0x${string}`).catch(() => 0);
+        set({
+          user: {
+            id: profile.id,
+            address: profile.address,
+            displayName: profile.display_name,
+            avatarSeed: profile.avatar_seed,
+            badge: 'shrimp',
+            isValidator: profile.is_validator,
+            balance,
+          },
+          hydrated: true,
+        });
+      }
+    } else {
+      // Jika tidak ada sesi, set hydrated menjadi true agar loading selesai
+      set({ hydrated: true });
+    }
+  },
+
   connect: async () => {
-    // Cek ketersediaan wallet
     if (typeof window === "undefined" || !window.ethereum) {
       throw new Error("No EVM wallet detected. Install MetaMask or the QIE wallet extension.");
     }
     set({ connecting: true });
     try {
-      // Minta akun
       const accounts = (await window.ethereum.request({ method: "eth_requestAccounts" })) as string[];
       const address = accounts[0];
       if (!address) throw new Error("No account returned by wallet");
 
-      // 1. Cek apakah user sudah ada di database
       const { data: profile, error } = await supabase
         .from('profiles')
         .select('*')
@@ -48,7 +79,6 @@ export const useAuth = create<AuthState>((set, get) => ({
 
       if (error) throw error;
 
-      // 2. Jika user belum ada, buat profil baru
       let userProfile = profile;
       if (!userProfile) {
         const newProfile = {
@@ -69,7 +99,6 @@ export const useAuth = create<AuthState>((set, get) => ({
         userProfile = inserted;
       }
 
-      // 3. Set user ke state
       const balance = await getQieBalance(address as `0x${string}`).catch(() => 0);
       set({
         user: {
