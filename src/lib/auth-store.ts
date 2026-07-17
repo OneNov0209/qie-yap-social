@@ -1,125 +1,102 @@
-import { create } from "zustand";
-import { supabase } from "@/integrations/supabase/client";
-import { requestLoginNonce, verifyLoginSignature } from "@/lib/api/auth.functions";
-import { getQieBalance, getStakedQie, badgeFor, type StakingBadge } from "@/lib/qie-chain";
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+import { supabase } from '@/integrations/supabase/client';
+import { getQieBalance } from '@/lib/qie-chain';
 
-export interface AuthProfile {
+interface User {
   id: string;
   address: string;
-  username: string;
   displayName: string;
-  bio: string;
   avatarSeed: string;
+  badge: 'shrimp' | 'fish' | 'dolphin' | 'shark' | 'whale';
   isValidator: boolean;
-  badge: StakingBadge;
+  balance?: number;
 }
 
 interface AuthState {
-  user: AuthProfile | null;
-  balance: number;
-  staked: number;
-  connecting: boolean;
+  user: User | null;
   hydrated: boolean;
-  connect: () => Promise<void>;
+  setUser: (user: User | null) => void;
+  connectWallet: (address: string) => Promise<void>;
   disconnect: () => Promise<void>;
-  refresh: () => Promise<void>;
-  init: () => Promise<void>;
+  refreshBalance: () => Promise<void>;
 }
 
-declare global {
-  interface Window {
-    ethereum?: {
-      request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
-    };
-  }
-}
+export const useAuth = create<AuthState>()(
+  persist(
+    (set, get) => ({
+      user: null,
+      hydrated: false,
 
-async function loadProfileForUser(userId: string, fallbackAddr: string): Promise<AuthProfile | null> {
-  const { data } = await supabase.from("profiles").select("*").eq("id", userId).maybeSingle();
-  if (!data) return null;
-  const addr = (data.address as string) ?? fallbackAddr;
-  const balance = await getQieBalance(addr as `0x${string}`).catch(() => 0);
-  const staked = (await getStakedQie(addr).catch(() => null)) ?? 0;
-  return {
-    id: data.id as string,
-    address: addr,
-    username: data.username as string,
-    displayName: data.display_name as string,
-    bio: (data.bio as string) ?? "",
-    avatarSeed: (data.avatar_seed as string) ?? addr,
-    isValidator: !!data.is_validator,
-    badge: badgeFor(staked || balance),
-  };
-}
+      setUser: (user) => set({ user, hydrated: true }),
 
-export const useAuth = create<AuthState>((set, get) => ({
-  user: null,
-  balance: 0,
-  staked: 0,
-  connecting: false,
-  hydrated: false,
+      connectWallet: async (address: string) => {
+        // 1. Cek apakah user sudah ada di database
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('address', address)
+          .maybeSingle();
 
-  init: async () => {
-    const { data } = await supabase.auth.getSession();
-    if (data.session?.user) {
-      const meta = (data.session.user.user_metadata ?? {}) as { wallet_address?: string };
-      const profile = await loadProfileForUser(data.session.user.id, meta.wallet_address ?? "");
-      const balance = profile ? await getQieBalance(profile.address as `0x${string}`).catch(() => 0) : 0;
-      const staked = profile ? (await getStakedQie(profile.address).catch(() => null)) ?? 0 : 0;
-      set({ user: profile, balance, staked });
+        if (error) {
+          console.error('Error fetching profile:', error);
+          throw error;
+        }
+
+        // 2. Jika user belum ada, buat profil baru
+        let userProfile = profile;
+        if (!userProfile) {
+          const newProfile = {
+            address: address,
+            display_name: address.slice(0, 6) + '...' + address.slice(-4),
+            username: address.slice(0, 6) + '...' + address.slice(-4),
+            avatar_seed: address,
+            is_validator: false,
+          };
+
+          const { data: inserted, error: insertError } = await supabase
+            .from('profiles')
+            .insert(newProfile)
+            .select()
+            .single();
+
+          if (insertError) {
+            console.error('Error creating profile:', insertError);
+            throw insertError;
+          }
+          userProfile = inserted;
+        }
+
+        // 3. Set user ke state
+        const balance = await getQieBalance(address as `0x${string}`);
+        set({
+          user: {
+            id: userProfile.id,
+            address: userProfile.address,
+            displayName: userProfile.display_name,
+            avatarSeed: userProfile.avatar_seed,
+            badge: 'shrimp',
+            isValidator: userProfile.is_validator,
+            balance,
+          },
+          hydrated: true,
+        });
+      },
+
+      disconnect: async () => {
+        await supabase.auth.signOut();
+        set({ user: null, hydrated: true });
+      },
+
+      refreshBalance: async () => {
+        const { user } = get();
+        if (!user) return;
+        const balance = await getQieBalance(user.address as `0x${string}`);
+        set({ user: { ...user, balance } });
+      },
+    }),
+    {
+      name: 'qie-auth-storage',
     }
-    set({ hydrated: true });
-    supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_OUT") set({ user: null, balance: 0, staked: 0 });
-    });
-  },
-
-  connect: async () => {
-    if (typeof window === "undefined" || !window.ethereum) {
-      throw new Error("No EVM wallet detected. Install MetaMask or the QIE wallet extension.");
-    }
-    set({ connecting: true });
-    try {
-      const accounts = (await window.ethereum.request({ method: "eth_requestAccounts" })) as string[];
-      const address = accounts[0];
-      if (!address) throw new Error("No account returned by wallet");
-
-      const { message } = await requestLoginNonce({ data: { address } });
-      const signature = (await window.ethereum.request({
-        method: "personal_sign",
-        params: [message, address],
-      })) as string;
-
-      const { email, hashedToken } = await verifyLoginSignature({
-        data: { address, signature },
-      });
-
-      const { error } = await supabase.auth.verifyOtp({
-        email,
-        token: hashedToken,
-        type: "magiclink",
-      });
-      if (error) throw error;
-
-      await get().refresh();
-    } finally {
-      set({ connecting: false });
-    }
-  },
-
-  disconnect: async () => {
-    await supabase.auth.signOut();
-    set({ user: null, balance: 0, staked: 0 });
-  },
-
-  refresh: async () => {
-    const { data } = await supabase.auth.getSession();
-    if (!data.session?.user) return;
-    const meta = (data.session.user.user_metadata ?? {}) as { wallet_address?: string };
-    const profile = await loadProfileForUser(data.session.user.id, meta.wallet_address ?? "");
-    if (!profile) return;
-    const balance = await getQieBalance(profile.address as `0x${string}`).catch(() => 0);
-    const staked = (await getStakedQie(profile.address).catch(() => null)) ?? 0;
-    set({ user: { ...profile, badge: badgeFor(staked || balance) }, balance, staked });
-  },
-}));
+  )
+);
