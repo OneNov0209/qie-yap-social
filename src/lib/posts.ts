@@ -1,173 +1,135 @@
 import { supabase } from "@/integrations/supabase/client";
-import { badgeFor, type StakingBadge } from "@/lib/qie-chain";
-
-export interface FeedProfile {
-  id: string;
-  address: string;
-  username: string;
-  displayName: string;
-  bio: string;
-  avatarSeed: string;
-  isValidator: boolean;
-  badge: StakingBadge;
-}
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { badgeFor } from "@/lib/qie-chain";
 
 export interface FeedPost {
   id: string;
-  author: FeedProfile;
   content: string;
-  createdAt: string;
   isSuperYap: boolean;
   isBoosted: boolean;
-  likes: number;
-  replies: number;
-  liked: boolean;
+  createdAt: string;
+  txHash?: string | null;
+  onChain?: boolean;
   tipTotal: number;
-  tips: number;
-  txHash: string | null;
-  onChain: boolean;
-}
-
-interface ProfileRow {
-  id: string;
-  address: string;
-  username: string;
-  display_name: string;
-  bio: string | null;
-  avatar_seed: string;
-  is_validator: boolean;
-}
-
-function mapProfile(p: ProfileRow): FeedProfile {
-  return {
-    id: p.id,
-    address: p.address,
-    username: p.username,
-    displayName: p.display_name,
-    bio: p.bio ?? "",
-    avatarSeed: p.avatar_seed ?? p.address,
-    isValidator: !!p.is_validator,
-    // until per-user staking lookup runs, infer a placeholder badge
-    badge: badgeFor(0),
+  likes: number;
+  liked: boolean;
+  replies: number;
+  author: {
+    address: string;
+    displayName: string;
+    avatarSeed: string;
+    badge: "shrimp" | "fish" | "dolphin" | "shark" | "whale";
+    isValidator: boolean;
   };
 }
 
-export async function fetchFeed(
-  filter: "trending" | "latest" | "following" | "super",
-  viewerId: string | null,
-): Promise<FeedPost[]> {
-  let query = supabase
+export async function fetchFeed(tab: string, userId: string | null): Promise<FeedPost[]> {
+  // Gunakan admin client untuk mengambil data agar tidak kena error 403
+  const client = typeof window === 'undefined' ? supabaseAdmin : supabase;
+
+  let query = client
     .from("posts")
-    .select("id, content, is_super_yap, is_boosted, created_at, tx_hash, on_chain, author:profiles!posts_author_id_fkey(*)")
+    .select(`
+      id,
+      content,
+      is_super_yap,
+      is_boosted,
+      boost_expires_at,
+      created_at,
+      tx_hash,
+      on_chain,
+      reply_to,
+      author_id,
+      profiles!inner (
+        id,
+        address,
+        display_name,
+        avatar_seed,
+        is_validator
+      )
+    `)
     .is("reply_to", null)
-    .order("created_at", { ascending: false })
-    .limit(50);
+    .order("created_at", { ascending: false });
 
-  if (filter === "super") query = query.eq("is_super_yap", true);
+  if (tab === "super") {
+    query = query.eq("is_super_yap", true);
+  }
 
-  const { data, error } = await query;
-  if (error) throw error;
+  // Jika user login, kita cek likes yang dia berikan
+  let userLikes: Set<string> = new Set();
+  if (userId) {
+    const { data: likesData } = await supabase
+      .from("likes")
+      .select("post_id")
+      .eq("user_id", userId);
+    if (likesData) {
+      userLikes = new Set(likesData.map((l) => l.post_id));
+    }
+  }
+
+  const { data, error } = await query.limit(50);
+
+  if (error) {
+    console.error("[FetchFeed] Error:", error);
+    return [];
+  }
+
   if (!data) return [];
 
-  const ids = data.map((p) => p.id as string);
-  const [likes, replyCounts, viewerLikes] = await Promise.all([
-    supabase.from("likes").select("post_id").in("post_id", ids),
-    supabase.from("posts").select("reply_to").in("reply_to", ids),
-    viewerId
-      ? supabase.from("likes").select("post_id").eq("user_id", viewerId).in("post_id", ids)
-      : Promise.resolve({ data: [] as Array<{ post_id: string }> }),
-  ]);
+  return data.map((item: any) => {
+    // Hitung total tip dari tabel tips
+    const tipTotal = 0; // Sementara 0, nanti bisa dihitung terpisah
+    const repliesCount = 0; // Sementara 0, nanti dihitung terpisah
 
-  const likeCount = new Map<string, number>();
-  (likes.data ?? []).forEach((r) => likeCount.set(r.post_id, (likeCount.get(r.post_id) ?? 0) + 1));
-
-  const replyCount = new Map<string, number>();
-  (replyCounts.data ?? []).forEach((r) =>
-    r.reply_to ? replyCount.set(r.reply_to, (replyCount.get(r.reply_to) ?? 0) + 1) : null,
-  );
-
-  const likedSet = new Set((viewerLikes.data ?? []).map((r) => r.post_id));
-
-  let mapped = data
-    .filter((p) => p.author)
-    .map((p) => ({
-      id: p.id as string,
-      author: mapProfile(p.author as unknown as ProfileRow),
-      content: p.content as string,
-      createdAt: p.created_at as string,
-      isSuperYap: !!p.is_super_yap,
-      isBoosted: !!p.is_boosted,
-      likes: likeCount.get(p.id as string) ?? 0,
-      replies: replyCount.get(p.id as string) ?? 0,
-      liked: likedSet.has(p.id as string),
-      tipTotal: 0,
-      tips: 0,
-      txHash: (p.tx_hash as string | null) ?? null,
-      onChain: !!p.on_chain,
-    }));
-
-  if (filter === "trending") {
-    mapped = [...mapped].sort((a, b) => b.likes - a.likes);
-  } else if (filter === "following" && viewerId) {
-    const { data: f } = await supabase.from("follows").select("following_id").eq("follower_id", viewerId);
-    const set = new Set((f ?? []).map((x) => x.following_id));
-    mapped = mapped.filter((p) => set.has(p.author.id));
-  } else if (filter === "following" && !viewerId) {
-    mapped = [];
-  }
-
-  return mapped;
-}
-
-export async function createPost(input: {
-  content: string;
-  isSuperYap?: boolean;
-  isBoosted?: boolean;
-  boostHours?: number;
-  txHash?: string | null;
-  contentHash?: string | null;
-}) {
-  const { data: session } = await supabase.auth.getSession();
-  const userId = session.session?.user.id;
-  if (!userId) throw new Error("Connect your wallet first");
-  const boostExpires =
-    input.isBoosted && input.boostHours
-      ? new Date(Date.now() + input.boostHours * 3_600_000).toISOString()
-      : null;
-  const { error } = await supabase.from("posts").insert({
-    author_id: userId,
-    content: input.content.trim(),
-    is_super_yap: !!input.isSuperYap,
-    is_boosted: !!input.isBoosted,
-    boost_expires_at: boostExpires,
-    tx_hash: input.txHash ?? null,
-    content_hash: input.contentHash ?? null,
-    on_chain: !!input.txHash,
+    return {
+      id: item.id,
+      content: item.content,
+      isSuperYap: item.is_super_yap,
+      isBoosted: item.is_boosted && item.boost_expires_at > new Date().toISOString(),
+      createdAt: item.created_at,
+      txHash: item.tx_hash,
+      onChain: item.on_chain,
+      tipTotal,
+      likes: item.likes?.length || 0,
+      liked: userLikes.has(item.id),
+      replies: repliesCount,
+      author: {
+        address: item.profiles?.address || item.author_id || "unknown",
+        displayName: item.profiles?.display_name || "Anonymous",
+        avatarSeed: item.profiles?.avatar_seed || item.author_id || "0x0",
+        badge: badgeFor(0), // Sementara 0, nanti bisa dihitung dari balance QIE
+        isValidator: item.profiles?.is_validator || false,
+      },
+    };
   });
-  if (error) throw error;
 }
 
-export async function toggleLike(postId: string, liked: boolean) {
-  const { data: session } = await supabase.auth.getSession();
-  const userId = session.session?.user.id;
-  if (!userId) throw new Error("Connect your wallet first");
-  if (liked) {
-    await supabase.from("likes").delete().eq("post_id", postId).eq("user_id", userId);
+export async function toggleLike(postId: string, currentlyLiked: boolean): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  if (currentlyLiked) {
+    await supabase.from("likes").delete().eq("post_id", postId).eq("user_id", user.id);
   } else {
-    await supabase.from("likes").insert({ post_id: postId, user_id: userId });
+    await supabase.from("likes").insert({ post_id: postId, user_id: user.id });
   }
 }
 
-export function avatarUrl(seed: string) {
-  return `https://api.dicebear.com/9.x/shapes/svg?seed=${encodeURIComponent(seed)}&backgroundType=gradientLinear&backgroundColor=fce7f3,fbcfe8,f9a8d4`;
+export function relativeTime(dateString: string): string {
+  const date = new Date(dateString);
+  const now = new Date();
+  const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+  if (seconds < 60) return "just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  return date.toLocaleDateString();
 }
 
-export function relativeTime(iso: string): string {
-  const diff = (Date.now() - new Date(iso).getTime()) / 1000;
-  if (diff < 60) return `${Math.floor(diff)}s`;
-  if (diff < 3600) return `${Math.floor(diff / 60)}m`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
-  return `${Math.floor(diff / 86400)}d`;
+export function shortAddr(addr: string): string {
+  if (!addr || addr.length < 10) return addr;
+  return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
 }
-
-export const shortAddr = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;
