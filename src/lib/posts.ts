@@ -43,7 +43,7 @@ export async function createPost(content: string): Promise<{ id: string } | null
 }
 
 export async function fetchFeed(tab: string, userId: string | null): Promise<FeedPost[]> {
-  // Kita hanya pakai supabase (client publik), tanpa admin
+  // 1. Ambil semua posts terlebih dahulu
   let query = supabase
     .from("posts")
     .select(`
@@ -56,14 +56,7 @@ export async function fetchFeed(tab: string, userId: string | null): Promise<Fee
       tx_hash,
       on_chain,
       reply_to,
-      author_id,
-      profiles!inner (
-        id,
-        address,
-        display_name,
-        avatar_seed,
-        is_validator
-      )
+      author_id
     `)
     .is("reply_to", null)
     .order("created_at", { ascending: false });
@@ -72,6 +65,37 @@ export async function fetchFeed(tab: string, userId: string | null): Promise<Fee
     query = query.eq("is_super_yap", true);
   }
 
+  const { data: posts, error: postsError } = await query.limit(50);
+
+  if (postsError) {
+    console.error("[FetchFeed] Error fetching posts:", postsError);
+    return [];
+  }
+
+  if (!posts || posts.length === 0) return [];
+
+  // 2. Ambil semua author_id dari posts
+  const authorIds = posts.map((p: any) => p.author_id).filter(Boolean);
+
+  // 3. Ambil data profiles berdasarkan author_id
+  const { data: profiles, error: profilesError } = await supabase
+    .from("profiles")
+    .select("id, address, display_name, avatar_seed, is_validator")
+    .in("id", authorIds);
+
+  if (profilesError) {
+    console.error("[FetchFeed] Error fetching profiles:", profilesError);
+  }
+
+  // 4. Map profiles ke dalam object lookup
+  const profileMap: Record<string, any> = {};
+  if (profiles) {
+    profiles.forEach((p: any) => {
+      profileMap[p.id] = p;
+    });
+  }
+
+  // 5. Ambil likes untuk user yang sedang login
   let userLikes: Set<string> = new Set();
   if (userId) {
     const { data: likesData } = await supabase
@@ -83,16 +107,9 @@ export async function fetchFeed(tab: string, userId: string | null): Promise<Fee
     }
   }
 
-  const { data, error } = await query.limit(50);
-
-  if (error) {
-    console.error("[FetchFeed] Error:", error);
-    return [];
-  }
-
-  if (!data) return [];
-
-  return data.map((item: any) => {
+  // 6. Gabungkan posts dengan profiles
+  return posts.map((item: any) => {
+    const profile = profileMap[item.author_id] || {};
     const tipTotal = 0;
     const repliesCount = 0;
 
@@ -109,11 +126,11 @@ export async function fetchFeed(tab: string, userId: string | null): Promise<Fee
       liked: userLikes.has(item.id),
       replies: repliesCount,
       author: {
-        address: item.profiles?.address || item.author_id || "unknown",
-        displayName: item.profiles?.display_name || "Anonymous",
-        avatarSeed: item.profiles?.avatar_seed || item.author_id || "0x0",
+        address: profile.address || item.author_id || "unknown",
+        displayName: profile.display_name || "Anonymous",
+        avatarSeed: profile.avatar_seed || item.author_id || "0x0",
         badge: badgeFor(0),
-        isValidator: item.profiles?.is_validator || false,
+        isValidator: profile.is_validator || false,
       },
     };
   });
