@@ -1,4 +1,4 @@
-import { createPublicClient, createWalletClient, defineChain, http, formatEther, parseEther, getContract } from "viem";
+import { createPublicClient, createWalletClient, defineChain, http, formatEther, parseEther, getContract, custom } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 
 export const QIE_CHAIN = defineChain({
@@ -24,16 +24,16 @@ export async function getQieBalance(address: `0x${string}`): Promise<number> {
 export type StakingBadge = "shrimp" | "fish" | "dolphin" | "shark" | "whale";
 export function badgeFor(qie: number): StakingBadge {
   if (qie >= 100_000) return "whale";
-  if (qie >= 10_000)  return "shark";
-  if (qie >= 1_000)   return "dolphin";
-  if (qie >= 100)     return "fish";
+  if (qie >= 10_000) return "shark";
+  if (qie >= 1_000) return "dolphin";
+  if (qie >= 100) return "fish";
   return "shrimp";
 }
 
 export async function getStakedQie(address: string): Promise<number | null> {
   try {
     const res = await fetch(`${QIE_REST}/cosmos/staking/v1beta1/delegations/${address}`);
-    if (!res.ok) return null;
+    if (!res.ok || res.status === 500) return null;
     const data = await res.json() as { delegation_responses?: Array<{ balance?: { amount?: string } }> };
     const total = (data.delegation_responses ?? []).reduce(
       (s, d) => s + (d.balance?.amount ? Number(d.balance.amount) : 0),
@@ -87,42 +87,65 @@ export async function getQieYapContract(contractAddress: `0x${string}`) {
   });
 }
 
+export async function getWalletClient() {
+  if (typeof window === "undefined" || !window.ethereum) {
+    throw new Error("No EVM wallet detected. Install MetaMask or the QIE wallet extension.");
+  }
+  
+  // Dapatkan account (address) dari wallet
+  const accounts = await window.ethereum.request({ method: "eth_requestAccounts" }) as string[];
+  const address = accounts[0];
+  if (!address) throw new Error("No account returned by wallet");
+
+  const walletClient = createWalletClient({
+    chain: QIE_CHAIN,
+    transport: custom(window.ethereum),
+  });
+
+  return { walletClient, address: address as `0x${string}` };
+}
+
 export async function sendTip(
-  walletClient: any,
   contractAddress: `0x${string}`,
   recipient: `0x${string}`,
   amountInQie: string,
   message: string
 ) {
+  const { walletClient, address } = await getWalletClient();
+  
   const hash = await walletClient.writeContract({
     address: contractAddress,
     abi: QIE_YAP_ABI,
     functionName: "tip",
     args: [recipient, message],
     value: parseEther(amountInQie),
+    account: address, // ✅ Tambahkan account di sini
   });
   return hash;
 }
 
 export async function createSuperYap(
-  walletClient: any,
   contractAddress: `0x${string}`
 ) {
+  const { walletClient, address } = await getWalletClient();
+  
   const hash = await walletClient.writeContract({
     address: contractAddress,
     abi: QIE_YAP_ABI,
     functionName: "createSuperYap",
     value: parseEther("0.01"),
+    account: address, // ✅ Tambahkan account di sini
   });
   return hash;
 }
 
 export async function boostPost(
-  walletClient: any,
   contractAddress: `0x${string}`,
   postId: bigint,
   durationHours: bigint
 ) {
+  const { walletClient, address } = await getWalletClient();
+  
   const cost = 0.005 * Number(durationHours);
   const hash = await walletClient.writeContract({
     address: contractAddress,
@@ -130,6 +153,7 @@ export async function boostPost(
     functionName: "boost",
     args: [postId, durationHours],
     value: parseEther(cost.toString()),
+    account: address, // ✅ Tambahkan account di sini
   });
   return hash;
 }
