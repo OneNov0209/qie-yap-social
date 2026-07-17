@@ -36,17 +36,27 @@ function FeedPage() {
   const [loading, setLoading] = useState(true);
   const { user, hydrated } = useAuth();
 
+  // --- PERBAIKAN UTAMA DI SINI ---
   const load = useCallback(async () => {
+    // JANGAN LOAD FEED JIKA USER BELUM LOGIN!
+    if (!user) {
+      setPosts([]);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
-      const data = await fetchFeed(tab, user?.id ?? null);
+      const data = await fetchFeed(tab, user.id);
       setPosts(data);
     } finally {
       setLoading(false);
     }
-  }, [tab, user?.id]);
+  }, [tab, user]);
 
-  useEffect(() => { if (hydrated) load(); }, [hydrated, load]);
+  useEffect(() => { 
+    if (hydrated) load(); 
+  }, [hydrated, load]);
 
   // Realtime: new posts and like changes refresh the feed.
   useEffect(() => {
