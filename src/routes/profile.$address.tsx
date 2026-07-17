@@ -1,11 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { BadgeCheck } from "lucide-react";
+import { BadgeCheck, X } from "lucide-react";
 import { Header } from "@/components/header";
 import { PostCard } from "@/components/post-card";
 import { StakingBadgeChip } from "@/components/staking-badge";
 import { Avatar } from "@/components/avatar-img";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/lib/auth-store";
 import { supabase } from "@/integrations/supabase/client";
 import { shortAddr, type FeedPost, type FeedProfile } from "@/lib/posts";
@@ -36,13 +38,30 @@ export const Route = createFileRoute("/profile/$address")({
 
 function ProfilePage() {
   const { address } = Route.useParams();
-  const { user } = useAuth();
+  const { user, refreshProfile } = useAuth();
   const [profile, setProfile] = useState<FeedProfile | null>(null);
   const [yaps, setYaps] = useState<FeedPost[]>([]);
   const [counts, setCounts] = useState({ followers: 0, following: 0, yaps: 0, balance: 0, staked: 0 });
   const [following, setFollowing] = useState(false);
   const [loading, setLoading] = useState(true);
+  
+  // State untuk Edit Modal
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editBio, setEditBio] = useState("");
+  const [editAvatarSeed, setEditAvatarSeed] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+
   const isOwn = user?.address.toLowerCase() === address.toLowerCase();
+
+  // Saat modal terbuka, isi data awal
+  useEffect(() => {
+    if (isEditModalOpen && profile) {
+      setEditName(profile.displayName);
+      setEditBio(profile.bio || "");
+      setEditAvatarSeed(profile.avatarSeed || "");
+    }
+  }, [isEditModalOpen, profile]);
 
   useEffect(() => {
     let active = true;
@@ -109,6 +128,39 @@ function ProfilePage() {
     }
   };
 
+  const handleSaveProfile = async () => {
+    if (!user || !profile) return;
+    if (!editName.trim()) {
+      toast.error("Display name cannot be empty");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          display_name: editName.trim(),
+          bio: editBio.trim(),
+          avatar_seed: editAvatarSeed.trim() || profile.address,
+        })
+        .eq("id", profile.id);
+
+      if (error) throw error;
+
+      await refreshProfile();
+      toast.success("Profile updated!");
+      setIsEditModalOpen(false);
+      
+      // Reload data agar statistik terbarui
+      window.location.reload();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to update profile");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
@@ -142,8 +194,13 @@ function ProfilePage() {
           <div className="flex items-end justify-between -mt-12">
             <Avatar seed={profile.avatarSeed} size={96} className="ring-4 ring-background shadow-lg" />
             {isOwn ? (
-              <Button variant="outline" className="rounded-full border-brand/40 text-brand hover:bg-brand-soft"
-                onClick={() => toast("Profile editor coming soon")}>Edit profile</Button>
+              <Button 
+                variant="outline" 
+                className="rounded-full border-brand/40 text-brand hover:bg-brand-soft"
+                onClick={() => setIsEditModalOpen(true)}
+              >
+                Edit profile
+              </Button>
             ) : (
               <Button onClick={toggleFollow}
                 className={cn("rounded-full font-semibold",
@@ -189,6 +246,73 @@ function ProfilePage() {
           </div>
         </div>
       </div>
+
+      {/* --- EDIT PROFILE MODAL --- */}
+      {isEditModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl bg-card p-6 shadow-xl border border-border relative">
+            <button
+              onClick={() => setIsEditModalOpen(false)}
+              className="absolute right-4 top-4 rounded-full p-1 text-muted-foreground hover:bg-muted"
+            >
+              <X className="size-5" />
+            </button>
+
+            <h2 className="text-xl font-bold mb-4">Edit Profile</h2>
+
+            <div className="space-y-4">
+              {/* Avatar Preview */}
+              <div className="flex items-center gap-4">
+                <Avatar seed={editAvatarSeed || profile.address} size={64} />
+                <div className="flex-1">
+                  <label className="text-xs font-medium text-muted-foreground">Avatar Seed</label>
+                  <Input
+                    value={editAvatarSeed}
+                    onChange={(e) => setEditAvatarSeed(e.target.value)}
+                    placeholder="Enter a word or phrase"
+                    className="mt-1"
+                  />
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    Change this to get a different avatar style.
+                  </p>
+                </div>
+              </div>
+
+              {/* Display Name */}
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Display Name</label>
+                <Input
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  placeholder="Your display name"
+                  className="mt-1"
+                />
+              </div>
+
+              {/* Bio */}
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Bio</label>
+                <Textarea
+                  value={editBio}
+                  onChange={(e) => setEditBio(e.target.value)}
+                  placeholder="Tell the QIE community about yourself..."
+                  className="mt-1 resize-none"
+                  rows={3}
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <Button variant="outline" onClick={() => setIsEditModalOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleSaveProfile} disabled={isSaving} className="bg-brand">
+                  {isSaving ? "Saving..." : "Save Changes"}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
