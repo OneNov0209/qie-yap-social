@@ -12,6 +12,8 @@ const LOGO = "https://raw.githubusercontent.com/OneNov0209/logo/refs/heads/main/
 export function Header() {
   const { user } = useAuth();
   const path = useRouterState({ select: (s) => s.location.pathname });
+  
+  // Jika user belum ada (undefined/null), gunakan dummy address agar tidak crash
   const profilePath = user?.address ?? "0x0000000000000000000000000000000000000000";
 
   const navItems: Array<{ to: string; label: string; icon: typeof Home; active: boolean }> = [
@@ -47,7 +49,7 @@ export function Header() {
           </nav>
 
           <div className="flex items-center gap-2">
-            
+            {/* Pastikan user benar-benar ada sebelum menampilkan NotificationsPopover */}
             {user && <NotificationsPopover />}
             <ThemeToggle />
             <ConnectWalletButton />
