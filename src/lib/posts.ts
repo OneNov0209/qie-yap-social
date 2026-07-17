@@ -22,15 +22,22 @@ export interface FeedPost {
   };
 }
 
-export async function createPost(content: string): Promise<{ id: string } | null> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
+export async function createPost(
+  content: string, 
+  authorId?: string
+): Promise<{ id: string } | null> {
+  let userId = authorId;
+  if (!userId) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("Not authenticated");
+    userId = user.id;
+  }
 
   const { data, error } = await supabase
     .from("posts")
     .insert({
       content,
-      author_id: user.id,
+      author_id: userId,
     })
     .select("id")
     .single();
@@ -43,7 +50,6 @@ export async function createPost(content: string): Promise<{ id: string } | null
 }
 
 export async function fetchFeed(tab: string, userId: string | null): Promise<FeedPost[]> {
-  // 1. Ambil semua posts terlebih dahulu
   let query = supabase
     .from("posts")
     .select(`
@@ -74,10 +80,8 @@ export async function fetchFeed(tab: string, userId: string | null): Promise<Fee
 
   if (!posts || posts.length === 0) return [];
 
-  // 2. Ambil semua author_id dari posts
   const authorIds = posts.map((p: any) => p.author_id).filter(Boolean);
 
-  // 3. Ambil data profiles berdasarkan author_id
   const { data: profiles, error: profilesError } = await supabase
     .from("profiles")
     .select("id, address, display_name, avatar_seed, is_validator")
@@ -87,7 +91,6 @@ export async function fetchFeed(tab: string, userId: string | null): Promise<Fee
     console.error("[FetchFeed] Error fetching profiles:", profilesError);
   }
 
-  // 4. Map profiles ke dalam object lookup
   const profileMap: Record<string, any> = {};
   if (profiles) {
     profiles.forEach((p: any) => {
@@ -95,7 +98,6 @@ export async function fetchFeed(tab: string, userId: string | null): Promise<Fee
     });
   }
 
-  // 5. Ambil likes untuk user yang sedang login
   let userLikes: Set<string> = new Set();
   if (userId) {
     const { data: likesData } = await supabase
@@ -107,7 +109,6 @@ export async function fetchFeed(tab: string, userId: string | null): Promise<Fee
     }
   }
 
-  // 6. Gabungkan posts dengan profiles
   return posts.map((item: any) => {
     const profile = profileMap[item.author_id] || {};
     const tipTotal = 0;
