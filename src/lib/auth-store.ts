@@ -7,6 +7,7 @@ interface User {
   id: string;
   address: string;
   displayName: string;
+  bio: string;
   avatarSeed: string;
   badge: 'shrimp' | 'fish' | 'dolphin' | 'shark' | 'whale';
   isValidator: boolean;
@@ -21,6 +22,7 @@ interface AuthState {
   connect: () => Promise<void>;
   disconnect: () => Promise<void>;
   refreshBalance: () => Promise<void>;
+  refreshProfile: () => Promise<void>; 
 }
 
 export const useAuth = create<AuthState>((set, get) => ({
@@ -28,12 +30,9 @@ export const useAuth = create<AuthState>((set, get) => ({
   hydrated: false,
   connecting: false,
 
-  // --- TAMBAHKAN INIT DI SINI ---
   init: async () => {
-    // Cek apakah ada sesi yang tersimpan di browser
     const { data } = await supabase.auth.getSession();
     if (data.session?.user) {
-      // Jika ada sesi, ambil profile dari database
       const { data: profile } = await supabase
         .from('profiles')
         .select('*')
@@ -47,6 +46,7 @@ export const useAuth = create<AuthState>((set, get) => ({
             id: profile.id,
             address: profile.address,
             displayName: profile.display_name,
+            bio: profile.bio || '',
             avatarSeed: profile.avatar_seed,
             badge: 'shrimp',
             isValidator: profile.is_validator,
@@ -56,7 +56,6 @@ export const useAuth = create<AuthState>((set, get) => ({
         });
       }
     } else {
-      // Jika tidak ada sesi, set hydrated menjadi true agar loading selesai
       set({ hydrated: true });
     }
   },
@@ -105,6 +104,7 @@ export const useAuth = create<AuthState>((set, get) => ({
           id: userProfile.id,
           address: userProfile.address,
           displayName: userProfile.display_name,
+          bio: userProfile.bio || '',
           avatarSeed: userProfile.avatar_seed,
           badge: 'shrimp',
           isValidator: userProfile.is_validator,
@@ -130,5 +130,28 @@ export const useAuth = create<AuthState>((set, get) => ({
     if (!user) return;
     const balance = await getQieBalance(user.address as `0x${string}`).catch(() => 0);
     set({ user: { ...user, balance } });
+  },
+
+  // --- FUNGSI BARU: Refresh Profile setelah diedit ---
+  refreshProfile: async () => {
+    const { user } = get();
+    if (!user) return;
+    
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('display_name, bio, avatar_seed')
+      .eq('id', user.id)
+      .single();
+
+    if (profile) {
+      set({
+        user: {
+          ...user,
+          displayName: profile.display_name,
+          bio: profile.bio || '',
+          avatarSeed: profile.avatar_seed,
+        }
+      });
+    }
   },
 }));
