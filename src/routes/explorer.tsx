@@ -42,32 +42,32 @@ function ExplorerPage() {
         .order("created_at", { ascending: false })
         .limit(50);
 
-      // 2. Super Yaps
+      // 2. Super Yaps (hanya yang punya tx_hash)
       const { data: superYaps } = await supabase
         .from("posts")
         .select("id, author_id, tx_hash, created_at, content")
         .eq("is_super_yap", true)
-        .not("tx_hash", "is", null)
+        .not("tx_hash", "is", null) // ✅ KUNCI PERBAIKAN
         .order("created_at", { ascending: false })
         .limit(50);
 
-      // 3. Boosts
+      // 3. Boosts (hanya yang punya tx_hash)
       const { data: boosts } = await supabase
         .from("posts")
         .select("id, author_id, tx_hash, created_at, content")
         .eq("is_boosted", true)
-        .not("tx_hash", "is", null)
+        .not("tx_hash", "is", null) // ✅ KUNCI PERBAIKAN
         .order("created_at", { ascending: false })
         .limit(50);
 
-      // 4. ✅ TAMBAHAN: Yap Biasa On-Chain
+      // 4. Yap Biasa On-Chain (hanya yang punya tx_hash)
       const { data: yaps } = await supabase
         .from("posts")
         .select("id, author_id, tx_hash, created_at, content")
         .eq("on_chain", true)
         .is("is_super_yap", false)
         .is("is_boosted", false)
-        .not("tx_hash", "is", null)
+        .not("tx_hash", "is", null) // ✅ KUNCI PERBAIKAN
         .order("created_at", { ascending: false })
         .limit(50);
 
