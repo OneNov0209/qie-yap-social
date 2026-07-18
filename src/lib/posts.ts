@@ -116,10 +116,24 @@ export async function fetchFeed(tab: string, userId: string | null): Promise<Fee
     }
   }
 
-  return posts.map((item: any) => {
+  // Ambil jumlah likes, replies, dan tips untuk setiap postingan
+  const postIds = posts.map((p: any) => p.id);
+  const [likesCounts, repliesCounts, tipsCounts] = await Promise.all([
+    supabase.from("likes").select("post_id", { count: "exact", head: true }).in("post_id", postIds),
+    supabase.from("posts").select("reply_to", { count: "exact", head: true }).in("reply_to", postIds),
+    supabase.from("tips").select("post_id", { count: "exact", head: true }).in("post_id", postIds),
+  ]);
+
+  const postInteractions: Record<string, number> = {};
+  posts.forEach((p: any) => {
+    const likes = likesCounts.count || 0;
+    const replies = repliesCounts.count || 0;
+    const tips = tipsCounts.count || 0;
+    postInteractions[p.id] = likes + replies + tips;
+  });
+
+  let result = posts.map((item: any) => {
     const profile = profileMap[item.author_id] || {};
-    const tipTotal = 0;
-    const repliesCount = 0;
 
     return {
       id: item.id,
@@ -129,10 +143,10 @@ export async function fetchFeed(tab: string, userId: string | null): Promise<Fee
       createdAt: item.created_at,
       txHash: item.tx_hash,
       onChain: item.on_chain,
-      tipTotal,
-      likes: item.likes?.length || 0,
+      tipTotal: 0,
+      likes: 0,
       liked: userLikes.has(item.id),
-      replies: repliesCount,
+      replies: 0,
       author: {
         address: profile.address || item.author_id || "unknown",
         displayName: profile.display_name || "Anonymous",
@@ -142,6 +156,17 @@ export async function fetchFeed(tab: string, userId: string | null): Promise<Fee
       },
     };
   });
+
+  // ✅ FITUR TRENDING: Urutkan berdasarkan interaksi tertinggi
+  if (tab === "trending") {
+    result.sort((a, b) => {
+      const scoreA = postInteractions[a.id] || 0;
+      const scoreB = postInteractions[b.id] || 0;
+      return scoreB - scoreA;
+    });
+  }
+
+  return result;
 }
 
 export async function toggleLike(postId: string, currentlyLiked: boolean): Promise<void> {
