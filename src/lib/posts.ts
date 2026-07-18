@@ -66,50 +66,89 @@ export async function createPost(
 }
 
 export async function toggleLike(postId: string, userId: string): Promise<void> {
-  // Cek apakah user sudah like
-  const { data: existing } = await supabase
-    .from("likes")
-    .select("id")
-    .eq("post_id", postId)
-    .eq("user_id", userId)
-    .maybeSingle();
+  try {
+    // Cek apakah user sudah like
+    const { data: existing } = await supabase
+      .from("likes")
+      .select("id")
+      .eq("post_id", postId)
+      .eq("user_id", userId)
+      .maybeSingle();
 
-  if (existing) {
-    // Unlike
-    await supabase.from("likes").delete().eq("post_id", postId).eq("user_id", userId);
-  } else {
-    // Like
-    await supabase.from("likes").insert({ post_id: postId, user_id: userId });
+    if (existing) {
+      // Unlike
+      const { error } = await supabase
+        .from("likes")
+        .delete()
+        .eq("post_id", postId)
+        .eq("user_id", userId);
+      if (error) throw error;
+    } else {
+      // Like
+      const { error } = await supabase
+        .from("likes")
+        .insert({ post_id: postId, user_id: userId });
+      if (error) throw error;
+    }
+  } catch (error) {
+    console.error("Toggle like error:", error);
+    throw error;
   }
 }
 
 export async function toggleRepost(postId: string, userId: string): Promise<void> {
-  const { data: existing } = await supabase
-    .from("reposts")
-    .select("id")
-    .eq("post_id", postId)
-    .eq("user_id", userId)
-    .maybeSingle();
+  try {
+    const { data: existing } = await supabase
+      .from("reposts")
+      .select("id")
+      .eq("post_id", postId)
+      .eq("user_id", userId)
+      .maybeSingle();
 
-  if (existing) {
-    await supabase.from("reposts").delete().eq("post_id", postId).eq("user_id", userId);
-  } else {
-    await supabase.from("reposts").insert({ post_id: postId, user_id: userId });
+    if (existing) {
+      const { error } = await supabase
+        .from("reposts")
+        .delete()
+        .eq("post_id", postId)
+        .eq("user_id", userId);
+      if (error) throw error;
+    } else {
+      const { error } = await supabase
+        .from("reposts")
+        .insert({ post_id: postId, user_id: userId });
+      if (error) throw error;
+    }
+  } catch (error) {
+    console.error("Toggle repost error:", error);
+    throw error;
   }
 }
 
 export async function toggleBookmark(postId: string, userId: string): Promise<void> {
-  const { data: existing } = await supabase
-    .from("bookmarks")
-    .select("id")
-    .eq("post_id", postId)
-    .eq("user_id", userId)
-    .maybeSingle();
+  try {
+    const { data: existing } = await supabase
+      .from("bookmarks")
+      .select("id")
+      .eq("post_id", postId)
+      .eq("user_id", userId)
+      .maybeSingle();
 
-  if (existing) {
-    await supabase.from("bookmarks").delete().eq("post_id", postId).eq("user_id", userId);
-  } else {
-    await supabase.from("bookmarks").insert({ post_id: postId, user_id: userId });
+    if (existing) {
+      const { error } = await supabase
+        .from("bookmarks")
+        .delete()
+        .eq("post_id", postId)
+        .eq("user_id", userId);
+      if (error) throw error;
+    } else {
+      const { error } = await supabase
+        .from("bookmarks")
+        .insert({ post_id: postId, user_id: userId });
+      if (error) throw error;
+    }
+  } catch (error) {
+    console.error("Toggle bookmark error:", error);
+    throw error;
   }
 }
 
@@ -199,10 +238,7 @@ export async function fetchFeed(tab: string, userId: string | null): Promise<Fee
       on_chain,
       reply_to,
       author_id,
-      original_post_id,
-      likes:likes(count),
-      reposts:reposts(count),
-      replies:posts!reply_to(count)
+      original_post_id
     `)
     .is("reply_to", null)
     .order("created_at", { ascending: false });
@@ -243,10 +279,10 @@ export async function fetchFeed(tab: string, userId: string | null): Promise<Fee
       txHash: item.tx_hash,
       onChain: item.on_chain,
       tipTotal: 0,
-      likes: item.likes?.[0]?.count || 0,
+      likes: 0,
       liked: userLikes.has(item.id),
-      replies: item.replies?.[0]?.count || 0,
-      reposts: item.reposts?.[0]?.count || 0,
+      replies: 0,
+      reposts: 0,
       reposted: userReposts.has(item.id),
       bookmarked: userBookmarks.has(item.id),
       author: {
