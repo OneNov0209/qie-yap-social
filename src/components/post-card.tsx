@@ -37,41 +37,61 @@ export function PostCard({ post }: { post: FeedPost }) {
 
   const onToggleLike = async () => {
     if (!user) return toast("Connect your wallet to like yaps");
+    if (isProcessing) return;
+    setIsProcessing(true);
     const wasLiked = liked;
     setLiked(!wasLiked);
     setLikes((n) => n + (wasLiked ? -1 : 1));
     try {
       await toggleLike(post.id, user.id);
-    } catch {
+    } catch (error: any) {
+      console.error("Like error:", error);
+      // Rollback UI jika gagal
       setLiked(wasLiked);
       setLikes((n) => n + (wasLiked ? 1 : -1));
-      toast.error("Couldn't update like");
+      if (error.message?.includes("duplicate key")) {
+        toast.error("You already liked this yap");
+      } else {
+        toast.error("Couldn't update like");
+      }
+    } finally {
+      setIsProcessing(false);
     }
   };
 
   const onToggleRepost = async () => {
     if (!user) return toast("Connect your wallet to repost");
+    if (isProcessing) return;
+    setIsProcessing(true);
     const wasReposted = reposted;
     setReposted(!wasReposted);
     setReposts((n) => n + (wasReposted ? -1 : 1));
     try {
       await toggleRepost(post.id, user.id);
-    } catch {
+    } catch (error: any) {
+      console.error("Repost error:", error);
       setReposted(wasReposted);
       setReposts((n) => n + (wasReposted ? 1 : -1));
       toast.error("Couldn't update repost");
+    } finally {
+      setIsProcessing(false);
     }
   };
 
   const onToggleBookmark = async () => {
     if (!user) return toast("Connect your wallet to bookmark");
+    if (isProcessing) return;
+    setIsProcessing(true);
     const wasBookmarked = bookmarked;
     setBookmarked(!wasBookmarked);
     try {
       await toggleBookmark(post.id, user.id);
-    } catch {
+    } catch (error: any) {
+      console.error("Bookmark error:", error);
       setBookmarked(wasBookmarked);
       toast.error("Couldn't update bookmark");
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -165,7 +185,6 @@ export function PostCard({ post }: { post: FeedPost }) {
     });
   };
 
-  // ✅ Guard: Jika post tidak ada, jangan render
   if (!post || !post.id) {
     return (
       <div className="yap-card p-5 border border-dashed border-border/50 bg-card/50 text-center text-muted-foreground">
@@ -219,7 +238,6 @@ export function PostCard({ post }: { post: FeedPost }) {
             <StakingBadgeChip badge={post.author?.badge || "shrimp"} />
             {post.author?.isValidator && <BadgeCheck className="size-4 text-brand" />}
             
-            {/* On-Chain Badge */}
             {post.onChain && (
               <span className="inline-flex items-center gap-1 rounded-full bg-brand/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-brand border border-brand/30">
                 ⚡ On-Chain
@@ -286,7 +304,6 @@ export function PostCard({ post }: { post: FeedPost }) {
             </button>
           </div>
 
-          {/* Premium Actions */}
           <div className="mt-3 flex flex-wrap gap-2 pt-2 border-t border-border/30">
             <button
               onClick={handleTip}
