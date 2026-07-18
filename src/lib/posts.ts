@@ -259,7 +259,8 @@ export async function fetchFeed(tab: string, userId: string | null): Promise<Fee
 }
 
 export function relativeTime(dateString: string): string {
-  const date = new Date(dateString);
+  // ✅ PERBAIKAN WAKTU: Pakai UTC agar selisih waktu akurat
+  const date = new Date(dateString + 'Z'); // Tambahkan 'Z' agar dianggap UTC
   const now = new Date();
   const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
   if (seconds < 60) return "just now";
