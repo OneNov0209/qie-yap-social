@@ -22,7 +22,9 @@ interface AuthState {
   connect: () => Promise<void>;
   disconnect: () => Promise<void>;
   refreshBalance: () => Promise<void>;
-  refreshProfile: () => Promise<void>; 
+  refreshProfile: () => Promise<void>;
+  // Tambahan: update local user tanpa reload database
+  updateLocalProfile: (updates: Partial<Pick<User, 'displayName' | 'bio' | 'avatarSeed'>>) => void;
 }
 
 export const useAuth = create<AuthState>((set, get) => ({
@@ -132,17 +134,14 @@ export const useAuth = create<AuthState>((set, get) => ({
     set({ user: { ...user, balance } });
   },
 
-  // --- FUNGSI BARU: Refresh Profile setelah diedit ---
   refreshProfile: async () => {
     const { user } = get();
     if (!user) return;
-    
     const { data: profile } = await supabase
       .from('profiles')
       .select('display_name, bio, avatar_seed')
       .eq('id', user.id)
       .single();
-
     if (profile) {
       set({
         user: {
@@ -153,5 +152,19 @@ export const useAuth = create<AuthState>((set, get) => ({
         }
       });
     }
+  },
+
+  // --- FUNGSI BARU: Update state lokal tanpa reload database ---
+  updateLocalProfile: (updates) => {
+    const { user } = get();
+    if (!user) return;
+    set({
+      user: {
+        ...user,
+        displayName: updates.displayName !== undefined ? updates.displayName : user.displayName,
+        bio: updates.bio !== undefined ? updates.bio : user.bio,
+        avatarSeed: updates.avatarSeed !== undefined ? updates.avatarSeed : user.avatarSeed,
+      }
+    });
   },
 }));
