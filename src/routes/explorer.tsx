@@ -34,27 +34,45 @@ function ExplorerPage() {
   const loadExplorer = async () => {
     setLoading(true);
     try {
-      // Ambil semua transaksi dari berbagai tabel
-      const [tips, superYaps, boosts] = await Promise.all([
-        supabase.from("tips").select("id, amount, from_user_id, to_user_id, tx_hash, created_at").order("created_at", { ascending: false }).limit(50),
-        supabase.from("posts").select("id, author_id, tx_hash, created_at").eq("is_super_yap", true).not("tx_hash", "is", null).order("created_at", { ascending: false }).limit(50),
-        supabase.from("posts").select("id, author_id, tx_hash, created_at").eq("is_boosted", true).not("tx_hash", "is", null).order("created_at", { ascending: false }).limit(50),
-      ]);
+      // Ambil semua tips
+      const { data: tips, error: tipsError } = await supabase
+        .from("tips")
+        .select("id, amount, from_user_id, to_user_id, tx_hash, created_at")
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      // Ambil semua super yap (tx_hash tidak null)
+      const { data: superYaps, error: superError } = await supabase
+        .from("posts")
+        .select("id, author_id, tx_hash, created_at")
+        .eq("is_super_yap", true)
+        .not("tx_hash", "is", null)
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      // Ambil semua boost (tx_hash tidak null)
+      const { data: boosts, error: boostError } = await supabase
+        .from("posts")
+        .select("id, author_id, tx_hash, created_at")
+        .eq("is_boosted", true)
+        .not("tx_hash", "is", null)
+        .order("created_at", { ascending: false })
+        .limit(50);
 
       // Gabungkan semua transaksi
       const allTxs = [
-        ...(tips.data || []).map((t: any) => ({ ...t, type: "tip" })),
-        ...(superYaps.data || []).map((t: any) => ({ ...t, type: "super_yap", from_user_id: t.author_id, amount: 0 })),
-        ...(boosts.data || []).map((t: any) => ({ ...t, type: "boost", from_user_id: t.author_id, amount: 0 })),
+        ...(tips || []).map((t: any) => ({ ...t, type: "tip" })),
+        ...(superYaps || []).map((t: any) => ({ ...t, type: "super_yap", from_user_id: t.author_id, amount: 0 })),
+        ...(boosts || []).map((t: any) => ({ ...t, type: "boost", from_user_id: t.author_id, amount: 0 })),
       ];
 
       // Urutkan berdasarkan waktu (terbaru di atas)
       allTxs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
       // Hitung statistik
-      const totalTips = (tips.data || []).reduce((sum: number, t: any) => sum + Number(t.amount), 0);
-      const totalSuperYaps = (superYaps.data || []).length;
-      const totalBoosts = (boosts.data || []).length;
+      const totalTips = (tips || []).reduce((sum: number, t: any) => sum + Number(t.amount), 0);
+      const totalSuperYaps = (superYaps || []).length;
+      const totalBoosts = (boosts || []).length;
 
       setTxs(allTxs.slice(0, 50));
       setStats({
@@ -83,7 +101,6 @@ function ExplorerPage() {
           <h1 className="font-display text-2xl font-bold">On-Chain Explorer</h1>
         </div>
 
-        {/* Statistik Cards */}
         <div className="grid grid-cols-3 gap-3 mb-6">
           <StatCard 
             icon={<Coins className="size-5 text-brand" />}
@@ -102,7 +119,6 @@ function ExplorerPage() {
           />
         </div>
 
-        {/* Filter */}
         <div className="flex gap-2 mb-6">
           {["all", "tip", "super_yap", "boost"].map((f) => (
             <button
