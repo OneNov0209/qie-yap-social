@@ -1,12 +1,12 @@
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { Heart, MessageCircle, Pin, Sparkles, BadgeCheck, Flame, Zap, Link as LinkIcon } from "lucide-react";
+import { Heart, MessageCircle, Pin, Sparkles, BadgeCheck, Flame, Zap, Link as LinkIcon, Repeat, Bookmark } from "lucide-react";
 import { StakingBadgeChip } from "./staking-badge";
 import { Avatar } from "./avatar-img";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth-store";
-import { toggleLike, type FeedPost, relativeTime, shortAddr } from "@/lib/posts";
+import { toggleLike, toggleRepost, toggleBookmark, type FeedPost, relativeTime, shortAddr } from "@/lib/posts";
 import { createWalletClient, custom } from "viem";
 import { QIE_CHAIN, sendTip, boostPost, createSuperYap } from "@/lib/qie-chain";
 
@@ -19,6 +19,9 @@ function compact(n: number) {
 export function PostCard({ post }: { post: FeedPost }) {
   const [liked, setLiked] = useState(post.liked);
   const [likes, setLikes] = useState(post.likes);
+  const [reposted, setReposted] = useState(post.reposted);
+  const [reposts, setReposts] = useState(post.reposts);
+  const [bookmarked, setBookmarked] = useState(post.bookmarked);
   const [isProcessing, setIsProcessing] = useState(false);
   const { user } = useAuth();
 
@@ -38,11 +41,37 @@ export function PostCard({ post }: { post: FeedPost }) {
     setLiked(!wasLiked);
     setLikes((n) => n + (wasLiked ? -1 : 1));
     try {
-      await toggleLike(post.id, wasLiked);
+      await toggleLike(post.id, user.id);
     } catch {
       setLiked(wasLiked);
       setLikes((n) => n + (wasLiked ? 1 : -1));
       toast.error("Couldn't update like");
+    }
+  };
+
+  const onToggleRepost = async () => {
+    if (!user) return toast("Connect your wallet to repost");
+    const wasReposted = reposted;
+    setReposted(!wasReposted);
+    setReposts((n) => n + (wasReposted ? -1 : 1));
+    try {
+      await toggleRepost(post.id, user.id);
+    } catch {
+      setReposted(wasReposted);
+      setReposts((n) => n + (wasReposted ? 1 : -1));
+      toast.error("Couldn't update repost");
+    }
+  };
+
+  const onToggleBookmark = async () => {
+    if (!user) return toast("Connect your wallet to bookmark");
+    const wasBookmarked = bookmarked;
+    setBookmarked(!wasBookmarked);
+    try {
+      await toggleBookmark(post.id, user.id);
+    } catch {
+      setBookmarked(wasBookmarked);
+      toast.error("Couldn't update bookmark");
     }
   };
 
@@ -195,13 +224,25 @@ export function PostCard({ post }: { post: FeedPost }) {
           </Link>
 
           <div className="mt-4 flex flex-wrap items-center gap-4 text-muted-foreground">
-            {/* Tombol Reply */}
-            <button className="group flex items-center gap-1.5 text-xs transition-colors hover:text-brand">
+            {/* Reply */}
+            <Link to="/yap/$id" params={{ id: post.id }} className="group flex items-center gap-1.5 text-xs transition-colors hover:text-brand">
               <MessageCircle className="size-4" />
               <span className="font-medium">{compact(post.replies)}</span>
-            </button>
+            </Link>
             
-            {/* Tombol Like */}
+            {/* Repost */}
+            <button
+              onClick={onToggleRepost}
+              className={cn(
+                "group flex items-center gap-1.5 text-xs transition-colors hover:text-brand",
+                reposted && "text-brand",
+              )}
+            >
+              <Repeat className={cn("size-4 transition-transform group-active:scale-90", reposted && "fill-current")} />
+              <span className="font-medium">{compact(reposts)}</span>
+            </button>
+
+            {/* Like */}
             <button
               onClick={onToggleLike}
               className={cn(
@@ -213,40 +254,51 @@ export function PostCard({ post }: { post: FeedPost }) {
               <span className="font-medium">{compact(likes)}</span>
             </button>
 
-            {/* TOMBOL COPY LINK BARU */}
+            {/* Bookmark */}
+            <button
+              onClick={onToggleBookmark}
+              className={cn(
+                "group ml-auto flex items-center gap-1.5 text-xs transition-colors hover:text-brand",
+                bookmarked && "text-brand",
+              )}
+            >
+              <Bookmark className={cn("size-4 transition-transform group-active:scale-90", bookmarked && "fill-current")} />
+            </button>
+
+            {/* Share */}
             <button
               onClick={handleCopyLink}
               className="group flex items-center gap-1.5 text-xs transition-colors hover:text-brand"
             >
               <LinkIcon className="size-4" />
             </button>
-            
-            {/* Tombol Tip */}
+          </div>
+
+          {/* Tombol Aksi Premium di bawah */}
+          <div className="mt-3 flex flex-wrap gap-2 pt-2 border-t border-border/30">
             <button
               onClick={handleTip}
               disabled={isProcessing}
-              className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-brand/30 px-3 py-1 text-xs font-semibold text-brand transition-colors hover:bg-brand hover:text-primary-foreground disabled:opacity-50"
+              className="inline-flex items-center gap-1 rounded-full border border-brand/30 px-3 py-1 text-xs font-semibold text-brand transition-colors hover:bg-brand hover:text-primary-foreground disabled:opacity-50"
             >
               💎 {post.tipTotal > 0 ? `${post.tipTotal} QIE` : "Tip"}
             </button>
 
-            {/* Tombol Super Yap (Hanya untuk pemilik) */}
             {user?.address === post.author.address && (
               <button
                 onClick={handleSuperYap}
                 disabled={isProcessing}
-                className="inline-flex items-center gap-1.5 rounded-full border border-gold/40 px-3 py-1 text-xs font-semibold text-gold transition-colors hover:bg-gold hover:text-white disabled:opacity-50"
+                className="inline-flex items-center gap-1 rounded-full border border-gold/40 px-3 py-1 text-xs font-semibold text-gold transition-colors hover:bg-gold hover:text-white disabled:opacity-50"
               >
                 <Flame className="size-3" />
                 Super Yap
               </button>
             )}
 
-            {/* Tombol Boost */}
             <button
               onClick={handleBoost}
               disabled={isProcessing}
-              className="inline-flex items-center gap-1.5 rounded-full border border-brand/20 px-3 py-1 text-xs font-semibold text-muted-foreground transition-colors hover:bg-brand/10 hover:text-brand disabled:opacity-50"
+              className="inline-flex items-center gap-1 rounded-full border border-brand/20 px-3 py-1 text-xs font-semibold text-muted-foreground transition-colors hover:bg-brand/10 hover:text-brand disabled:opacity-50"
             >
               <Zap className="size-3" />
               Boost
