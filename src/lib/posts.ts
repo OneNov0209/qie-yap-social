@@ -13,6 +13,9 @@ export interface FeedPost {
   likes: number;
   liked: boolean;
   replies: number;
+  reposts: number;
+  reposted: boolean;
+  bookmarked: boolean;
   author: {
     address: string;
     displayName: string;
@@ -25,11 +28,13 @@ export interface FeedPost {
 export async function createPost(
   postData: {
     content: string;
-    isSuperYap: boolean;
-    isBoosted: boolean;
-    boostHours: number;
+    isSuperYap?: boolean;
+    isBoosted?: boolean;
+    boostHours?: number;
     txHash?: string | null;
     contentHash?: string | null;
+    replyToId?: string | null;
+    originalPostId?: string | null; // Untuk Repost
   },
   authorId: string
 ): Promise<{ id: string } | null> {
@@ -38,13 +43,15 @@ export async function createPost(
     .insert({
       content: postData.content,
       author_id: authorId,
-      is_super_yap: postData.isSuperYap,
-      is_boosted: postData.isBoosted,
-      boost_expires_at: postData.boostHours > 0 
+      is_super_yap: postData.isSuperYap || false,
+      is_boosted: postData.isBoosted || false,
+      boost_expires_at: postData.boostHours && postData.boostHours > 0 
         ? new Date(Date.now() + postData.boostHours * 60 * 60 * 1000).toISOString() 
         : null,
       tx_hash: postData.txHash || null,
       content_hash: postData.contentHash || null,
+      reply_to: postData.replyToId || null,
+      original_post_id: postData.originalPostId || null,
     })
     .select("id")
     .single();
@@ -54,6 +61,115 @@ export async function createPost(
     throw error;
   }
   return data;
+}
+
+export async function toggleRepost(postId: string, userId: string): Promise<void> {
+  // Cek apakah user sudah melakukan repost
+  const { data: existing } = await supabase
+    .from("reposts")
+    .select("id")
+    .eq("post_id", postId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (existing) {
+    await supabase.from("reposts").delete().eq("post_id", postId).eq("user_id", userId);
+  } else {
+    await supabase.from("reposts").insert({ post_id: postId, user_id: userId });
+  }
+}
+
+export async function toggleBookmark(postId: string, userId: string): Promise<void> {
+  const { data: existing } = await supabase
+    .from("bookmarks")
+    .select("id")
+    .eq("post_id", postId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (existing) {
+    await supabase.from("bookmarks").delete().eq("post_id", postId).eq("user_id", userId);
+  } else {
+    await supabase.from("bookmarks").insert({ post_id: postId, user_id: userId });
+  }
+}
+
+export async function fetchReplies(parentId: string, userId: string | null): Promise<FeedPost[]> {
+  const query = supabase
+    .from("posts")
+    .select(`
+      id,
+      content,
+      is_super_yap,
+      is_boosted,
+      boost_expires_at,
+      created_at,
+      tx_hash,
+      on_chain,
+      reply_to,
+      author_id,
+      original_post_id,
+      likes:likes(count),
+      reposts:reposts(count),
+      replies:posts!reply_to(count)
+    `)
+    .eq("reply_to", parentId)
+    .order("created_at", { ascending: false });
+
+  const { data: posts, error: postsError } = await query.limit(50);
+  if (postsError) return [];
+
+  if (!posts || posts.length === 0) return [];
+
+  const authorIds = posts.map((p: any) => p.author_id).filter(Boolean);
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("id, address, display_name, avatar_seed, is_validator")
+    .in("id", authorIds);
+
+  const profileMap: Record<string, any> = {};
+  if (profiles) profiles.forEach((p: any) => profileMap[p.id] = p);
+
+  let userLikes = new Set();
+  let userReposts = new Set();
+  let userBookmarks = new Set();
+  if (userId) {
+    const [likes, reposts, bookmarks] = await Promise.all([
+      supabase.from("likes").select("post_id").eq("user_id", userId),
+      supabase.from("reposts").select("post_id").eq("user_id", userId),
+      supabase.from("bookmarks").select("post_id").eq("user_id", userId),
+    ]);
+    if (likes.data) userLikes = new Set(likes.data.map((l) => l.post_id));
+    if (reposts.data) userReposts = new Set(reposts.data.map((r) => r.post_id));
+    if (bookmarks.data) userBookmarks = new Set(bookmarks.data.map((b) => b.post_id));
+  }
+
+  return posts.map((item: any) => {
+    const profile = profileMap[item.author_id] || {};
+    return {
+      id: item.id,
+      content: item.content,
+      isSuperYap: item.is_super_yap,
+      isBoosted: item.is_boosted && item.boost_expires_at > new Date().toISOString(),
+      createdAt: item.created_at,
+      txHash: item.tx_hash,
+      onChain: item.on_chain,
+      tipTotal: 0,
+      likes: item.likes?.[0]?.count || 0,
+      liked: userLikes.has(item.id),
+      replies: item.replies?.[0]?.count || 0,
+      reposts: item.reposts?.[0]?.count || 0,
+      reposted: userReposts.has(item.id),
+      bookmarked: userBookmarks.has(item.id),
+      author: {
+        address: profile.address || item.author_id || "unknown",
+        displayName: profile.display_name || "Anonymous",
+        avatarSeed: profile.avatar_seed || item.author_id || "0x0",
+        badge: badgeFor(0),
+        isValidator: profile.is_validator || false,
+      },
+    };
+  });
 }
 
 export async function fetchFeed(tab: string, userId: string | null): Promise<FeedPost[]> {
@@ -69,7 +185,11 @@ export async function fetchFeed(tab: string, userId: string | null): Promise<Fee
       tx_hash,
       on_chain,
       reply_to,
-      author_id
+      author_id,
+      original_post_id,
+      likes:likes(count),
+      reposts:reposts(count),
+      replies:posts!reply_to(count)
     `)
     .is("reply_to", null)
     .order("created_at", { ascending: false });
@@ -79,62 +199,34 @@ export async function fetchFeed(tab: string, userId: string | null): Promise<Fee
   }
 
   const { data: posts, error: postsError } = await query.limit(50);
-
-  if (postsError) {
-    console.error("[FetchFeed] Error fetching posts:", postsError);
-    return [];
-  }
-
+  if (postsError) return [];
   if (!posts || posts.length === 0) return [];
 
   const authorIds = posts.map((p: any) => p.author_id).filter(Boolean);
-
-  const { data: profiles, error: profilesError } = await supabase
+  const { data: profiles } = await supabase
     .from("profiles")
     .select("id, address, display_name, avatar_seed, is_validator")
     .in("id", authorIds);
 
-  if (profilesError) {
-    console.error("[FetchFeed] Error fetching profiles:", profilesError);
-  }
-
   const profileMap: Record<string, any> = {};
-  if (profiles) {
-    profiles.forEach((p: any) => {
-      profileMap[p.id] = p;
-    });
-  }
+  if (profiles) profiles.forEach((p: any) => profileMap[p.id] = p);
 
-  let userLikes: Set<string> = new Set();
+  let userLikes = new Set();
+  let userReposts = new Set();
+  let userBookmarks = new Set();
   if (userId) {
-    const { data: likesData } = await supabase
-      .from("likes")
-      .select("post_id")
-      .eq("user_id", userId);
-    if (likesData) {
-      userLikes = new Set(likesData.map((l) => l.post_id));
-    }
+    const [likes, reposts, bookmarks] = await Promise.all([
+      supabase.from("likes").select("post_id").eq("user_id", userId),
+      supabase.from("reposts").select("post_id").eq("user_id", userId),
+      supabase.from("bookmarks").select("post_id").eq("user_id", userId),
+    ]);
+    if (likes.data) userLikes = new Set(likes.data.map((l) => l.post_id));
+    if (reposts.data) userReposts = new Set(reposts.data.map((r) => r.post_id));
+    if (bookmarks.data) userBookmarks = new Set(bookmarks.data.map((b) => b.post_id));
   }
-
-  // Ambil jumlah likes, replies, dan tips untuk setiap postingan
-  const postIds = posts.map((p: any) => p.id);
-  const [likesCounts, repliesCounts, tipsCounts] = await Promise.all([
-    supabase.from("likes").select("post_id", { count: "exact", head: true }).in("post_id", postIds),
-    supabase.from("posts").select("reply_to", { count: "exact", head: true }).in("reply_to", postIds),
-    supabase.from("tips").select("post_id", { count: "exact", head: true }).in("post_id", postIds),
-  ]);
-
-  const postInteractions: Record<string, number> = {};
-  posts.forEach((p: any) => {
-    const likes = likesCounts.count || 0;
-    const replies = repliesCounts.count || 0;
-    const tips = tipsCounts.count || 0;
-    postInteractions[p.id] = likes + replies + tips;
-  });
 
   let result = posts.map((item: any) => {
     const profile = profileMap[item.author_id] || {};
-
     return {
       id: item.id,
       content: item.content,
@@ -144,9 +236,12 @@ export async function fetchFeed(tab: string, userId: string | null): Promise<Fee
       txHash: item.tx_hash,
       onChain: item.on_chain,
       tipTotal: 0,
-      likes: 0,
+      likes: item.likes?.[0]?.count || 0,
       liked: userLikes.has(item.id),
-      replies: 0,
+      replies: item.replies?.[0]?.count || 0,
+      reposts: item.reposts?.[0]?.count || 0,
+      reposted: userReposts.has(item.id),
+      bookmarked: userBookmarks.has(item.id),
       author: {
         address: profile.address || item.author_id || "unknown",
         displayName: profile.display_name || "Anonymous",
@@ -157,26 +252,25 @@ export async function fetchFeed(tab: string, userId: string | null): Promise<Fee
     };
   });
 
-  // ✅ FITUR TRENDING: Urutkan berdasarkan interaksi tertinggi
   if (tab === "trending") {
-    result.sort((a, b) => {
-      const scoreA = postInteractions[a.id] || 0;
-      const scoreB = postInteractions[b.id] || 0;
-      return scoreB - scoreA;
-    });
+    result.sort((a, b) => (b.likes + b.replies + b.reposts) - (a.likes + a.replies + a.reposts));
   }
 
   return result;
 }
 
-export async function toggleLike(postId: string, currentlyLiked: boolean): Promise<void> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
+export async function toggleLike(postId: string, userId: string): Promise<void> {
+  const { data: existing } = await supabase
+    .from("likes")
+    .select("id")
+    .eq("post_id", postId)
+    .eq("user_id", userId)
+    .maybeSingle();
 
-  if (currentlyLiked) {
-    await supabase.from("likes").delete().eq("post_id", postId).eq("user_id", user.id);
+  if (existing) {
+    await supabase.from("likes").delete().eq("post_id", postId).eq("user_id", userId);
   } else {
-    await supabase.from("likes").insert({ post_id: postId, user_id: user.id });
+    await supabase.from("likes").insert({ post_id: postId, user_id: userId });
   }
 }
 
