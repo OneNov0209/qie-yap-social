@@ -3,18 +3,45 @@ import { Bell, Home, Trophy, User } from "lucide-react";
 import { ConnectWalletButton } from "./connect-wallet-button";
 import { NotificationsPopover } from "./notifications-popover";
 import { ThemeToggle } from "./theme-toggle";
-
 import { useAuth } from "@/lib/auth-store";
 import { cn } from "@/lib/utils";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 const LOGO = "https://raw.githubusercontent.com/OneNov0209/logo/refs/heads/main/qie-logo.png";
 
 export function Header() {
   const { user } = useAuth();
   const path = useRouterState({ select: (s) => s.location.pathname });
-  
-  // Jika user belum ada (undefined/null), gunakan dummy address agar tidak crash
+  const [unreadCount, setUnreadCount] = useState(0);
   const profilePath = user?.address ?? "0x0000000000000000000000000000000000000000";
+
+  useEffect(() => {
+    if (!user) return;
+
+    const loadUnread = async () => {
+      const { count } = await supabase
+        .from("notifications")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("read", false);
+      setUnreadCount(count || 0);
+    };
+    loadUnread();
+
+    const channel = supabase
+      .channel("notifications-realtime")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` },
+        () => setUnreadCount((prev) => prev + 1)
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
 
   const navItems: Array<{ to: string; label: string; icon: typeof Home; active: boolean }> = [
     { to: "/", label: "Feed", icon: Home, active: path === "/" },
@@ -49,8 +76,16 @@ export function Header() {
           </nav>
 
           <div className="flex items-center gap-2">
-            {/* Pastikan user benar-benar ada sebelum menampilkan NotificationsPopover */}
-            {user && <NotificationsPopover />}
+            {user && (
+              <div className="relative">
+                <NotificationsPopover />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-brand text-[10px] font-bold text-white">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
+              </div>
+            )}
             <ThemeToggle />
             <ConnectWalletButton />
           </div>
