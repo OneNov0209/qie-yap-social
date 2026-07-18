@@ -35,6 +35,7 @@ export async function createPost(
     contentHash?: string | null;
     replyToId?: string | null;
     originalPostId?: string | null;
+    onChain?: boolean;
   },
   authorId: string
 ): Promise<{ id: string } | null> {
@@ -52,6 +53,7 @@ export async function createPost(
       content_hash: postData.contentHash || null,
       reply_to: postData.replyToId || null,
       original_post_id: postData.originalPostId || null,
+      on_chain: postData.onChain || false,
     })
     .select("id")
     .single();
@@ -64,6 +66,7 @@ export async function createPost(
 }
 
 export async function toggleLike(postId: string, userId: string): Promise<void> {
+  // Cek apakah user sudah like
   const { data: existing } = await supabase
     .from("likes")
     .select("id")
@@ -72,8 +75,10 @@ export async function toggleLike(postId: string, userId: string): Promise<void> 
     .maybeSingle();
 
   if (existing) {
+    // Unlike
     await supabase.from("likes").delete().eq("post_id", postId).eq("user_id", userId);
   } else {
+    // Like
     await supabase.from("likes").insert({ post_id: postId, user_id: userId });
   }
 }
@@ -194,7 +199,10 @@ export async function fetchFeed(tab: string, userId: string | null): Promise<Fee
       on_chain,
       reply_to,
       author_id,
-      original_post_id
+      original_post_id,
+      likes:likes(count),
+      reposts:reposts(count),
+      replies:posts!reply_to(count)
     `)
     .is("reply_to", null)
     .order("created_at", { ascending: false });
@@ -235,10 +243,10 @@ export async function fetchFeed(tab: string, userId: string | null): Promise<Fee
       txHash: item.tx_hash,
       onChain: item.on_chain,
       tipTotal: 0,
-      likes: 0,
+      likes: item.likes?.[0]?.count || 0,
       liked: userLikes.has(item.id),
-      replies: 0,
-      reposts: 0,
+      replies: item.replies?.[0]?.count || 0,
+      reposts: item.reposts?.[0]?.count || 0,
       reposted: userReposts.has(item.id),
       bookmarked: userBookmarks.has(item.id),
       author: {
@@ -259,8 +267,7 @@ export async function fetchFeed(tab: string, userId: string | null): Promise<Fee
 }
 
 export function relativeTime(dateString: string): string {
-  // ✅ PERBAIKAN WAKTU: Pakai UTC agar selisih waktu akurat
-  const date = new Date(dateString + 'Z'); // Tambahkan 'Z' agar dianggap UTC
+  const date = new Date(dateString + 'Z');
   const now = new Date();
   const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
   if (seconds < 60) return "just now";
