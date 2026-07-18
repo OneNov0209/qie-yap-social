@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Bell, Home, Trophy, User } from "lucide-react";
+import { Bell, Home, Trophy, User, Wallet } from "lucide-react";
 import { ConnectWalletButton } from "./connect-wallet-button";
 import { ThemeToggle } from "./theme-toggle";
 import { useAuth } from "@/lib/auth-store";
@@ -43,8 +43,8 @@ export function Header() {
   }, [user]);
 
   const navItems: Array<{ to: string; label: string; icon: typeof Home; active: boolean }> = [
-   { to: "/dashboard", label: "Dashboard", icon: Wallet, active: path.startsWith("/dashboard") }, 
     { to: "/", label: "Feed", icon: Home, active: path === "/" },
+    { to: "/dashboard", label: "Dashboard", icon: Wallet, active: path.startsWith("/dashboard") },
     { to: "/leaderboard", label: "Leaderboard", icon: Trophy, active: path.startsWith("/leaderboard") },
     { to: `/profile/${profilePath}`, label: "Profile", icon: User, active: path.startsWith("/profile") },
   ];
@@ -76,7 +76,6 @@ export function Header() {
           </nav>
 
           <div className="flex items-center gap-2">
-            {/* 💥 FIX: NotificationsPopover dinonaktifkan sementara sampai error fix */}
             {user && (
               <div className="relative">
                 <div className="p-2 hover:bg-muted rounded-full cursor-pointer transition-colors">
