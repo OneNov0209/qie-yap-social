@@ -45,19 +45,17 @@ function ProfilePage() {
   const [following, setFollowing] = useState(false);
   const [loading, setLoading] = useState(true);
   
-  // State untuk Edit Modal
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editName, setEditName] = useState("");
   const [editBio, setEditBio] = useState("");
   const [editAvatarSeed, setEditAvatarSeed] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
-  const isOwn = user?.address.toLowerCase() === address.toLowerCase();
+  const isOwn = user?.address?.toLowerCase() === address?.toLowerCase();
 
-  // Saat modal terbuka, isi data awal
   useEffect(() => {
     if (isEditModalOpen && profile) {
-      setEditName(profile.displayName);
+      setEditName(profile.displayName || "");
       setEditBio(profile.bio || "");
       setEditAvatarSeed(profile.avatarSeed || "");
     }
@@ -148,14 +146,12 @@ function ProfilePage() {
 
       if (error) throw error;
 
-      // 1. Update state global user (tanpa reload database)
       updateLocalProfile({
         displayName: editName.trim(),
         bio: editBio.trim(),
         avatarSeed: editAvatarSeed.trim() || profile.address,
       });
 
-      // 2. Update state lokal profile di halaman ini
       setProfile((prev) => prev ? {
         ...prev,
         displayName: editName.trim(),
@@ -225,6 +221,15 @@ function ProfilePage() {
           <div className="mt-3">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="font-display text-2xl font-bold">{profile.displayName}</h1>
+              
+              {/* On-Chain Verified Badge */}
+              {counts.balance > 0 && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-brand to-pink-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white shadow-sm">
+                  <BadgeCheck className="size-3" />
+                  On-Chain Verified
+                </span>
+              )}
+              
               {profile.isValidator && <BadgeCheck className="size-5 text-brand" />}
               <StakingBadgeChip badge={profile.badge} />
             </div>
@@ -258,7 +263,7 @@ function ProfilePage() {
         </div>
       </div>
 
-      {/* --- EDIT PROFILE MODAL --- */}
+      {/* Edit Profile Modal */}
       {isEditModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-2xl bg-card p-6 shadow-xl border border-border relative">
@@ -272,7 +277,6 @@ function ProfilePage() {
             <h2 className="text-xl font-bold mb-4">Edit Profile</h2>
 
             <div className="space-y-4">
-              {/* Avatar Preview */}
               <div className="flex items-center gap-4">
                 <Avatar seed={editAvatarSeed || profile.address} size={64} />
                 <div className="flex-1">
@@ -289,7 +293,6 @@ function ProfilePage() {
                 </div>
               </div>
 
-              {/* Display Name */}
               <div>
                 <label className="text-xs font-medium text-muted-foreground">Display Name</label>
                 <Input
@@ -300,7 +303,6 @@ function ProfilePage() {
                 />
               </div>
 
-              {/* Bio */}
               <div>
                 <label className="text-xs font-medium text-muted-foreground">Bio</label>
                 <Textarea
