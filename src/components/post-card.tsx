@@ -122,13 +122,10 @@ export function PostCard({ post }: { post: FeedPost }) {
         return;
       }
       
-      // ✅ FINAL FIX: Pastikan ID selalu string sebelum diubah ke BigInt
-      const safeId = typeof post.id === 'string' ? post.id : String(post.id || "0");
-      
       const hash = await boostPost(
         walletClient,
         contractAddress,
-        BigInt(safeId), // Sekarang aman 100%
+        BigInt(post.id || "0"),
         BigInt(hours)
       );
       
@@ -167,6 +164,9 @@ export function PostCard({ post }: { post: FeedPost }) {
       toast.error("Failed to copy link");
     });
   };
+
+  // ✅ GUARD: Jika post.id tidak ada, jangan render link
+  const safePostId = post?.id || "";
 
   return (
     <article
@@ -218,17 +218,24 @@ export function PostCard({ post }: { post: FeedPost }) {
             <span className="text-xs text-muted-foreground">· {relativeTime(post.createdAt)}</span>
           </div>
 
-          <Link
-            to="/yap/$id"
-            params={{ id: post.id }}
-            className="mt-2 block text-[15px] leading-relaxed text-foreground/90 whitespace-pre-wrap"
-          >
-            {post.content}
-          </Link>
+          {/* ✅ FIX: Gunakan safePostId agar tidak crash */}
+          {safePostId ? (
+            <Link
+              to="/yap/$id"
+              params={{ id: safePostId }}
+              className="mt-2 block text-[15px] leading-relaxed text-foreground/90 whitespace-pre-wrap"
+            >
+              {post.content}
+            </Link>
+          ) : (
+            <div className="mt-2 block text-[15px] leading-relaxed text-foreground/90 whitespace-pre-wrap">
+              {post.content}
+            </div>
+          )}
 
           <div className="mt-4 flex flex-wrap items-center gap-4 text-muted-foreground">
             {/* Reply */}
-            <Link to="/yap/$id" params={{ id: post.id }} className="group flex items-center gap-1.5 text-xs transition-colors hover:text-brand">
+            <Link to="/yap/$id" params={{ id: safePostId || "#" }} className="group flex items-center gap-1.5 text-xs transition-colors hover:text-brand">
               <MessageCircle className="size-4" />
               <span className="font-medium">{compact(post.replies)}</span>
             </Link>
