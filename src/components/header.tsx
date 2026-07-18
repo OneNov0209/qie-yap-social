@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Bell, Home, Trophy, User, Wallet, Search } from "lucide-react";
+import { Bell, Home, Trophy, User, Wallet, Search, Activity } from "lucide-react";
 import { ConnectWalletButton } from "./connect-wallet-button";
 import { ThemeToggle } from "./theme-toggle";
 import { useAuth } from "@/lib/auth-store";
@@ -45,6 +45,7 @@ export function Header() {
   const navItems: Array<{ to: string; label: string; icon: typeof Home; active: boolean }> = [
     { to: "/", label: "Feed", icon: Home, active: path === "/" },
     { to: "/search", label: "Search", icon: Search, active: path.startsWith("/search") },
+    { to: "/explorer", label: "Explorer", icon: Activity, active: path.startsWith("/explorer") },
     { to: "/dashboard", label: "Dashboard", icon: Wallet, active: path.startsWith("/dashboard") },
     { to: "/leaderboard", label: "Leaderboard", icon: Trophy, active: path.startsWith("/leaderboard") },
     { to: `/profile/${profilePath}`, label: "Profile", icon: User, active: path.startsWith("/profile") },
