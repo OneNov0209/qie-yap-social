@@ -165,7 +165,7 @@ export function PostCard({ post }: { post: FeedPost }) {
     });
   };
 
-  // ✅ JIKA POST TIDAK ADA, JANGAN RENDER APA PUN
+  // ✅ Guard: Jika post tidak ada, jangan render
   if (!post || !post.id) {
     return (
       <div className="yap-card p-5 border border-dashed border-border/50 bg-card/50 text-center text-muted-foreground">
@@ -218,6 +218,14 @@ export function PostCard({ post }: { post: FeedPost }) {
             </Link>
             <StakingBadgeChip badge={post.author?.badge || "shrimp"} />
             {post.author?.isValidator && <BadgeCheck className="size-4 text-brand" />}
+            
+            {/* On-Chain Badge */}
+            {post.onChain && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-brand/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-brand border border-brand/30">
+                ⚡ On-Chain
+              </span>
+            )}
+            
             <span className="font-mono text-[11px] text-muted-foreground">
               {shortAddr(post.author?.address || "")}
             </span>
@@ -233,13 +241,11 @@ export function PostCard({ post }: { post: FeedPost }) {
           </Link>
 
           <div className="mt-4 flex flex-wrap items-center gap-4 text-muted-foreground">
-            {/* Reply */}
             <Link to="/yap/$id" params={{ id: post.id }} className="group flex items-center gap-1.5 text-xs transition-colors hover:text-brand">
               <MessageCircle className="size-4" />
               <span className="font-medium">{compact(post.replies || 0)}</span>
             </Link>
             
-            {/* Repost */}
             <button
               onClick={onToggleRepost}
               className={cn(
@@ -251,7 +257,6 @@ export function PostCard({ post }: { post: FeedPost }) {
               <span className="font-medium">{compact(reposts || 0)}</span>
             </button>
 
-            {/* Like */}
             <button
               onClick={onToggleLike}
               className={cn(
@@ -263,7 +268,6 @@ export function PostCard({ post }: { post: FeedPost }) {
               <span className="font-medium">{compact(likes || 0)}</span>
             </button>
 
-            {/* Bookmark */}
             <button
               onClick={onToggleBookmark}
               className={cn(
@@ -274,7 +278,6 @@ export function PostCard({ post }: { post: FeedPost }) {
               <Bookmark className={cn("size-4 transition-transform group-active:scale-90", bookmarked && "fill-current")} />
             </button>
 
-            {/* Share */}
             <button
               onClick={handleCopyLink}
               className="group flex items-center gap-1.5 text-xs transition-colors hover:text-brand"
@@ -283,7 +286,7 @@ export function PostCard({ post }: { post: FeedPost }) {
             </button>
           </div>
 
-          {/* Tombol Aksi Premium di bawah */}
+          {/* Premium Actions */}
           <div className="mt-3 flex flex-wrap gap-2 pt-2 border-t border-border/30">
             <button
               onClick={handleTip}
