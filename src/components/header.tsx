@@ -1,7 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Bell, Home, Trophy, User } from "lucide-react";
 import { ConnectWalletButton } from "./connect-wallet-button";
-import { NotificationsPopover } from "./notifications-popover";
 import { ThemeToggle } from "./theme-toggle";
 import { useAuth } from "@/lib/auth-store";
 import { cn } from "@/lib/utils";
@@ -76,14 +75,17 @@ export function Header() {
           </nav>
 
           <div className="flex items-center gap-2">
+            {/* 💥 FIX: NotificationsPopover dinonaktifkan sementara sampai error fix */}
             {user && (
               <div className="relative">
-                <NotificationsPopover />
-                {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-brand text-[10px] font-bold text-white">
-                    {unreadCount > 9 ? "9+" : unreadCount}
-                  </span>
-                )}
+                <div className="p-2 hover:bg-muted rounded-full cursor-pointer transition-colors">
+                  <Bell className="size-5" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-brand text-[10px] font-bold text-white">
+                      {unreadCount > 9 ? "9+" : unreadCount}
+                    </span>
+                  )}
+                </div>
               </div>
             )}
             <ThemeToggle />
