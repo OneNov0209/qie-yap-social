@@ -43,6 +43,7 @@ export function Header() {
   }, [user]);
 
   const navItems: Array<{ to: string; label: string; icon: typeof Home; active: boolean }> = [
+   { to: "/dashboard", label: "Dashboard", icon: Wallet, active: path.startsWith("/dashboard") }, 
     { to: "/", label: "Feed", icon: Home, active: path === "/" },
     { to: "/leaderboard", label: "Leaderboard", icon: Trophy, active: path.startsWith("/leaderboard") },
     { to: `/profile/${profilePath}`, label: "Profile", icon: User, active: path.startsWith("/profile") },
