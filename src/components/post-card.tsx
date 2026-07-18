@@ -17,11 +17,12 @@ function compact(n: number) {
 }
 
 export function PostCard({ post }: { post: FeedPost }) {
-  const [liked, setLiked] = useState(post?.liked || false);
-  const [likes, setLikes] = useState(post?.likes || 0);
-  const [reposted, setReposted] = useState(post?.reposted || false);
-  const [reposts, setReposts] = useState(post?.reposts || 0);
-  const [bookmarked, setBookmarked] = useState(post?.bookmarked || false);
+  // ✅ PERBAIKAN: Pastikan initial state dari post.liked yang benar
+  const [liked, setLiked] = useState(post?.liked ?? false);
+  const [likes, setLikes] = useState(post?.likes ?? 0);
+  const [reposted, setReposted] = useState(post?.reposted ?? false);
+  const [reposts, setReposts] = useState(post?.reposts ?? 0);
+  const [bookmarked, setBookmarked] = useState(post?.bookmarked ?? false);
   const [isProcessing, setIsProcessing] = useState(false);
   const { user } = useAuth();
 
@@ -46,14 +47,9 @@ export function PostCard({ post }: { post: FeedPost }) {
       await toggleLike(post.id, user.id);
     } catch (error: any) {
       console.error("Like error:", error);
-      // Rollback UI jika gagal
       setLiked(wasLiked);
       setLikes((n) => n + (wasLiked ? 1 : -1));
-      if (error.message?.includes("duplicate key")) {
-        toast.error("You already liked this yap");
-      } else {
-        toast.error("Couldn't update like");
-      }
+      toast.error("Couldn't update like");
     } finally {
       setIsProcessing(false);
     }
