@@ -30,8 +30,19 @@ export function badgeFor(qie: number): StakingBadge {
   return "shrimp";
 }
 
+/**
+ * ⚠️ PERBAIKAN: 
+ * Fungsi ini sekarang aman. Jika alamat tidak valid (bukan bech32),
+ * atau server error, dia akan return 0 tanpa crash.
+ */
 export async function getStakedQie(address: string): Promise<number | null> {
   try {
+    // Cek apakah address berawalan '0x' (EVM). Jika iya, skip staking.
+    if (address.startsWith('0x')) {
+      // Alamat EVM tidak bisa di-staking di Cosmos API. Return 0.
+      return 0;
+    }
+
     const res = await fetch(`${QIE_REST}/cosmos/staking/v1beta1/delegations/${address}`);
     if (!res.ok || res.status === 500) return null;
     const data = await res.json() as { delegation_responses?: Array<{ balance?: { amount?: string } }> };
@@ -92,7 +103,6 @@ export async function getWalletClient() {
     throw new Error("No EVM wallet detected. Install MetaMask or the QIE wallet extension.");
   }
   
-  // Dapatkan account (address) dari wallet
   const accounts = await window.ethereum.request({ method: "eth_requestAccounts" }) as string[];
   const address = accounts[0];
   if (!address) throw new Error("No account returned by wallet");
@@ -119,7 +129,7 @@ export async function sendTip(
     functionName: "tip",
     args: [recipient, message],
     value: parseEther(amountInQie),
-    account: address, // ✅ Tambahkan account di sini
+    account: address,
   });
   return hash;
 }
@@ -134,7 +144,7 @@ export async function createSuperYap(
     abi: QIE_YAP_ABI,
     functionName: "createSuperYap",
     value: parseEther("0.01"),
-    account: address, // ✅ Tambahkan account di sini
+    account: address,
   });
   return hash;
 }
@@ -153,7 +163,7 @@ export async function boostPost(
     functionName: "boost",
     args: [postId, durationHours],
     value: parseEther(cost.toString()),
-    account: address, // ✅ Tambahkan account di sini
+    account: address,
   });
   return hash;
 }
