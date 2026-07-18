@@ -43,11 +43,12 @@ export function Header() {
   }, [user]);
 
   const navItems: Array<{ to: string; label: string; icon: typeof Home; active: boolean }> = [
-    { to: "/", label: "Feed", icon: Home, active: path === "/" },
-    { to: "/dashboard", label: "Dashboard", icon: Wallet, active: path.startsWith("/dashboard") },
-    { to: "/leaderboard", label: "Leaderboard", icon: Trophy, active: path.startsWith("/leaderboard") },
-    { to: `/profile/${profilePath}`, label: "Profile", icon: User, active: path.startsWith("/profile") },
-  ];
+  { to: "/", label: "Feed", icon: Home, active: path === "/" },
+  { to: "/search", label: "Search", icon: Search, active: path.startsWith("/search") },
+  { to: "/dashboard", label: "Dashboard", icon: Wallet, active: path.startsWith("/dashboard") },
+  { to: "/leaderboard", label: "Leaderboard", icon: Trophy, active: path.startsWith("/leaderboard") },
+  { to: `/profile/${profilePath}`, label: "Profile", icon: User, active: path.startsWith("/profile") },
+];
 
   return (
     <>
