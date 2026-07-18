@@ -65,10 +65,12 @@ function ProfilePage() {
     let active = true;
     const load = async () => {
       setLoading(true);
+      
+      // ✅ PERBAIKAN: Gunakan .eq() bukan .ilike() agar cocok dengan tipe UUID di kolom address
       const { data: p } = await supabase
         .from("profiles")
         .select("*")
-        .ilike("address", address)
+        .eq("address", address)
         .maybeSingle();
 
       if (!active) return;
