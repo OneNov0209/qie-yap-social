@@ -38,7 +38,7 @@ export const Route = createFileRoute("/profile/$address")({
 
 function ProfilePage() {
   const { address } = Route.useParams();
-  const { user, refreshProfile } = useAuth();
+  const { user, updateLocalProfile } = useAuth();
   const [profile, setProfile] = useState<FeedProfile | null>(null);
   const [yaps, setYaps] = useState<FeedPost[]>([]);
   const [counts, setCounts] = useState({ followers: 0, following: 0, yaps: 0, balance: 0, staked: 0 });
@@ -148,12 +148,23 @@ function ProfilePage() {
 
       if (error) throw error;
 
-      await refreshProfile();
-      toast.success("Profile updated!");
+      // 1. Update state global user (tanpa reload database)
+      updateLocalProfile({
+        displayName: editName.trim(),
+        bio: editBio.trim(),
+        avatarSeed: editAvatarSeed.trim() || profile.address,
+      });
+
+      // 2. Update state lokal profile di halaman ini
+      setProfile((prev) => prev ? {
+        ...prev,
+        displayName: editName.trim(),
+        bio: editBio.trim(),
+        avatarSeed: editAvatarSeed.trim() || profile.address,
+      } : null);
+
+      toast.success("Profile updated successfully!");
       setIsEditModalOpen(false);
-      
-      // Reload data agar statistik terbarui
-      window.location.reload();
     } catch (error: any) {
       toast.error(error.message || "Failed to update profile");
     } finally {
@@ -269,11 +280,11 @@ function ProfilePage() {
                   <Input
                     value={editAvatarSeed}
                     onChange={(e) => setEditAvatarSeed(e.target.value)}
-                    placeholder="Enter a word or phrase"
+                    placeholder="Enter a word or phrase (or paste an image URL)"
                     className="mt-1"
                   />
                   <p className="text-[10px] text-muted-foreground mt-1">
-                    Change this to get a different avatar style.
+                    Seed = cartoon avatar. Paste a URL (http/https) for a real photo.
                   </p>
                 </div>
               </div>
