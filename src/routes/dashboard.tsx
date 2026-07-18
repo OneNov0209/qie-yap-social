@@ -4,13 +4,13 @@ import { Header } from "@/components/header";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-store";
-import { getQieBalance, qiePublicClient, QIE_YAP_ABI, getWalletClient } from "@/lib/qie-chain";
+import { getQieBalance, QIE_YAP_ABI, getWalletClient } from "@/lib/qie-chain";
 import { ArrowLeft, Coins, TrendingUp, Users, Wallet, History } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { formatEther, parseEther } from "viem";
 
-// Import Chart.js components
+// Import Chart.js yang aman untuk Lovable/Vite
+import type { ChartData, ChartOptions } from 'chart.js';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -133,13 +133,13 @@ function DashboardPage() {
   };
 
   // Data untuk Line Chart
-  const lineChartData = {
+  const lineChartData: ChartData<'line'> = {
     labels: stats.weeklyLabels,
     datasets: [
       {
         label: 'Tips Received (QIE)',
         data: stats.weeklyTips,
-        borderColor: 'rgb(236, 72, 153)', // Warna pink brand
+        borderColor: 'rgb(236, 72, 153)',
         backgroundColor: 'rgba(236, 72, 153, 0.2)',
         tension: 0.4,
         fill: true,
@@ -150,7 +150,7 @@ function DashboardPage() {
     ],
   };
 
-  const lineChartOptions = {
+  const lineChartOptions: ChartOptions<'line'> = {
     responsive: true,
     plugins: {
       legend: {
@@ -180,20 +180,20 @@ function DashboardPage() {
   };
 
   // Data untuk Pie / Donut Chart
-  const pieChartData = {
+  const pieChartData: ChartData<'pie'> = {
     labels: ['Tips Received', 'Super Yaps', 'Boosts'],
     datasets: [
       {
         label: 'Earnings Distribution',
         data: [
           stats.totalTipsReceived || 0,
-          stats.totalYaps > 0 ? 5 : 0, // Simulasi: Super Yaps = 5 QIE
-          stats.totalYaps > 0 ? 3 : 0, // Simulasi: Boosts = 3 QIE
+          stats.totalYaps > 0 ? 5 : 0,
+          stats.totalYaps > 0 ? 3 : 0,
         ],
         backgroundColor: [
-          'rgba(236, 72, 153, 0.8)',  // Pink
-          'rgba(234, 179, 8, 0.8)',   // Gold
-          'rgba(59, 130, 246, 0.8)',  // Blue
+          'rgba(236, 72, 153, 0.8)',
+          'rgba(234, 179, 8, 0.8)',
+          'rgba(59, 130, 246, 0.8)',
         ],
         borderColor: [
           'rgb(236, 72, 153)',
@@ -205,7 +205,7 @@ function DashboardPage() {
     ],
   };
 
-  const pieChartOptions = {
+  const pieChartOptions: ChartOptions<'pie'> = {
     responsive: true,
     plugins: {
       legend: {
