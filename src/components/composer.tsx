@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Sparkles, Rocket, Link2 } from "lucide-react";
+import { Sparkles, Rocket, Link2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Avatar } from "./avatar-img";
@@ -11,7 +11,13 @@ import { submitYapOnChain, YAP_CONTRACT, hashContent } from "@/lib/yap-onchain";
 
 const MAX = 280;
 
-export function Composer({ onPosted }: { onPosted?: () => void }) {
+interface ComposerProps {
+  onPosted?: () => void;
+  replyToId?: string | null;
+  onCancelReply?: () => void;
+}
+
+export function Composer({ onPosted, replyToId, onCancelReply }: ComposerProps) {
   const { user } = useAuth();
   const [text, setText] = useState("");
   const [superYap, setSuperYap] = useState(false);
@@ -21,19 +27,8 @@ export function Composer({ onPosted }: { onPosted?: () => void }) {
   const ref = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (
-        e.key === "n" && !e.metaKey && !e.ctrlKey &&
-        document.activeElement?.tagName !== "TEXTAREA" &&
-        document.activeElement?.tagName !== "INPUT"
-      ) {
-        e.preventDefault();
-        ref.current?.focus();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
+    if (replyToId) ref.current?.focus();
+  }, [replyToId]);
 
   const submit = async () => {
     if (!user) return toast("Connect your wallet to yap");
@@ -62,8 +57,9 @@ export function Composer({ onPosted }: { onPosted?: () => void }) {
           isSuperYap: superYap,
           isBoosted: boostHours > 0,
           boostHours,
-          txHash,
+          txHash, // ✅ Pastikan txHash dikirim
           contentHash: cHash,
+          replyToId,
         },
         user.id
       );
@@ -76,6 +72,7 @@ export function Composer({ onPosted }: { onPosted?: () => void }) {
       setText("");
       setSuperYap(false);
       setBoostHours(0);
+      onCancelReply?.();
       onPosted?.();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to post");
@@ -87,7 +84,15 @@ export function Composer({ onPosted }: { onPosted?: () => void }) {
   const remaining = MAX - text.length;
 
   return (
-    <div className="mb-6 yap-card p-4">
+    <div className="mb-4 yap-card p-4 border-l-4 border-brand">
+      {replyToId && (
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs text-muted-foreground">Replying to a Yap</span>
+          <button onClick={onCancelReply} className="text-muted-foreground hover:text-foreground">
+            <X className="size-4" />
+          </button>
+        </div>
+      )}
       <div className="flex gap-4">
         <Avatar seed={user?.avatarSeed ?? "guest"} size={48} />
         <div className="w-full">
@@ -95,7 +100,7 @@ export function Composer({ onPosted }: { onPosted?: () => void }) {
             ref={ref}
             value={text}
             onChange={(e) => setText(e.target.value.slice(0, MAX))}
-            placeholder={user ? "What's happening on QIE?" : "Connect your wallet to start yapping..."}
+            placeholder={user ? "Write your reply..." : "Connect your wallet to yap"}
             disabled={!user || submitting}
             className="w-full resize-none border-none bg-transparent p-0 text-lg outline-none placeholder:text-muted-foreground disabled:opacity-70"
             rows={3}
