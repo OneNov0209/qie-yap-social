@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Header } from "@/components/header";
 import { supabase } from "@/integrations/supabase/client";
 import { shortAddr } from "@/lib/posts";
-import { ArrowLeft, Coins, Sparkles, Zap, ExternalLink } from "lucide-react";
+import { ArrowLeft, Coins, Sparkles, Zap, ExternalLink, MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/explorer")({
@@ -19,11 +19,12 @@ export const Route = createFileRoute("/explorer")({
 function ExplorerPage() {
   const [txs, setTxs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<"all" | "tip" | "super_yap" | "boost">("all");
+  const [filter, setFilter] = useState<"all" | "tip" | "super_yap" | "boost" | "yap">("all");
   const [stats, setStats] = useState({
     totalTips: 0,
     totalSuperYaps: 0,
     totalBoosts: 0,
+    totalYaps: 0,
     totalQIE: 0,
   });
 
@@ -34,14 +35,14 @@ function ExplorerPage() {
   const loadExplorer = async () => {
     setLoading(true);
     try {
-      // 1. Ambil semua tips (tanpa filter)
+      // 1. Tips
       const { data: tips } = await supabase
         .from("tips")
         .select("id, amount, from_user_id, to_user_id, tx_hash, created_at")
         .order("created_at", { ascending: false })
         .limit(50);
 
-      // 2. Ambil semua Super Yap (tanpa filter author_id)
+      // 2. Super Yaps
       const { data: superYaps } = await supabase
         .from("posts")
         .select("id, author_id, tx_hash, created_at, content")
@@ -50,7 +51,7 @@ function ExplorerPage() {
         .order("created_at", { ascending: false })
         .limit(50);
 
-      // 3. Ambil semua Boost (tanpa filter author_id)
+      // 3. Boosts
       const { data: boosts } = await supabase
         .from("posts")
         .select("id, author_id, tx_hash, created_at, content")
@@ -59,26 +60,38 @@ function ExplorerPage() {
         .order("created_at", { ascending: false })
         .limit(50);
 
-      // Gabungkan semua transaksi
+      // 4. ✅ TAMBAHAN: Yap Biasa On-Chain
+      const { data: yaps } = await supabase
+        .from("posts")
+        .select("id, author_id, tx_hash, created_at, content")
+        .eq("on_chain", true)
+        .is("is_super_yap", false)
+        .is("is_boosted", false)
+        .not("tx_hash", "is", null)
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      // Gabungkan semua
       const allTxs = [
         ...(tips || []).map((t: any) => ({ ...t, type: "tip" })),
         ...(superYaps || []).map((t: any) => ({ ...t, type: "super_yap", from_user_id: t.author_id, amount: 0 })),
         ...(boosts || []).map((t: any) => ({ ...t, type: "boost", from_user_id: t.author_id, amount: 0 })),
+        ...(yaps || []).map((t: any) => ({ ...t, type: "yap", from_user_id: t.author_id, amount: 0 })),
       ];
 
-      // Urutkan berdasarkan waktu (terbaru di atas)
       allTxs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-      // Hitung statistik
       const totalTips = (tips || []).reduce((sum: number, t: any) => sum + Number(t.amount), 0);
       const totalSuperYaps = (superYaps || []).length;
       const totalBoosts = (boosts || []).length;
+      const totalYaps = (yaps || []).length;
 
       setTxs(allTxs.slice(0, 50));
       setStats({
         totalTips,
         totalSuperYaps,
         totalBoosts,
+        totalYaps,
         totalQIE: totalTips,
       });
     } catch (err) {
@@ -101,31 +114,36 @@ function ExplorerPage() {
           <h1 className="font-display text-2xl font-bold">On-Chain Explorer</h1>
         </div>
 
-        <div className="grid grid-cols-3 gap-3 mb-6">
+        <div className="grid grid-cols-4 gap-2 mb-6">
           <StatCard 
-            icon={<Coins className="size-5 text-brand" />}
+            icon={<Coins className="size-4 text-brand" />}
             label="Tips"
             value={`${stats.totalTips.toFixed(4)} QIE`}
           />
           <StatCard 
-            icon={<Sparkles className="size-5 text-gold" />}
-            label="Super Yaps"
+            icon={<MessageCircle className="size-4 text-gold" />}
+            label="Yaps"
+            value={`${stats.totalYaps}`}
+          />
+          <StatCard 
+            icon={<Sparkles className="size-4 text-gold" />}
+            label="Super Yap"
             value={`${stats.totalSuperYaps}`}
           />
           <StatCard 
-            icon={<Zap className="size-5 text-brand" />}
+            icon={<Zap className="size-4 text-brand" />}
             label="Boosts"
             value={`${stats.totalBoosts}`}
           />
         </div>
 
-        <div className="flex gap-2 mb-6">
-          {["all", "tip", "super_yap", "boost"].map((f) => (
+        <div className="flex flex-wrap gap-2 mb-6">
+          {["all", "tip", "yap", "super_yap", "boost"].map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f as any)}
               className={cn(
-                "rounded-full px-4 py-1.5 text-xs font-semibold transition-colors",
+                "rounded-full px-3 py-1 text-xs font-semibold transition-colors",
                 filter === f 
                   ? "bg-brand text-white" 
                   : "bg-muted text-muted-foreground hover:bg-muted/80"
@@ -162,10 +180,13 @@ function ExplorerPage() {
                     <div className={cn(
                       "rounded-full p-1.5",
                       tx.type === "tip" ? "bg-brand/20" : 
-                      tx.type === "super_yap" ? "bg-gold/20" : "bg-blue-500/20"
+                      tx.type === "yap" ? "bg-gold/20" :
+                      tx.type === "super_yap" ? "bg-gold/40" : "bg-blue-500/20"
                     )}>
                       {tx.type === "tip" ? (
                         <Coins className="size-4 text-brand" />
+                      ) : tx.type === "yap" ? (
+                        <MessageCircle className="size-4 text-gold" />
                       ) : tx.type === "super_yap" ? (
                         <Sparkles className="size-4 text-gold" />
                       ) : (
@@ -176,6 +197,8 @@ function ExplorerPage() {
                       <p className="text-sm font-medium">
                         {tx.type === "tip" 
                           ? `Tip from ${shortAddr(tx.from_user_id)} → ${shortAddr(tx.to_user_id)}`
+                          : tx.type === "yap"
+                          ? `On-Chain Yap by ${shortAddr(tx.from_user_id)}`
                           : tx.type === "super_yap"
                           ? `Super Yap by ${shortAddr(tx.from_user_id)}`
                           : `Boost by ${shortAddr(tx.from_user_id)}`
