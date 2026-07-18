@@ -34,7 +34,7 @@ export async function createPost(
     txHash?: string | null;
     contentHash?: string | null;
     replyToId?: string | null;
-    originalPostId?: string | null; // Untuk Repost
+    originalPostId?: string | null;
   },
   authorId: string
 ): Promise<{ id: string } | null> {
@@ -63,8 +63,22 @@ export async function createPost(
   return data;
 }
 
+export async function toggleLike(postId: string, userId: string): Promise<void> {
+  const { data: existing } = await supabase
+    .from("likes")
+    .select("id")
+    .eq("post_id", postId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (existing) {
+    await supabase.from("likes").delete().eq("post_id", postId).eq("user_id", userId);
+  } else {
+    await supabase.from("likes").insert({ post_id: postId, user_id: userId });
+  }
+}
+
 export async function toggleRepost(postId: string, userId: string): Promise<void> {
-  // Cek apakah user sudah melakukan repost
   const { data: existing } = await supabase
     .from("reposts")
     .select("id")
@@ -95,7 +109,7 @@ export async function toggleBookmark(postId: string, userId: string): Promise<vo
 }
 
 export async function fetchReplies(parentId: string, userId: string | null): Promise<FeedPost[]> {
-  const query = supabase
+  const { data: posts, error: postsError } = await supabase
     .from("posts")
     .select(`
       id,
@@ -108,18 +122,12 @@ export async function fetchReplies(parentId: string, userId: string | null): Pro
       on_chain,
       reply_to,
       author_id,
-      original_post_id,
-      likes:likes(count),
-      reposts:reposts(count),
-      replies:posts!reply_to(count)
+      original_post_id
     `)
     .eq("reply_to", parentId)
     .order("created_at", { ascending: false });
 
-  const { data: posts, error: postsError } = await query.limit(50);
-  if (postsError) return [];
-
-  if (!posts || posts.length === 0) return [];
+  if (postsError || !posts) return [];
 
   const authorIds = posts.map((p: any) => p.author_id).filter(Boolean);
   const { data: profiles } = await supabase
@@ -155,10 +163,10 @@ export async function fetchReplies(parentId: string, userId: string | null): Pro
       txHash: item.tx_hash,
       onChain: item.on_chain,
       tipTotal: 0,
-      likes: item.likes?.[0]?.count || 0,
+      likes: 0,
       liked: userLikes.has(item.id),
-      replies: item.replies?.[0]?.count || 0,
-      reposts: item.reposts?.[0]?.count || 0,
+      replies: 0,
+      reposts: 0,
       reposted: userReposts.has(item.id),
       bookmarked: userBookmarks.has(item.id),
       author: {
@@ -173,7 +181,7 @@ export async function fetchReplies(parentId: string, userId: string | null): Pro
 }
 
 export async function fetchFeed(tab: string, userId: string | null): Promise<FeedPost[]> {
-  let query = supabase
+  const { data: posts, error: postsError } = await supabase
     .from("posts")
     .select(`
       id,
@@ -186,21 +194,12 @@ export async function fetchFeed(tab: string, userId: string | null): Promise<Fee
       on_chain,
       reply_to,
       author_id,
-      original_post_id,
-      likes:likes(count),
-      reposts:reposts(count),
-      replies:posts!reply_to(count)
+      original_post_id
     `)
     .is("reply_to", null)
     .order("created_at", { ascending: false });
 
-  if (tab === "super") {
-    query = query.eq("is_super_yap", true);
-  }
-
-  const { data: posts, error: postsError } = await query.limit(50);
-  if (postsError) return [];
-  if (!posts || posts.length === 0) return [];
+  if (postsError || !posts) return [];
 
   const authorIds = posts.map((p: any) => p.author_id).filter(Boolean);
   const { data: profiles } = await supabase
@@ -236,10 +235,10 @@ export async function fetchFeed(tab: string, userId: string | null): Promise<Fee
       txHash: item.tx_hash,
       onChain: item.on_chain,
       tipTotal: 0,
-      likes: item.likes?.[0]?.count || 0,
+      likes: 0,
       liked: userLikes.has(item.id),
-      replies: item.replies?.[0]?.count || 0,
-      reposts: item.reposts?.[0]?.count || 0,
+      replies: 0,
+      reposts: 0,
       reposted: userReposts.has(item.id),
       bookmarked: userBookmarks.has(item.id),
       author: {
@@ -257,21 +256,6 @@ export async function fetchFeed(tab: string, userId: string | null): Promise<Fee
   }
 
   return result;
-}
-
-export async function toggleLike(postId: string, userId: string): Promise<void> {
-  const { data: existing } = await supabase
-    .from("likes")
-    .select("id")
-    .eq("post_id", postId)
-    .eq("user_id", userId)
-    .maybeSingle();
-
-  if (existing) {
-    await supabase.from("likes").delete().eq("post_id", postId).eq("user_id", userId);
-  } else {
-    await supabase.from("likes").insert({ post_id: postId, user_id: userId });
-  }
 }
 
 export function relativeTime(dateString: string): string {
