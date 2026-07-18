@@ -5,36 +5,9 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-store";
 import { getQieBalance, QIE_YAP_ABI, getWalletClient } from "@/lib/qie-chain";
-import { ArrowLeft, Coins, TrendingUp, Users, Wallet, History } from "lucide-react";
+import { ArrowLeft, Coins, TrendingUp, Users, Wallet, History, Activity, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-
-// Import Chart.js yang aman untuk Lovable/Vite
-import type { ChartData, ChartOptions } from 'chart.js';
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  ArcElement,
-} from 'chart.js';
-import { Line, Pie } from 'react-chartjs-2';
-
-// Register Chart.js components
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  ArcElement
-);
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
@@ -55,8 +28,6 @@ function DashboardPage() {
     totalFollowers: 0,
     walletBalance: 0,
     tipsReceivedList: [] as any[],
-    weeklyTips: [] as number[],
-    weeklyLabels: [] as string[],
   });
   const [withdrawing, setWithdrawing] = useState(false);
 
@@ -69,7 +40,7 @@ function DashboardPage() {
     setLoading(true);
     try {
       const [tipsReceived, yaps, followers, balance] = await Promise.all([
-        supabase.from("tips").select("amount, from_user_id, created_at, tx_hash").eq("to_user_id", user.id).order("created_at", { ascending: false }).limit(50),
+        supabase.from("tips").select("amount, from_user_id, created_at, tx_hash").eq("to_user_id", user.id).order("created_at", { ascending: false }).limit(10),
         supabase.from("posts").select("id", { count: "exact", head: true }).eq("author_id", user.id),
         supabase.from("follows").select("follower_id", { count: "exact", head: true }).eq("following_id", user.id),
         getQieBalance(user.address as `0x${string}`).catch(() => 0),
@@ -78,26 +49,12 @@ function DashboardPage() {
       const tipsData = tipsReceived.data || [];
       const totalAmount = tipsData.reduce((sum: number, t: any) => sum + Number(t.amount), 0);
 
-      // Hitung data mingguan untuk Line Chart
-      const weeklyData: Record<string, number> = {};
-      tipsData.forEach((tip: any) => {
-        const date = new Date(tip.created_at);
-        const weekKey = `${date.getFullYear()}-W${Math.ceil((date.getDate() + (date.getDay() || 7) - 1) / 7)}`;
-        weeklyData[weekKey] = (weeklyData[weekKey] || 0) + Number(tip.amount);
-      });
-
-      const sortedWeeks = Object.keys(weeklyData).sort();
-      const weeklyTips = sortedWeeks.map((w) => weeklyData[w]);
-      const weeklyLabels = sortedWeeks.map((w) => `Week ${w.split('-W')[1]}`);
-
       setStats({
         totalTipsReceived: totalAmount,
         totalYaps: yaps.count || 0,
         totalFollowers: followers.count || 0,
         walletBalance: balance,
-        tipsReceivedList: tipsData.slice(0, 10),
-        weeklyTips,
-        weeklyLabels: weeklyLabels.length > 0 ? weeklyLabels : ['No data yet'],
+        tipsReceivedList: tipsData,
       });
     } catch (err) {
       console.error("Dashboard error:", err);
@@ -130,99 +87,6 @@ function DashboardPage() {
     } finally {
       setWithdrawing(false);
     }
-  };
-
-  // Data untuk Line Chart
-  const lineChartData: ChartData<'line'> = {
-    labels: stats.weeklyLabels,
-    datasets: [
-      {
-        label: 'Tips Received (QIE)',
-        data: stats.weeklyTips,
-        borderColor: 'rgb(236, 72, 153)',
-        backgroundColor: 'rgba(236, 72, 153, 0.2)',
-        tension: 0.4,
-        fill: true,
-        pointBackgroundColor: 'rgb(236, 72, 153)',
-        pointBorderColor: '#fff',
-        pointBorderWidth: 2,
-      },
-    ],
-  };
-
-  const lineChartOptions: ChartOptions<'line'> = {
-    responsive: true,
-    plugins: {
-      legend: {
-        position: 'top' as const,
-        labels: {
-          color: 'rgb(156, 163, 175)',
-          font: { size: 11 },
-        },
-      },
-      title: {
-        display: true,
-        text: 'Weekly Tips Trend',
-        color: 'rgb(229, 231, 235)',
-        font: { size: 14, weight: 'bold' },
-      },
-    },
-    scales: {
-      y: {
-        ticks: { color: 'rgb(156, 163, 175)' },
-        grid: { color: 'rgba(156, 163, 175, 0.1)' },
-      },
-      x: {
-        ticks: { color: 'rgb(156, 163, 175)' },
-        grid: { color: 'rgba(156, 163, 175, 0.1)' },
-      },
-    },
-  };
-
-  // Data untuk Pie / Donut Chart
-  const pieChartData: ChartData<'pie'> = {
-    labels: ['Tips Received', 'Super Yaps', 'Boosts'],
-    datasets: [
-      {
-        label: 'Earnings Distribution',
-        data: [
-          stats.totalTipsReceived || 0,
-          stats.totalYaps > 0 ? 5 : 0,
-          stats.totalYaps > 0 ? 3 : 0,
-        ],
-        backgroundColor: [
-          'rgba(236, 72, 153, 0.8)',
-          'rgba(234, 179, 8, 0.8)',
-          'rgba(59, 130, 246, 0.8)',
-        ],
-        borderColor: [
-          'rgb(236, 72, 153)',
-          'rgb(234, 179, 8)',
-          'rgb(59, 130, 246)',
-        ],
-        borderWidth: 2,
-      },
-    ],
-  };
-
-  const pieChartOptions: ChartOptions<'pie'> = {
-    responsive: true,
-    plugins: {
-      legend: {
-        position: 'right' as const,
-        labels: {
-          color: 'rgb(156, 163, 175)',
-          font: { size: 11 },
-          usePointStyle: true,
-        },
-      },
-      title: {
-        display: true,
-        text: 'Earnings Distribution',
-        color: 'rgb(229, 231, 235)',
-        font: { size: 14, weight: 'bold' },
-      },
-    },
   };
 
   if (!user) {
@@ -288,13 +152,29 @@ function DashboardPage() {
               />
             </div>
 
-            {/* Chart Section */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-              <div className="rounded-xl border border-border bg-card/50 p-4">
-                <Line data={lineChartData} options={lineChartOptions} />
+            {/* Activity Summary */}
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              <div className="rounded-xl border border-border bg-card/50 p-4 flex items-center gap-4">
+                <div className="rounded-full bg-brand/20 p-3">
+                  <Activity className="size-6 text-brand" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Total Activity</p>
+                  <p className="text-xl font-bold">{stats.tipsReceivedList.length + stats.totalYaps}</p>
+                </div>
               </div>
-              <div className="rounded-xl border border-border bg-card/50 p-4">
-                <Pie data={pieChartData} options={pieChartOptions} />
+              <div className="rounded-xl border border-border bg-card/50 p-4 flex items-center gap-4">
+                <div className="rounded-full bg-gold/20 p-3">
+                  <Calendar className="size-6 text-gold" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Latest Activity</p>
+                  <p className="text-xl font-bold">
+                    {stats.tipsReceivedList.length > 0 
+                      ? new Date(stats.tipsReceivedList[0].created_at).toLocaleDateString()
+                      : "No data"}
+                  </p>
+                </div>
               </div>
             </div>
 
