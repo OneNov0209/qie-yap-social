@@ -57,9 +57,10 @@ export function Composer({ onPosted, replyToId, onCancelReply }: ComposerProps) 
           isSuperYap: superYap,
           isBoosted: boostHours > 0,
           boostHours,
-          txHash, // ✅ Pastikan txHash dikirim
+          txHash,
           contentHash: cHash,
           replyToId,
+          onChain: onChain, // ✅ Kunci utama perbaikan!
         },
         user.id
       );
