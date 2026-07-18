@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Header } from "@/components/header";
 import { supabase } from "@/integrations/supabase/client";
 import { shortAddr } from "@/lib/posts";
-import { ArrowLeft, Coins, Sparkles, Zap, ExternalLink, Filter } from "lucide-react";
+import { ArrowLeft, Coins, Sparkles, Zap, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/explorer")({
@@ -34,26 +34,26 @@ function ExplorerPage() {
   const loadExplorer = async () => {
     setLoading(true);
     try {
-      // Ambil semua tips
-      const { data: tips, error: tipsError } = await supabase
+      // 1. Ambil semua tips (tanpa filter)
+      const { data: tips } = await supabase
         .from("tips")
         .select("id, amount, from_user_id, to_user_id, tx_hash, created_at")
         .order("created_at", { ascending: false })
         .limit(50);
 
-      // Ambil semua super yap (tx_hash tidak null)
-      const { data: superYaps, error: superError } = await supabase
+      // 2. Ambil semua Super Yap (tanpa filter author_id)
+      const { data: superYaps } = await supabase
         .from("posts")
-        .select("id, author_id, tx_hash, created_at")
+        .select("id, author_id, tx_hash, created_at, content")
         .eq("is_super_yap", true)
         .not("tx_hash", "is", null)
         .order("created_at", { ascending: false })
         .limit(50);
 
-      // Ambil semua boost (tx_hash tidak null)
-      const { data: boosts, error: boostError } = await supabase
+      // 3. Ambil semua Boost (tanpa filter author_id)
+      const { data: boosts } = await supabase
         .from("posts")
-        .select("id, author_id, tx_hash, created_at")
+        .select("id, author_id, tx_hash, created_at, content")
         .eq("is_boosted", true)
         .not("tx_hash", "is", null)
         .order("created_at", { ascending: false })
