@@ -127,6 +127,15 @@ export function PostCard({ post }: { post: FeedPost }) {
     }
   };
 
+  const handleCopyLink = () => {
+    const url = window.location.origin + `/yap/${post.id}`;
+    navigator.clipboard.writeText(url).then(() => {
+      toast.success("Link copied to clipboard!");
+    }).catch(() => {
+      toast.error("Failed to copy link");
+    });
+  };
+
   return (
     <article
       className={cn(
@@ -141,8 +150,6 @@ export function PostCard({ post }: { post: FeedPost }) {
           Super Yap
         </span>
       )}
-      
-      {/* --- BADGE ON-CHAIN BARU --- */}
       {post.txHash && (
         <span className="absolute -top-3 left-5 inline-flex items-center gap-1 rounded-full bg-brand/20 px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider text-brand shadow-sm border border-brand/30">
           <LinkIcon className="size-3" />
@@ -188,10 +195,13 @@ export function PostCard({ post }: { post: FeedPost }) {
           </Link>
 
           <div className="mt-4 flex flex-wrap items-center gap-4 text-muted-foreground">
+            {/* Tombol Reply */}
             <button className="group flex items-center gap-1.5 text-xs transition-colors hover:text-brand">
               <MessageCircle className="size-4" />
               <span className="font-medium">{compact(post.replies)}</span>
             </button>
+            
+            {/* Tombol Like */}
             <button
               onClick={onToggleLike}
               className={cn(
@@ -202,7 +212,16 @@ export function PostCard({ post }: { post: FeedPost }) {
               <Heart className={cn("size-4 transition-transform group-active:scale-90", liked && "fill-current")} />
               <span className="font-medium">{compact(likes)}</span>
             </button>
+
+            {/* TOMBOL COPY LINK BARU */}
+            <button
+              onClick={handleCopyLink}
+              className="group flex items-center gap-1.5 text-xs transition-colors hover:text-brand"
+            >
+              <LinkIcon className="size-4" />
+            </button>
             
+            {/* Tombol Tip */}
             <button
               onClick={handleTip}
               disabled={isProcessing}
@@ -211,6 +230,7 @@ export function PostCard({ post }: { post: FeedPost }) {
               💎 {post.tipTotal > 0 ? `${post.tipTotal} QIE` : "Tip"}
             </button>
 
+            {/* Tombol Super Yap (Hanya untuk pemilik) */}
             {user?.address === post.author.address && (
               <button
                 onClick={handleSuperYap}
@@ -222,6 +242,7 @@ export function PostCard({ post }: { post: FeedPost }) {
               </button>
             )}
 
+            {/* Tombol Boost */}
             <button
               onClick={handleBoost}
               disabled={isProcessing}
