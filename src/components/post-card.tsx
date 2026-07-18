@@ -125,7 +125,7 @@ export function PostCard({ post }: { post: FeedPost }) {
       const hash = await boostPost(
         walletClient,
         contractAddress,
-        BigInt(post.id),
+        BigInt(post.id || "0"), // ✅ Fix crash jika post.id undefined
         BigInt(hours)
       );
       
