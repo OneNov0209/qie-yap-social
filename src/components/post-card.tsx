@@ -17,11 +17,11 @@ function compact(n: number) {
 }
 
 export function PostCard({ post }: { post: FeedPost }) {
-  const [liked, setLiked] = useState(post.liked);
-  const [likes, setLikes] = useState(post.likes);
-  const [reposted, setReposted] = useState(post.reposted);
-  const [reposts, setReposts] = useState(post.reposts);
-  const [bookmarked, setBookmarked] = useState(post.bookmarked);
+  const [liked, setLiked] = useState(post?.liked || false);
+  const [likes, setLikes] = useState(post?.likes || 0);
+  const [reposted, setReposted] = useState(post?.reposted || false);
+  const [reposts, setReposts] = useState(post?.reposts || 0);
+  const [bookmarked, setBookmarked] = useState(post?.bookmarked || false);
   const [isProcessing, setIsProcessing] = useState(false);
   const { user } = useAuth();
 
@@ -165,8 +165,14 @@ export function PostCard({ post }: { post: FeedPost }) {
     });
   };
 
-  // ✅ GUARD: Jika post.id tidak ada, jangan render link
-  const safePostId = post?.id || "";
+  // ✅ JIKA POST TIDAK ADA, JANGAN RENDER APA PUN
+  if (!post || !post.id) {
+    return (
+      <div className="yap-card p-5 border border-dashed border-border/50 bg-card/50 text-center text-muted-foreground">
+        <p className="text-sm">Post data unavailable</p>
+      </div>
+    );
+  }
 
   return (
     <article
@@ -197,47 +203,40 @@ export function PostCard({ post }: { post: FeedPost }) {
       )}
 
       <div className="flex gap-4">
-        <Link to="/profile/$address" params={{ address: post.author.address }}>
-          <Avatar seed={post.author.avatarSeed} size={48} />
+        <Link to="/profile/$address" params={{ address: post.author?.address || "" }}>
+          <Avatar seed={post.author?.avatarSeed || "default"} size={48} />
         </Link>
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
             <Link
               to="/profile/$address"
-              params={{ address: post.author.address }}
+              params={{ address: post.author?.address || "" }}
               className="font-semibold text-foreground hover:underline underline-offset-2"
             >
-              {post.author.displayName}
+              {post.author?.displayName || "Unknown"}
             </Link>
-            <StakingBadgeChip badge={post.author.badge} />
-            {post.author.isValidator && <BadgeCheck className="size-4 text-brand" />}
+            <StakingBadgeChip badge={post.author?.badge || "shrimp"} />
+            {post.author?.isValidator && <BadgeCheck className="size-4 text-brand" />}
             <span className="font-mono text-[11px] text-muted-foreground">
-              {shortAddr(post.author.address)}
+              {shortAddr(post.author?.address || "")}
             </span>
             <span className="text-xs text-muted-foreground">· {relativeTime(post.createdAt)}</span>
           </div>
 
-          {/* ✅ FIX: Gunakan safePostId agar tidak crash */}
-          {safePostId ? (
-            <Link
-              to="/yap/$id"
-              params={{ id: safePostId }}
-              className="mt-2 block text-[15px] leading-relaxed text-foreground/90 whitespace-pre-wrap"
-            >
-              {post.content}
-            </Link>
-          ) : (
-            <div className="mt-2 block text-[15px] leading-relaxed text-foreground/90 whitespace-pre-wrap">
-              {post.content}
-            </div>
-          )}
+          <Link
+            to="/yap/$id"
+            params={{ id: post.id }}
+            className="mt-2 block text-[15px] leading-relaxed text-foreground/90 whitespace-pre-wrap"
+          >
+            {post.content}
+          </Link>
 
           <div className="mt-4 flex flex-wrap items-center gap-4 text-muted-foreground">
             {/* Reply */}
-            <Link to="/yap/$id" params={{ id: safePostId || "#" }} className="group flex items-center gap-1.5 text-xs transition-colors hover:text-brand">
+            <Link to="/yap/$id" params={{ id: post.id }} className="group flex items-center gap-1.5 text-xs transition-colors hover:text-brand">
               <MessageCircle className="size-4" />
-              <span className="font-medium">{compact(post.replies)}</span>
+              <span className="font-medium">{compact(post.replies || 0)}</span>
             </Link>
             
             {/* Repost */}
@@ -249,7 +248,7 @@ export function PostCard({ post }: { post: FeedPost }) {
               )}
             >
               <Repeat className={cn("size-4 transition-transform group-active:scale-90", reposted && "fill-current")} />
-              <span className="font-medium">{compact(reposts)}</span>
+              <span className="font-medium">{compact(reposts || 0)}</span>
             </button>
 
             {/* Like */}
@@ -261,7 +260,7 @@ export function PostCard({ post }: { post: FeedPost }) {
               )}
             >
               <Heart className={cn("size-4 transition-transform group-active:scale-90", liked && "fill-current")} />
-              <span className="font-medium">{compact(likes)}</span>
+              <span className="font-medium">{compact(likes || 0)}</span>
             </button>
 
             {/* Bookmark */}
@@ -294,7 +293,7 @@ export function PostCard({ post }: { post: FeedPost }) {
               💎 {post.tipTotal > 0 ? `${post.tipTotal} QIE` : "Tip"}
             </button>
 
-            {user?.address === post.author.address && (
+            {user?.address === post.author?.address && (
               <button
                 onClick={handleSuperYap}
                 disabled={isProcessing}
