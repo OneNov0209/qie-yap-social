@@ -23,7 +23,6 @@ interface AuthState {
   disconnect: () => Promise<void>;
   refreshBalance: () => Promise<void>;
   refreshProfile: () => Promise<void>;
-  // Tambahan: update local user tanpa reload database
   updateLocalProfile: (updates: Partial<Pick<User, 'displayName' | 'bio' | 'avatarSeed'>>) => void;
 }
 
@@ -154,17 +153,30 @@ export const useAuth = create<AuthState>((set, get) => ({
     }
   },
 
-  // --- FUNGSI BARU: Update state lokal tanpa reload database ---
+  // --- FUNGSI BARU: Update state lokal & simpan ke localStorage ---
   updateLocalProfile: (updates) => {
     const { user } = get();
     if (!user) return;
-    set({
-      user: {
-        ...user,
-        displayName: updates.displayName !== undefined ? updates.displayName : user.displayName,
-        bio: updates.bio !== undefined ? updates.bio : user.bio,
-        avatarSeed: updates.avatarSeed !== undefined ? updates.avatarSeed : user.avatarSeed,
+
+    const updatedUser = {
+      ...user,
+      displayName: updates.displayName !== undefined ? updates.displayName : user.displayName,
+      bio: updates.bio !== undefined ? updates.bio : user.bio,
+      avatarSeed: updates.avatarSeed !== undefined ? updates.avatarSeed : user.avatarSeed,
+    };
+
+    set({ user: updatedUser });
+
+    // Paksa simpan ke localStorage agar tidak hilang saat refresh
+    try {
+      const currentStorage = localStorage.getItem('qie-auth-storage');
+      if (currentStorage) {
+        const parsed = JSON.parse(currentStorage);
+        parsed.state.user = updatedUser;
+        localStorage.setItem('qie-auth-storage', JSON.stringify(parsed));
       }
-    });
+    } catch (e) {
+      console.warn('Gagal menyimpan ke localStorage:', e);
+    }
   },
 }));
