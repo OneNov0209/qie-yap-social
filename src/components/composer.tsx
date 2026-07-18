@@ -51,16 +51,17 @@ export function Composer({ onPosted, replyToId, onCancelReply }: ComposerProps) 
         cHash = hashContent(text.trim());
       }
       
+      // ✅ PERBAIKAN TERAKHIR: Kirim txHash dan onChain dengan benar
       await createPost(
         {
           content: text.trim(),
           isSuperYap: superYap,
           isBoosted: boostHours > 0,
           boostHours,
-          txHash,
+          txHash: txHash, // Pastikan ini terkirim
           contentHash: cHash,
-          replyToId,
-          onChain: onChain, // ✅ Kunci utama perbaikan!
+          replyToId: replyToId,
+          onChain: onChain, // Pastikan ini true jika ON-CHAIN ON
         },
         user.id
       );
