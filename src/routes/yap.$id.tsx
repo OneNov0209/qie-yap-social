@@ -1,146 +1,146 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { BadgeCheck } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { Header } from "@/components/header";
 import { PostCard } from "@/components/post-card";
-import { Avatar } from "@/components/avatar-img";
-import { Button } from "@/components/ui/button";
-import { StakingBadgeChip } from "@/components/staking-badge";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchFeed, type FeedPost } from "@/lib/posts";
 import { useAuth } from "@/lib/auth-store";
-import { relativeTime, shortAddr, type FeedPost, type FeedProfile } from "@/lib/posts";
-import { badgeFor } from "@/lib/qie-chain";
-import { toast } from "sonner";
 
 export const Route = createFileRoute("/yap/$id")({
-  head: () => ({ meta: [{ title: "Yap — QIE Yap" }] }),
-  errorComponent: () => <div className="p-8 text-center text-muted-foreground">Failed to load yap.</div>,
-  notFoundComponent: () => (
-    <div className="min-h-screen bg-background">
-      <Header />
-      <div className="mx-auto max-w-2xl px-4 py-20 text-center">
-        <h1 className="font-display text-2xl font-bold">Yap not found</h1>
-        <Link to="/" className="mt-6 inline-block text-brand hover:underline">← Back to feed</Link>
-      </div>
-    </div>
-  ),
-  component: YapDetail,
+  head: ({ params }) => ({
+    meta: [
+      { title: `Yap ${params.id.slice(0, 8)} — QIE Yap` },
+      { name: "description", content: "View a single Yap on QIE Yap." },
+    ],
+  }),
+  component: YapDetailPage,
 });
 
-interface ReplyRow {
-  id: string;
-  content: string;
-  created_at: string;
-  author: { id: string; address: string; display_name: string; avatar_seed: string; username: string; is_validator: boolean; bio: string };
-}
-
-function YapDetail() {
+function YapDetailPage() {
   const { id } = Route.useParams();
   const { user } = useAuth();
   const [post, setPost] = useState<FeedPost | null>(null);
-  const [replies, setReplies] = useState<ReplyRow[]>([]);
-  const [replyText, setReplyText] = useState("");
-  const [missing, setMissing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
-  const load = async () => {
-    const { data } = await supabase
-      .from("posts")
-      .select("id, content, is_super_yap, is_boosted, created_at, author:profiles!posts_author_id_fkey(*)")
-      .eq("id", id).maybeSingle();
-    if (!data || !data.author) { setMissing(true); return; }
-    const a = data.author as unknown as ReplyRow["author"] & { is_validator: boolean };
-    const author: FeedProfile = {
-      id: a.id, address: a.address, username: a.username, displayName: a.display_name,
-      bio: a.bio ?? "", avatarSeed: a.avatar_seed ?? a.address, isValidator: !!a.is_validator, badge: badgeFor(0),
+  useEffect(() => {
+    const loadPost = async () => {
+      setLoading(true);
+      setError(false);
+      try {
+        // Ambil semua post dari feed, lalu filter berdasarkan ID
+        const allPosts = await fetchFeed("latest", user?.id || null);
+        const found = allPosts.find((p) => p.id === id);
+        
+        if (found) {
+          setPost(found);
+        } else {
+          // Jika tidak ditemukan di feed, coba ambil langsung dari DB
+          const { data, error } = await supabase
+            .from("posts")
+            .select(`
+              id,
+              content,
+              is_super_yap,
+              is_boosted,
+              boost_expires_at,
+              created_at,
+              tx_hash,
+              on_chain,
+              author_id
+            `)
+            .eq("id", id)
+            .single();
+
+          if (error || !data) {
+            setError(true);
+          } else {
+            // Kita butuh data author
+            const { data: authorData } = await supabase
+              .from("profiles")
+              .select("id, address, display_name, avatar_seed, is_validator")
+              .eq("id", data.author_id)
+              .single();
+
+            const author = authorData || {
+              id: data.author_id,
+              address: data.author_id,
+              displayName: "Anonymous",
+              avatarSeed: data.author_id,
+              isValidator: false,
+            };
+
+            setPost({
+              id: data.id,
+              content: data.content,
+              isSuperYap: data.is_super_yap,
+              isBoosted: data.is_boosted && data.boost_expires_at > new Date().toISOString(),
+              createdAt: data.created_at,
+              txHash: data.tx_hash,
+              onChain: data.on_chain,
+              tipTotal: 0,
+              likes: 0,
+              liked: false,
+              replies: 0,
+              author: {
+                address: author.address || "unknown",
+                displayName: author.display_name || "Anonymous",
+                avatarSeed: author.avatar_seed || "0x0",
+                badge: "shrimp",
+                isValidator: author.is_validator || false,
+              },
+            });
+          }
+        }
+      } catch (err) {
+        console.error(err);
+        setError(true);
+      } finally {
+        setLoading(false);
+      }
     };
-    const [likes, replyRows, viewerLike] = await Promise.all([
-      supabase.from("likes").select("user_id", { count: "exact", head: true }).eq("post_id", id),
-      supabase.from("posts").select("id, content, created_at, author:profiles!posts_author_id_fkey(*)").eq("reply_to", id).order("created_at", { ascending: false }),
-      user ? supabase.from("likes").select("post_id").eq("post_id", id).eq("user_id", user.id).maybeSingle() : Promise.resolve({ data: null }),
-    ]);
-    setPost({
-      id: data.id as string, author, content: data.content as string, createdAt: data.created_at as string,
-      isSuperYap: !!data.is_super_yap, isBoosted: !!data.is_boosted,
-      likes: likes.count ?? 0, replies: (replyRows.data ?? []).length, liked: !!viewerLike.data,
-      tipTotal: 0, tips: 0, txHash: null, onChain: false,
-    });
-    setReplies((replyRows.data ?? []) as unknown as ReplyRow[]);
-  };
 
-  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [id, user?.id]);
-
-  const submitReply = async () => {
-    if (!user) return toast("Connect your wallet to reply");
-    if (!replyText.trim()) return;
-    const { error } = await supabase.from("posts").insert({
-      author_id: user.id, content: replyText.trim(), reply_to: id,
-    });
-    if (error) return toast.error(error.message);
-    setReplyText("");
-    toast.success("Reply posted");
-    load();
-  };
-
-  if (missing) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Header />
-        <div className="mx-auto max-w-2xl px-4 py-20 text-center">
-          <h1 className="font-display text-2xl font-bold">Yap not found</h1>
-          <Link to="/" className="mt-6 inline-block text-brand hover:underline">← Back to feed</Link>
-        </div>
-      </div>
-    );
-  }
+    loadPost();
+  }, [id, user]);
 
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-12">
       <Header />
-      <main className="mx-auto max-w-2xl px-4 py-6">
-        <Link to="/" className="mb-4 inline-block text-sm text-muted-foreground hover:text-foreground">← Back to feed</Link>
-        {post && <PostCard post={post} />}
+      <div className="mx-auto max-w-2xl px-4 py-6">
+        <Link 
+          to="/" 
+          className="mb-4 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="size-4" />
+          Back to feed
+        </Link>
 
-        <div className="mt-6 yap-card p-4">
-          <textarea
-            value={replyText}
-            onChange={(e) => setReplyText(e.target.value.slice(0, 280))}
-            placeholder={user ? "Yap your reply…" : "Connect your wallet to reply"}
-            disabled={!user}
-            rows={2}
-            className="w-full resize-none border-none bg-transparent text-base outline-none placeholder:text-muted-foreground"
-          />
-          <div className="flex justify-end">
-            <Button onClick={submitReply} disabled={!user || !replyText.trim()}
-              className="rounded-full bg-brand text-primary-foreground hover:bg-brand/90 disabled:opacity-40">
-              Reply
-            </Button>
-          </div>
-        </div>
-
-        <h3 className="mt-8 mb-3 px-1 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-          {replies.length} {replies.length === 1 ? "reply" : "replies"}
-        </h3>
-
-        <div className="space-y-3">
-          {replies.map((r) => (
-            <div key={r.id} className="yap-card p-4">
-              <div className="flex gap-3">
-                <Avatar seed={r.author.avatar_seed ?? r.author.address} size={40} />
-                <div className="flex-1">
-                  <div className="flex flex-wrap items-center gap-1.5 text-sm">
-                    <span className="font-semibold">{r.author.display_name}</span>
-                    <StakingBadgeChip badge="shrimp" />
-                    {r.author.is_validator && <BadgeCheck className="size-3.5 text-brand" />}
-                    <span className="font-mono text-[11px] text-muted-foreground">{shortAddr(r.author.address)}</span>
-                    <span className="text-xs text-muted-foreground">· {relativeTime(r.created_at)}</span>
-                  </div>
-                  <p className="mt-1 text-[15px] text-foreground/90 whitespace-pre-wrap">{r.content}</p>
+        {loading ? (
+          <div className="yap-card p-5 animate-pulse border border-border/50 bg-card/50">
+            <div className="flex gap-4">
+              <div className="size-12 rounded-full bg-muted" />
+              <div className="flex-1 space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="h-4 w-32 rounded bg-muted" />
+                  <div className="h-3 w-16 rounded bg-muted" />
                 </div>
+                <div className="h-4 w-full rounded bg-muted" />
+                <div className="h-4 w-3/4 rounded bg-muted" />
               </div>
             </div>
-          ))}
-        </div>
-      </main>
+          </div>
+        ) : error || !post ? (
+          <div className="rounded-2xl border border-dashed border-border bg-card p-12 text-center">
+            <h2 className="font-display text-xl font-bold">Yap not found</h2>
+            <p className="mt-2 text-muted-foreground">
+              The Yap you're looking for doesn't exist or has been deleted.
+            </p>
+          </div>
+        ) : (
+          <PostCard post={post} />
+        )}
+      </div>
     </div>
   );
 }
