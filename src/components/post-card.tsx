@@ -1,13 +1,13 @@
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { Heart, MessageCircle, Pin, Sparkles, BadgeCheck, Flame, Zap } from "lucide-react";
+import { Heart, MessageCircle, Pin, Sparkles, BadgeCheck, Flame, Zap, Link as LinkIcon } from "lucide-react";
 import { StakingBadgeChip } from "./staking-badge";
 import { Avatar } from "./avatar-img";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth-store";
 import { toggleLike, type FeedPost, relativeTime, shortAddr } from "@/lib/posts";
-import { createWalletClient, custom, parseEther } from "viem";
+import { createWalletClient, custom } from "viem";
 import { QIE_CHAIN, sendTip, boostPost, createSuperYap } from "@/lib/qie-chain";
 
 function compact(n: number) {
@@ -141,6 +141,15 @@ export function PostCard({ post }: { post: FeedPost }) {
           Super Yap
         </span>
       )}
+      
+      {/* --- BADGE ON-CHAIN BARU --- */}
+      {post.txHash && (
+        <span className="absolute -top-3 left-5 inline-flex items-center gap-1 rounded-full bg-brand/20 px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider text-brand shadow-sm border border-brand/30">
+          <LinkIcon className="size-3" />
+          On-Chain
+        </span>
+      )}
+
       {post.isBoosted && (
         <div className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-brand">
           <Pin className="size-3" />
