@@ -125,8 +125,8 @@ export function PostCard({ post }: { post: FeedPost }) {
       const hash = await boostPost(
         walletClient,
         contractAddress,
-        BigInt(parseInt(post.id.toString())),
-        BigInt(parseInt(hours))
+        BigInt(post.id),
+        BigInt(hours)
       );
       
       toast.success(`Post boosted for ${hours}h! Tx: ${hash.slice(0, 10)}...`);
