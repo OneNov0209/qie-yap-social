@@ -122,10 +122,13 @@ export function PostCard({ post }: { post: FeedPost }) {
         return;
       }
       
+      // ✅ FINAL FIX: Pastikan ID selalu string sebelum diubah ke BigInt
+      const safeId = typeof post.id === 'string' ? post.id : String(post.id || "0");
+      
       const hash = await boostPost(
         walletClient,
         contractAddress,
-        BigInt(post.id || "0"), // ✅ Fix crash jika post.id undefined
+        BigInt(safeId), // Sekarang aman 100%
         BigInt(hours)
       );
       
