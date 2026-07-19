@@ -9,6 +9,9 @@ import { ArrowLeft, Coins, TrendingUp, Users, Wallet, History, Percent } from "l
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
+// ✅ ALAMAT DEVELOPER (Wallet kamu)
+const DEV_WALLET = "0x109b18b9cb9ec1c9ced114a13ffa86f8c13cfa7a";
+
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
     meta: [
@@ -27,10 +30,13 @@ function DashboardPage() {
     totalYaps: 0,
     totalFollowers: 0,
     walletBalance: 0,
-    platformFeeEarned: 0, // ✅ Tambahan baru
+    platformFeeEarned: 0,
     tipsReceivedList: [] as any[],
   });
   const [withdrawing, setWithdrawing] = useState(false);
+
+  // ✅ Cek apakah user yang login adalah Developer
+  const isDev = user?.address?.toLowerCase() === DEV_WALLET.toLowerCase();
 
   useEffect(() => {
     if (!user) return;
@@ -40,7 +46,6 @@ function DashboardPage() {
   const loadDashboard = async () => {
     setLoading(true);
     try {
-      // Ambil semua tips yang dikirim ke user ini
       const { data: tipsReceived } = await supabase
         .from("tips")
         .select("amount, from_user_id, created_at, tx_hash")
@@ -51,8 +56,8 @@ function DashboardPage() {
       const tipsData = tipsReceived || [];
       const totalAmount = tipsData.reduce((sum: number, t: any) => sum + Number(t.amount), 0);
 
-      // ✅ Hitung fee 2% dari total tips yang diterima
-      const feeEarned = totalAmount * 0.02;
+      // ✅ Hanya Dev yang bisa melihat fee
+      const feeEarned = isDev ? totalAmount * 0.02 : 0;
 
       const [yaps, followers, balance] = await Promise.all([
         supabase.from("posts").select("id", { count: "exact", head: true }).eq("author_id", user.id),
@@ -144,11 +149,14 @@ function DashboardPage() {
                 label="Tips Received"
                 value={`${stats.totalTipsReceived.toFixed(4)} QIE`}
               />
-              <StatCard 
-                icon={<Percent className="size-6 text-gold" />}
-                label="Platform Fee Earned (2%)"
-                value={`${stats.platformFeeEarned.toFixed(4)} QIE`}
-              />
+              {/* ✅ Hanya Dev yang melihat Fee */}
+              {isDev && (
+                <StatCard 
+                  icon={<Percent className="size-6 text-gold" />}
+                  label="Platform Fee Earned (2%)"
+                  value={`${stats.platformFeeEarned.toFixed(4)} QIE`}
+                />
+              )}
             </div>
             <div className="grid grid-cols-2 gap-4 mb-6">
               <StatCard 
