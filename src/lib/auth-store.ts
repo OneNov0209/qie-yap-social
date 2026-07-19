@@ -26,30 +26,9 @@ export const useAuth = create<AuthState>((set, get) => ({
   connecting: false,
 
   init: async () => {
-    // Cek session aktif dari Supabase
     const { data } = await supabase.auth.getSession();
     if (data.session?.user) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', data.session.user.id)
-        .maybeSingle();
-
-      if (profile) {
-        const balance = await getQieBalance(profile.address as `0x${string}`).catch(() => 0);
-        set({
-          user: {
-            id: profile.id,
-            address: profile.address,
-            displayName: profile.display_name,
-            bio: profile.bio || '',
-            avatarSeed: profile.avatar_seed,
-            badge: 'shrimp',
-            isValidator: profile.is_validator,
-            balance,
-          },
-        });
-      }
+      await loadUserProfile(data.session.user.id);
     }
   },
 
@@ -58,55 +37,35 @@ export const useAuth = create<AuthState>((set, get) => ({
     set({ connecting: true });
 
     try {
-      // 1. Minta akun
       const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
       const address = (accounts as string[])[0];
       if (!address) throw new Error("No account");
 
-      // 2. Cek profil
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('address', address)
-        .maybeSingle();
+      // ✅ Login ke Supabase dengan wallet address
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: `${address}@qie.yap`,
+        password: address,
+      });
 
-      if (error) throw error;
+      if (error || !data.session?.user) {
+        // Jika belum ada, daftar otomatis via Supabase Auth
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+          email: `${address}@qie.yap`,
+          password: address,
+          options: {
+            data: { wallet_address: address },
+          },
+        });
 
-      let userProfile = profile;
-      if (!userProfile) {
-        // 3. Buat profil baru
-        const newProfile = {
-          address,
-          display_name: address.slice(0, 6) + '...',
-          username: address.slice(0, 6) + '...',
-          avatar_seed: address,
-          is_validator: false,
-        };
-
-        const { data: inserted } = await supabase
-          .from('profiles')
-          .insert(newProfile)
-          .select()
-          .single();
-
-        userProfile = inserted;
+        if (signUpError) throw signUpError;
+        if (signUpData.session?.user) {
+          await loadUserProfile(signUpData.session.user.id);
+        }
+      } else {
+        await loadUserProfile(data.session.user.id);
       }
 
-      const balance = await getQieBalance(address as `0x${string}`).catch(() => 0);
-
-      set({
-        user: {
-          id: userProfile.id,
-          address: userProfile.address,
-          displayName: userProfile.display_name,
-          bio: userProfile.bio || '',
-          avatarSeed: userProfile.avatar_seed,
-          badge: 'shrimp',
-          isValidator: userProfile.is_validator,
-          balance,
-        },
-        connecting: false,
-      });
+      set({ connecting: false });
     } catch (error) {
       console.error(error);
       set({ connecting: false });
@@ -119,3 +78,27 @@ export const useAuth = create<AuthState>((set, get) => ({
     set({ user: null });
   },
 }));
+
+// Fungsi helper untuk memuat profil
+async function loadUserProfile(userId: string) {
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (profile) {
+    const balance = await getQieBalance(profile.address as `0x${string}`).catch(() => 0);
+    const userState = {
+      id: profile.id,
+      address: profile.address,
+      displayName: profile.display_name,
+      bio: profile.bio || '',
+      avatarSeed: profile.avatar_seed,
+      badge: 'shrimp' as const,
+      isValidator: profile.is_validator || false,
+      balance,
+    };
+    useAuth.setState({ user: userState });
+  }
+}
