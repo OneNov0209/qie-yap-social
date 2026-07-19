@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Bell, Home, Trophy, User, Wallet, Search, Activity } from "lucide-react";
+import { Bell, Home, Trophy, User, Wallet, Search, Activity, PlusCircle } from "lucide-react";
 import { ConnectWalletButton } from "./connect-wallet-button";
 import { ThemeToggle } from "./theme-toggle";
 import { useAuth } from "@/lib/auth-store";
@@ -49,6 +49,7 @@ export function Header() {
     { to: "/dashboard", label: "Dashboard", icon: Wallet, active: path.startsWith("/dashboard") },
     { to: "/leaderboard", label: "Leaderboard", icon: Trophy, active: path.startsWith("/leaderboard") },
     { to: `/profile/${profilePath}`, label: "Profile", icon: User, active: path.startsWith("/profile") },
+    { to: "/add-qie-network", label: "Add Network", icon: PlusCircle }
   ];
 
   return (
