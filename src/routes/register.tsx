@@ -5,9 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { getQieBalance } from "@/lib/qie-chain";
 import { ArrowLeft, Wallet, Image, User, Lock } from "lucide-react";
-import bcrypt from "bcryptjs";
 
 export const Route = createFileRoute("/register")({
   head: () => ({
@@ -19,6 +17,15 @@ export const Route = createFileRoute("/register")({
   component: RegisterPage,
 });
 
+// ✅ Fungsi hash bawaan browser (SHA-256)
+async function hashPassword(password: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 function RegisterPage() {
   const navigate = useNavigate();
   const [walletAddress, setWalletAddress] = useState("");
@@ -29,7 +36,6 @@ function RegisterPage() {
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
-    // Cek wallet saat halaman dimuat
     checkWalletConnection();
   }, []);
 
@@ -90,9 +96,8 @@ function RegisterPage() {
         return;
       }
 
-      // 2. Hash password (enkripsi)
-      const salt = bcrypt.genSaltSync(10);
-      const hashedPassword = bcrypt.hashSync(password, salt);
+      // 2. Hash password menggunakan Web Crypto API (bawaan browser)
+      const hashedPassword = await hashPassword(password);
 
       // 3. Simpan data profil ke Supabase
       const { data: profile, error } = await supabase
@@ -110,10 +115,9 @@ function RegisterPage() {
 
       if (error) throw error;
 
-      // 4. Minta user approve wallet untuk on-chain verification (opsional)
-      toast.success("Profile created successfully! Please approve wallet to continue.");
+      toast.success("Profile created successfully!");
       
-      // 5. Redirect ke halaman login
+      // 4. Redirect ke halaman login
       setTimeout(() => {
         navigate({ to: "/login" });
       }, 1500);
