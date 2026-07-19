@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 import { supabase } from '@/integrations/supabase/client';
 import { getQieBalance } from '@/lib/qie-chain';
 
@@ -67,10 +66,12 @@ export const useAuth = create<AuthState>((set, get) => ({
     }
     set({ connecting: true });
     try {
+      // 1. Minta akses wallet
       const accounts = (await window.ethereum.request({ method: "eth_requestAccounts" })) as string[];
       const address = accounts[0];
       if (!address) throw new Error("No account returned by wallet");
 
+      // 2. Cek apakah user sudah ada di database
       const { data: profile, error } = await supabase
         .from('profiles')
         .select('*')
@@ -79,6 +80,7 @@ export const useAuth = create<AuthState>((set, get) => ({
 
       if (error) throw error;
 
+      // 3. Jika belum ada, buat profil baru
       let userProfile = profile;
       if (!userProfile) {
         const newProfile = {
@@ -99,21 +101,27 @@ export const useAuth = create<AuthState>((set, get) => ({
         userProfile = inserted;
       }
 
+      // 4. Ambil balance
       const balance = await getQieBalance(address as `0x${string}`).catch(() => 0);
-      set({
-        user: {
-          id: userProfile.id,
-          address: userProfile.address,
-          displayName: userProfile.display_name,
-          bio: userProfile.bio || '',
-          avatarSeed: userProfile.avatar_seed,
-          badge: 'shrimp',
-          isValidator: userProfile.is_validator,
-          balance,
-        },
-        hydrated: true,
-        connecting: false,
-      });
+
+      // 5. Pastikan user ter-set ke state dengan benar
+      const newUser = {
+        id: userProfile.id,
+        address: userProfile.address,
+        displayName: userProfile.display_name,
+        bio: userProfile.bio || '',
+        avatarSeed: userProfile.avatar_seed,
+        badge: 'shrimp',
+        isValidator: userProfile.is_validator,
+        balance,
+      };
+
+      set({ user: newUser, hydrated: true, connecting: false });
+
+      // 6. Paksa refresh UI agar tombol berubah
+      setTimeout(() => {
+        set({ hydrated: true });
+      }, 100);
     } catch (error) {
       console.error('Connect error:', error);
       set({ connecting: false });
@@ -153,7 +161,6 @@ export const useAuth = create<AuthState>((set, get) => ({
     }
   },
 
-  // --- FUNGSI BARU: Update state lokal & simpan ke localStorage ---
   updateLocalProfile: (updates) => {
     const { user } = get();
     if (!user) return;
@@ -167,7 +174,7 @@ export const useAuth = create<AuthState>((set, get) => ({
 
     set({ user: updatedUser });
 
-    // Paksa simpan ke localStorage agar tidak hilang saat refresh
+    // Paksa simpan ke localStorage
     try {
       const currentStorage = localStorage.getItem('qie-auth-storage');
       if (currentStorage) {
