@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-store";
 import { getQieBalance, QIE_YAP_ABI, getWalletClient } from "@/lib/qie-chain";
-import { ArrowLeft, Coins, TrendingUp, Users, Wallet, History, Activity, Calendar } from "lucide-react";
+import { ArrowLeft, Coins, TrendingUp, Users, Wallet, History, Percent } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -27,6 +27,7 @@ function DashboardPage() {
     totalYaps: 0,
     totalFollowers: 0,
     walletBalance: 0,
+    platformFeeEarned: 0, // ✅ Tambahan baru
     tipsReceivedList: [] as any[],
   });
   const [withdrawing, setWithdrawing] = useState(false);
@@ -39,22 +40,33 @@ function DashboardPage() {
   const loadDashboard = async () => {
     setLoading(true);
     try {
-      const [tipsReceived, yaps, followers, balance] = await Promise.all([
-        supabase.from("tips").select("amount, from_user_id, created_at, tx_hash").eq("to_user_id", user.id).order("created_at", { ascending: false }).limit(10),
+      // Ambil semua tips yang dikirim ke user ini
+      const { data: tipsReceived } = await supabase
+        .from("tips")
+        .select("amount, from_user_id, created_at, tx_hash")
+        .eq("to_user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      const tipsData = tipsReceived || [];
+      const totalAmount = tipsData.reduce((sum: number, t: any) => sum + Number(t.amount), 0);
+
+      // ✅ Hitung fee 2% dari total tips yang diterima
+      const feeEarned = totalAmount * 0.02;
+
+      const [yaps, followers, balance] = await Promise.all([
         supabase.from("posts").select("id", { count: "exact", head: true }).eq("author_id", user.id),
         supabase.from("follows").select("follower_id", { count: "exact", head: true }).eq("following_id", user.id),
         getQieBalance(user.address as `0x${string}`).catch(() => 0),
       ]);
-
-      const tipsData = tipsReceived.data || [];
-      const totalAmount = tipsData.reduce((sum: number, t: any) => sum + Number(t.amount), 0);
 
       setStats({
         totalTipsReceived: totalAmount,
         totalYaps: yaps.count || 0,
         totalFollowers: followers.count || 0,
         walletBalance: balance,
-        tipsReceivedList: tipsData,
+        platformFeeEarned: feeEarned,
+        tipsReceivedList: tipsData.slice(0, 10),
       });
     } catch (err) {
       console.error("Dashboard error:", err);
@@ -126,7 +138,6 @@ function DashboardPage() {
           </div>
         ) : (
           <>
-            {/* Statistik Cards */}
             <div className="grid grid-cols-2 gap-4 mb-6">
               <StatCard 
                 icon={<Coins className="size-6 text-brand" />}
@@ -134,16 +145,16 @@ function DashboardPage() {
                 value={`${stats.totalTipsReceived.toFixed(4)} QIE`}
               />
               <StatCard 
-                icon={<TrendingUp className="size-6 text-brand" />}
-                label="Total Yaps"
-                value={`${stats.totalYaps}`}
+                icon={<Percent className="size-6 text-gold" />}
+                label="Platform Fee Earned (2%)"
+                value={`${stats.platformFeeEarned.toFixed(4)} QIE`}
               />
             </div>
             <div className="grid grid-cols-2 gap-4 mb-6">
               <StatCard 
-                icon={<Users className="size-6 text-brand" />}
-                label="Followers"
-                value={`${stats.totalFollowers}`}
+                icon={<TrendingUp className="size-6 text-brand" />}
+                label="Total Yaps"
+                value={`${stats.totalYaps}`}
               />
               <StatCard 
                 icon={<Wallet className="size-6 text-brand" />}
@@ -152,33 +163,6 @@ function DashboardPage() {
               />
             </div>
 
-            {/* Activity Summary */}
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              <div className="rounded-xl border border-border bg-card/50 p-4 flex items-center gap-4">
-                <div className="rounded-full bg-brand/20 p-3">
-                  <Activity className="size-6 text-brand" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Activity</p>
-                  <p className="text-xl font-bold">{stats.tipsReceivedList.length + stats.totalYaps}</p>
-                </div>
-              </div>
-              <div className="rounded-xl border border-border bg-card/50 p-4 flex items-center gap-4">
-                <div className="rounded-full bg-gold/20 p-3">
-                  <Calendar className="size-6 text-gold" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Latest Activity</p>
-                  <p className="text-xl font-bold">
-                    {stats.tipsReceivedList.length > 0 
-                      ? new Date(stats.tipsReceivedList[0].created_at).toLocaleDateString()
-                      : "No data"}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Tombol Withdraw */}
             <div className="mb-6 rounded-xl border border-border bg-card/50 p-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -195,7 +179,6 @@ function DashboardPage() {
               </div>
             </div>
 
-            {/* Riwayat Transaksi */}
             <div className="rounded-xl border border-border bg-card/50 p-4">
               <div className="flex items-center gap-2 mb-4">
                 <History className="size-5 text-muted-foreground" />
