@@ -41,25 +41,22 @@ export const useAuth = create<AuthState>((set, get) => ({
       const address = (accounts as string[])[0];
       if (!address) throw new Error("No account");
 
-      // 🔥 SOLUSI: Coba login dulu, jika belum ada, daftar dengan metode fallback
-      try {
-        const { data: loginData } = await supabase.auth.signInWithPassword({
-          email: `${address}@qie.yap`,
-          password: address,
-        });
+      // 1. Coba login dengan password wallet
+      const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
+        email: `${address}@qie.yap`,
+        password: address,
+      });
 
-        if (loginData.session?.user) {
-          await loadUserProfile(loginData.session.user.id);
-          set({ connecting: false });
-          return;
-        }
-      } catch (loginError) {
-        console.log("Login failed, trying signup...");
+      // 2. Jika login berhasil, langsung ambil profil
+      if (loginData.session?.user) {
+        await loadUserProfile(loginData.session.user.id);
+        set({ connecting: false });
+        return;
       }
 
-      // Jika login gagal, coba signup
-      try {
-        const { data: signUpData } = await supabase.auth.signUp({
+      // 3. Jika login gagal (karena user belum ada), buat user baru
+      if (loginError && loginError.message.includes("Invalid login credentials")) {
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email: `${address}@qie.yap`,
           password: address,
           options: {
@@ -67,28 +64,25 @@ export const useAuth = create<AuthState>((set, get) => ({
           },
         });
 
+        // 4. Jika signUp berhasil, ambil profil
         if (signUpData.session?.user) {
           await loadUserProfile(signUpData.session.user.id);
-        }
-      } catch (signUpError: any) {
-        // Jika email signup dimatikan, gunakan metode anon session
-        if (signUpError.message.includes("Email signups are disabled")) {
-          console.warn("Email signup disabled. Creating anonymous session...");
-          const { data: anonData } = await supabase.auth.signInWithPassword({
+        } else if (signUpError) {
+          // Jika signUp error, coba metode fallback: login ulang
+          console.warn("SignUp failed, retrying login...", signUpError.message);
+          const { data: retryData } = await supabase.auth.signInWithPassword({
             email: `${address}@qie.yap`,
             password: address,
           });
-          if (anonData.session?.user) {
-            await loadUserProfile(anonData.session.user.id);
+          if (retryData.session?.user) {
+            await loadUserProfile(retryData.session.user.id);
           }
-        } else {
-          throw signUpError;
         }
       }
 
       set({ connecting: false });
     } catch (error) {
-      console.error(error);
+      console.error("Connect error:", error);
       set({ connecting: false });
       throw error;
     }
