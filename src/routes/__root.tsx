@@ -15,6 +15,10 @@ import { useAuth } from "@/lib/auth-store";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "sonner";
 
+// ✅ TAMBAHAN IMPORT UNTUK HALAMAN BARU
+import registerRoute from "./register";
+import loginRoute from "./login";
+
 function NotFoundComponent() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -124,6 +128,10 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
+        {/* ✅ TAMBAHAN ROUTE DI SINI */}
+        {registerRoute}
+        {loginRoute}
+        
         <Outlet />
         <Toaster
           position="bottom-right"
