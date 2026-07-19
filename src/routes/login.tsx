@@ -5,9 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { getQieBalance } from "@/lib/qie-chain";
 import { ArrowLeft, User, Lock, Wallet } from "lucide-react";
-import bcrypt from "bcryptjs";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -18,6 +16,15 @@ export const Route = createFileRoute("/login")({
   }),
   component: LoginPage,
 });
+
+// ✅ Fungsi hash bawaan browser (sama seperti di register)
+async function hashPassword(password: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -82,8 +89,10 @@ function LoginPage() {
         return;
       }
 
-      // 2. Verifikasi password (hash)
-      const isValid = bcrypt.compareSync(password, profiles.password_hash);
+      // 2. Hash password yang dimasukkan dan bandingkan dengan database
+      const hashedInput = await hashPassword(password);
+      const isValid = hashedInput === profiles.password_hash;
+
       if (!isValid) {
         toast.error("Incorrect password");
         setIsLoading(false);
