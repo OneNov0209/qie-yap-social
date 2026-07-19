@@ -9,8 +9,8 @@ import { ArrowLeft, Coins, TrendingUp, Users, Wallet, History, Percent } from "l
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
-// ✅ ALAMAT DEVELOPER (Wallet kamu)
-const DEV_WALLET = "0x109b18b9cb9ec1c9ced114a13ffa86f8c13cfa7a";
+// ✅ BACA ALAMAT DEVELOPER DARI .ENV
+const DEV_WALLET = import.meta.env.VITE_DEV_WALLET || "";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
@@ -35,7 +35,7 @@ function DashboardPage() {
   });
   const [withdrawing, setWithdrawing] = useState(false);
 
-  // ✅ Cek apakah user yang login adalah Developer
+  // ✅ Cek apakah user yang login adalah Developer (dari .env)
   const isDev = user?.address?.toLowerCase() === DEV_WALLET.toLowerCase();
 
   useEffect(() => {
@@ -149,7 +149,6 @@ function DashboardPage() {
                 label="Tips Received"
                 value={`${stats.totalTipsReceived.toFixed(4)} QIE`}
               />
-              {/* ✅ Hanya Dev yang melihat Fee */}
               {isDev && (
                 <StatCard 
                   icon={<Percent className="size-6 text-gold" />}
