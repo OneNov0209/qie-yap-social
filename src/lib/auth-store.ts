@@ -15,22 +15,18 @@ interface User {
 
 interface AuthState {
   user: User | null;
-  hydrated: boolean;
   connecting: boolean;
   init: () => Promise<void>;
   connect: () => Promise<void>;
   disconnect: () => Promise<void>;
-  refreshBalance: () => Promise<void>;
-  refreshProfile: () => Promise<void>;
-  updateLocalProfile: (updates: Partial<Pick<User, 'displayName' | 'bio' | 'avatarSeed'>>) => void;
 }
 
 export const useAuth = create<AuthState>((set, get) => ({
   user: null,
-  hydrated: false,
   connecting: false,
 
   init: async () => {
+    // Cek session aktif dari Supabase
     const { data } = await supabase.auth.getSession();
     if (data.session?.user) {
       const { data: profile } = await supabase
@@ -52,26 +48,22 @@ export const useAuth = create<AuthState>((set, get) => ({
             isValidator: profile.is_validator,
             balance,
           },
-          hydrated: true,
         });
       }
-    } else {
-      set({ hydrated: true });
     }
   },
 
   connect: async () => {
-    if (typeof window === "undefined" || !window.ethereum) {
-      throw new Error("No EVM wallet detected. Install MetaMask or the QIE wallet extension.");
-    }
+    if (!window.ethereum) throw new Error("No wallet detected");
     set({ connecting: true });
-    try {
-      // 1. Minta akses wallet
-      const accounts = (await window.ethereum.request({ method: "eth_requestAccounts" })) as string[];
-      const address = accounts[0];
-      if (!address) throw new Error("No account returned by wallet");
 
-      // 2. Cek apakah user sudah ada di database
+    try {
+      // 1. Minta akun
+      const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+      const address = (accounts as string[])[0];
+      if (!address) throw new Error("No account");
+
+      // 2. Cek profil
       const { data: profile, error } = await supabase
         .from('profiles')
         .select('*')
@@ -80,50 +72,43 @@ export const useAuth = create<AuthState>((set, get) => ({
 
       if (error) throw error;
 
-      // 3. Jika belum ada, buat profil baru
       let userProfile = profile;
       if (!userProfile) {
+        // 3. Buat profil baru
         const newProfile = {
-          address: address,
-          display_name: address.slice(0, 6) + '...' + address.slice(-4),
-          username: address.slice(0, 6) + '...' + address.slice(-4),
+          address,
+          display_name: address.slice(0, 6) + '...',
+          username: address.slice(0, 6) + '...',
           avatar_seed: address,
           is_validator: false,
         };
 
-        const { data: inserted, error: insertError } = await supabase
+        const { data: inserted } = await supabase
           .from('profiles')
           .insert(newProfile)
           .select()
           .single();
 
-        if (insertError) throw insertError;
         userProfile = inserted;
       }
 
-      // 4. Ambil balance
       const balance = await getQieBalance(address as `0x${string}`).catch(() => 0);
 
-      // 5. Pastikan user ter-set ke state dengan benar
-      const newUser = {
-        id: userProfile.id,
-        address: userProfile.address,
-        displayName: userProfile.display_name,
-        bio: userProfile.bio || '',
-        avatarSeed: userProfile.avatar_seed,
-        badge: 'shrimp',
-        isValidator: userProfile.is_validator,
-        balance,
-      };
-
-      set({ user: newUser, hydrated: true, connecting: false });
-
-      // 6. Paksa refresh UI agar tombol berubah
-      setTimeout(() => {
-        set({ hydrated: true });
-      }, 100);
+      set({
+        user: {
+          id: userProfile.id,
+          address: userProfile.address,
+          displayName: userProfile.display_name,
+          bio: userProfile.bio || '',
+          avatarSeed: userProfile.avatar_seed,
+          badge: 'shrimp',
+          isValidator: userProfile.is_validator,
+          balance,
+        },
+        connecting: false,
+      });
     } catch (error) {
-      console.error('Connect error:', error);
+      console.error(error);
       set({ connecting: false });
       throw error;
     }
@@ -131,59 +116,6 @@ export const useAuth = create<AuthState>((set, get) => ({
 
   disconnect: async () => {
     await supabase.auth.signOut();
-    set({ user: null, hydrated: true });
-  },
-
-  refreshBalance: async () => {
-    const { user } = get();
-    if (!user) return;
-    const balance = await getQieBalance(user.address as `0x${string}`).catch(() => 0);
-    set({ user: { ...user, balance } });
-  },
-
-  refreshProfile: async () => {
-    const { user } = get();
-    if (!user) return;
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('display_name, bio, avatar_seed')
-      .eq('id', user.id)
-      .single();
-    if (profile) {
-      set({
-        user: {
-          ...user,
-          displayName: profile.display_name,
-          bio: profile.bio || '',
-          avatarSeed: profile.avatar_seed,
-        }
-      });
-    }
-  },
-
-  updateLocalProfile: (updates) => {
-    const { user } = get();
-    if (!user) return;
-
-    const updatedUser = {
-      ...user,
-      displayName: updates.displayName !== undefined ? updates.displayName : user.displayName,
-      bio: updates.bio !== undefined ? updates.bio : user.bio,
-      avatarSeed: updates.avatarSeed !== undefined ? updates.avatarSeed : user.avatarSeed,
-    };
-
-    set({ user: updatedUser });
-
-    // Paksa simpan ke localStorage
-    try {
-      const currentStorage = localStorage.getItem('qie-auth-storage');
-      if (currentStorage) {
-        const parsed = JSON.parse(currentStorage);
-        parsed.state.user = updatedUser;
-        localStorage.setItem('qie-auth-storage', JSON.stringify(parsed));
-      }
-    } catch (e) {
-      console.warn('Gagal menyimpan ke localStorage:', e);
-    }
+    set({ user: null });
   },
 }));
