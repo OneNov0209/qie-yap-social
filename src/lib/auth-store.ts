@@ -41,42 +41,64 @@ export const useAuth = create<AuthState>((set, get) => ({
       const address = (accounts as string[])[0];
       if (!address) throw new Error("No account");
 
-      // 1. Coba login dengan password wallet
-      const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
-        email: `${address}@qie.yap`,
-        password: address,
-      });
+      // 1. Cek apakah user sudah ada di tabel profiles
+      const { data: existing } = await supabase
+        .from('profiles')
+        .select('id, address')
+        .eq('address', address)
+        .maybeSingle();
 
-      // 2. Jika login berhasil, langsung ambil profil
-      if (loginData.session?.user) {
-        await loadUserProfile(loginData.session.user.id);
+      if (existing) {
+        // Jika sudah ada, langsung load profil
+        await loadUserProfile(existing.id);
         set({ connecting: false });
         return;
       }
 
-      // 3. Jika login gagal (karena user belum ada), buat user baru
-      if (loginError && loginError.message.includes("Invalid login credentials")) {
-        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+      // 2. Jika belum ada, buat user baru di Supabase Auth
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email: `${address}@qie.yap`,
+        password: address,
+        options: {
+          data: { wallet_address: address },
+        },
+      });
+
+      if (signUpError) {
+        // Jika gagal signup, coba login (kemungkinan user sudah ada tapi belum di profiles)
+        const { data: loginData } = await supabase.auth.signInWithPassword({
           email: `${address}@qie.yap`,
           password: address,
-          options: {
-            data: { wallet_address: address },
-          },
         });
+        if (loginData.session?.user) {
+          await loadUserProfile(loginData.session.user.id);
+          set({ connecting: false });
+          return;
+        }
+        throw signUpError;
+      }
 
-        // 4. Jika signUp berhasil, ambil profil
-        if (signUpData.session?.user) {
-          await loadUserProfile(signUpData.session.user.id);
-        } else if (signUpError) {
-          // Jika signUp error, coba metode fallback: login ulang
-          console.warn("SignUp failed, retrying login...", signUpError.message);
-          const { data: retryData } = await supabase.auth.signInWithPassword({
-            email: `${address}@qie.yap`,
-            password: address,
+      // 3. Jika signup berhasil, Supabase Auth otomatis membuat user
+      // Tapi profil di tabel profiles belum dibuat
+      if (signUpData.session?.user) {
+        // Buat profil di tabel profiles secara manual
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: signUpData.session.user.id,
+            address: address,
+            display_name: address.slice(0, 6) + '...',
+            username: address.slice(0, 6) + '...',
+            avatar_seed: address,
+            is_validator: false,
           });
-          if (retryData.session?.user) {
-            await loadUserProfile(retryData.session.user.id);
-          }
+
+        if (profileError) {
+          console.error("Profile creation error:", profileError);
+          // Jika gagal, coba load dari session yang sudah ada
+          await loadUserProfile(signUpData.session.user.id);
+        } else {
+          await loadUserProfile(signUpData.session.user.id);
         }
       }
 
@@ -114,5 +136,7 @@ async function loadUserProfile(userId: string) {
       balance,
     };
     useAuth.setState({ user: userState });
+  } else {
+    console.warn("Profile not found for user:", userId);
   }
 }
