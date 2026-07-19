@@ -66,94 +66,52 @@ export async function createPost(
 }
 
 export async function toggleLike(postId: string, userId: string): Promise<void> {
-  try {
-    // Cek apakah user sudah like
-    const { data: existing } = await supabase
-      .from("likes")
-      .select("id")
-      .eq("post_id", postId)
-      .eq("user_id", userId)
-      .maybeSingle();
+  const { data: existing } = await supabase
+    .from("likes")
+    .select("id")
+    .eq("post_id", postId)
+    .eq("user_id", userId)
+    .maybeSingle();
 
-    if (existing) {
-      // Unlike
-      const { error } = await supabase
-        .from("likes")
-        .delete()
-        .eq("post_id", postId)
-        .eq("user_id", userId);
-      if (error) throw error;
-    } else {
-      // Like
-      const { error } = await supabase
-        .from("likes")
-        .insert({ post_id: postId, user_id: userId });
-      if (error) throw error;
-    }
-  } catch (error) {
-    console.error("Toggle like error:", error);
-    throw error;
+  if (existing) {
+    await supabase.from("likes").delete().eq("post_id", postId).eq("user_id", userId);
+  } else {
+    await supabase.from("likes").insert({ post_id: postId, user_id: userId });
   }
 }
 
 export async function toggleRepost(postId: string, userId: string): Promise<void> {
-  try {
-    const { data: existing } = await supabase
-      .from("reposts")
-      .select("id")
-      .eq("post_id", postId)
-      .eq("user_id", userId)
-      .maybeSingle();
+  const { data: existing } = await supabase
+    .from("reposts")
+    .select("id")
+    .eq("post_id", postId)
+    .eq("user_id", userId)
+    .maybeSingle();
 
-    if (existing) {
-      const { error } = await supabase
-        .from("reposts")
-        .delete()
-        .eq("post_id", postId)
-        .eq("user_id", userId);
-      if (error) throw error;
-    } else {
-      const { error } = await supabase
-        .from("reposts")
-        .insert({ post_id: postId, user_id: userId });
-      if (error) throw error;
-    }
-  } catch (error) {
-    console.error("Toggle repost error:", error);
-    throw error;
+  if (existing) {
+    await supabase.from("reposts").delete().eq("post_id", postId).eq("user_id", userId);
+  } else {
+    await supabase.from("reposts").insert({ post_id: postId, user_id: userId });
   }
 }
 
 export async function toggleBookmark(postId: string, userId: string): Promise<void> {
-  try {
-    const { data: existing } = await supabase
-      .from("bookmarks")
-      .select("id")
-      .eq("post_id", postId)
-      .eq("user_id", userId)
-      .maybeSingle();
+  const { data: existing } = await supabase
+    .from("bookmarks")
+    .select("id")
+    .eq("post_id", postId)
+    .eq("user_id", userId)
+    .maybeSingle();
 
-    if (existing) {
-      const { error } = await supabase
-        .from("bookmarks")
-        .delete()
-        .eq("post_id", postId)
-        .eq("user_id", userId);
-      if (error) throw error;
-    } else {
-      const { error } = await supabase
-        .from("bookmarks")
-        .insert({ post_id: postId, user_id: userId });
-      if (error) throw error;
-    }
-  } catch (error) {
-    console.error("Toggle bookmark error:", error);
-    throw error;
+  if (existing) {
+    await supabase.from("bookmarks").delete().eq("post_id", postId).eq("user_id", userId);
+  } else {
+    await supabase.from("bookmarks").insert({ post_id: postId, user_id: userId });
   }
 }
 
 export async function fetchReplies(parentId: string, userId: string | null): Promise<FeedPost[]> {
-  const { data: posts, error: postsError } = await supabase
+  const { data: posts } = await supabase
     .from("posts")
     .select(`
       id,
@@ -171,7 +129,7 @@ export async function fetchReplies(parentId: string, userId: string | null): Pro
     .eq("reply_to", parentId)
     .order("created_at", { ascending: false });
 
-  if (postsError || !posts) return [];
+  if (!posts) return [];
 
   const authorIds = posts.map((p: any) => p.author_id).filter(Boolean);
   const { data: profiles } = await supabase
@@ -225,7 +183,8 @@ export async function fetchReplies(parentId: string, userId: string | null): Pro
 }
 
 export async function fetchFeed(tab: string, userId: string | null): Promise<FeedPost[]> {
-  const { data: posts, error: postsError } = await supabase
+  // ✅ OPTIMASI: Ambil posts tanpa join berat dulu
+  const { data: posts } = await supabase
     .from("posts")
     .select(`
       id,
@@ -241,11 +200,15 @@ export async function fetchFeed(tab: string, userId: string | null): Promise<Fee
       original_post_id
     `)
     .is("reply_to", null)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(20); // Batasi 20 post agar cepat
 
-  if (postsError || !posts) return [];
+  if (!posts || posts.length === 0) return [];
 
+  // Ambil authorId dari posts
   const authorIds = posts.map((p: any) => p.author_id).filter(Boolean);
+
+  // Ambil data profil author dalam satu query terpisah
   const { data: profiles } = await supabase
     .from("profiles")
     .select("id, address, display_name, avatar_seed, is_validator")
