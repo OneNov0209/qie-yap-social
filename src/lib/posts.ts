@@ -40,7 +40,6 @@ export async function createPost(
   },
   authorId: string
 ): Promise<{ id: string } | null> {
-  // ✅ Mapping nama field agar cocok dengan server.js
   const payload = {
     author_id: authorId,
     content: postData.content,
@@ -96,16 +95,6 @@ export async function toggleBookmark(postId: string, userId: string): Promise<vo
   });
 }
 
-export async function toggleFollow(followingId: string, userId: string): Promise<boolean> {
-  const res = await fetch(`${API_BASE}/follows`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ following_id: followingId, follower_id: userId }),
-  });
-  const data = await res.json();
-  return data.following;
-}
-
 export async function fetchReplies(parentId: string, userId: string | null): Promise<FeedPost[]> {
   const url = `${API_BASE}/replies?parent_id=${parentId}${userId ? `&user_id=${userId}` : ""}`;
   const res = await fetch(url);
@@ -117,7 +106,20 @@ export async function fetchFeed(tab: string, userId: string | null): Promise<Fee
   const url = `${API_BASE}/feed?tab=${tab}&limit=10${userId ? `&user_id=${userId}` : ""}`;
   const res = await fetch(url);
   if (!res.ok) return [];
-  return res.json();
+  const posts = await res.json();
+
+  // ✅ Tambahkan author dari backend (backend harus mengembalikan data author)
+  return posts.map((p: any) => ({
+    ...p,
+    author: p.author || {
+      address: p.author_id || "unknown",
+      displayName: p.author_display_name || "Anonymous",
+      avatarSeed: p.author_avatar_seed || "default",
+      badge: "shrimp",
+      isValidator: false,
+    },
+    createdAt: p.created_at || new Date().toISOString(),
+  }));
 }
 
 export function relativeTime(dateString: string): string {
@@ -137,9 +139,4 @@ export function relativeTime(dateString: string): string {
 export function shortAddr(addr: string): string {
   if (!addr || addr.length < 10) return addr;
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
-}
-
-export function avatarUrl(seed: string): string {
-  if (!seed) return "";
-  return `https://api.dicebear.com/9.x/avataaars/svg?seed=${encodeURIComponent(seed)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffdfbf,ffd5dc`;
 }
