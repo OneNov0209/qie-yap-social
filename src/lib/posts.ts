@@ -40,12 +40,35 @@ export async function createPost(
   },
   authorId: string
 ): Promise<{ id: string } | null> {
+  // ✅ Mapping nama field agar cocok dengan server.js
+  const payload = {
+    author_id: authorId,
+    content: postData.content,
+    media_url: postData.mediaUrl,
+    is_super_yap: postData.isSuperYap,
+    is_boosted: postData.isBoosted,
+    tx_hash: postData.txHash,
+    content_hash: postData.contentHash,
+    on_chain: postData.onChain,
+    reply_to: postData.replyToId,
+    original_post_id: postData.originalPostId,
+    boost_expires_at: postData.boostHours && postData.boostHours > 0 
+      ? new Date(Date.now() + postData.boostHours * 60 * 60 * 1000).toISOString() 
+      : null,
+  };
+
   const res = await fetch(`${API_BASE}/posts`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ...postData, author_id: authorId }),
+    body: JSON.stringify(payload),
   });
-  if (!res.ok) throw new Error("Failed to create post");
+  
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error("Backend error:", errorText);
+    throw new Error(`Failed to create post: ${res.status} - ${errorText}`);
+  }
+  
   return res.json();
 }
 
