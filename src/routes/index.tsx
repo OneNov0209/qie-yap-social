@@ -52,8 +52,9 @@ function FeedPage() {
   }, [tab, user]);
 
   useEffect(() => { 
-    if (hydrated) load(); 
-  }, [hydrated, load]);
+    // ✅ PERBAIKAN: Pastikan user sudah ada sebelum load
+    if (hydrated && user) load(); 
+  }, [hydrated, user, load]);
 
   useEffect(() => {
     const ch = supabase
@@ -90,7 +91,7 @@ function FeedPage() {
           ))}
         </div>
 
-        {/* LOADING SKELETON - Bagian baru yang ditambahkan */}
+        {/* LOADING SKELETON */}
         {loading ? (
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (
