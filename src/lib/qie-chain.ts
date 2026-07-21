@@ -1,15 +1,24 @@
 import { createPublicClient, createWalletClient, defineChain, http, formatEther, parseEther, getContract, custom } from "viem";
-import { privateKeyToAccount } from "viem/accounts";
 
 export const QIE_CHAIN = defineChain({
   id: 1990,
   name: "QIE Mainnet",
   nativeCurrency: { name: "QIE", symbol: "QIE", decimals: 18 },
-  rpcUrls: { default: { http: ["https://rpc-evm.qie.onenov.xyz"] } },
+  rpcUrls: { 
+    default: { 
+      http: [
+        "https://rpc-evm.qie.onenov.xyz",
+        "https://rpc2mainnet.qie.digital",
+        "https://rpc3mainnet.qie.digital"
+      ] 
+    } 
+  },
   blockExplorers: { default: { name: "QIE Explorer", url: "https://qie.explorer.onenov.xyz" } },
 });
 
-export const QIE_REST = "https://api.qie.onenov.xyz";
+// ✅ DUA API (Official + Pribadi)
+const OFFICIAL_API = "https://mainnet.qie.digital/api/v2";
+const PRIVATE_API = "https://api.qie.onenov.xyz";
 
 export const qiePublicClient = createPublicClient({
   chain: QIE_CHAIN,
@@ -30,27 +39,30 @@ export function badgeFor(qie: number): StakingBadge {
   return "shrimp";
 }
 
-/**
- * ⚠️ PERBAIKAN: 
- * Fungsi ini sekarang aman. Jika alamat tidak valid (bukan bech32),
- * atau server error, dia akan return 0 tanpa crash.
- */
+// ✅ FUNGSI STAKING DENGAN FAILOVER (Coba Official, Gagal -> Pribadi)
 export async function getStakedQie(address: string): Promise<number | null> {
   try {
-    // Cek apakah address berawalan '0x' (EVM). Jika iya, skip staking.
-    if (address.startsWith('0x')) {
-      // Alamat EVM tidak bisa di-staking di Cosmos API. Return 0.
-      return 0;
+    // 1. Coba Official API dulu
+    const officialRes = await fetch(`${OFFICIAL_API}/addresses/${address}/coin-balance-history?limit=1`);
+    if (officialRes.ok) {
+      const data = await officialRes.json();
+      if (data.items?.[0]?.value) {
+        return Number(data.items[0].value) / 1e18;
+      }
     }
 
-    const res = await fetch(`${QIE_REST}/cosmos/staking/v1beta1/delegations/${address}`);
-    if (!res.ok || res.status === 500) return null;
-    const data = await res.json() as { delegation_responses?: Array<{ balance?: { amount?: string } }> };
-    const total = (data.delegation_responses ?? []).reduce(
-      (s, d) => s + (d.balance?.amount ? Number(d.balance.amount) : 0),
-      0,
-    );
-    return total / 1e18;
+    // 2. Jika Official gagal, coba API Pribadi
+    const privateRes = await fetch(`${PRIVATE_API}/cosmos/staking/v1beta1/delegations/${address}`);
+    if (privateRes.ok) {
+      const data = await privateRes.json();
+      const total = (data.delegation_responses ?? []).reduce(
+        (s: number, d: any) => s + (d.balance?.amount ? Number(d.balance.amount) : 0),
+        0
+      );
+      return total / 1e18;
+    }
+
+    return null;
   } catch {
     return null;
   }
@@ -102,16 +114,13 @@ export async function getWalletClient() {
   if (typeof window === "undefined" || !window.ethereum) {
     throw new Error("No EVM wallet detected. Install MetaMask or the QIE wallet extension.");
   }
-  
   const accounts = await window.ethereum.request({ method: "eth_requestAccounts" }) as string[];
   const address = accounts[0];
   if (!address) throw new Error("No account returned by wallet");
-
   const walletClient = createWalletClient({
     chain: QIE_CHAIN,
     transport: custom(window.ethereum),
   });
-
   return { walletClient, address: address as `0x${string}` };
 }
 
@@ -122,7 +131,6 @@ export async function sendTip(
   message: string
 ) {
   const { walletClient, address } = await getWalletClient();
-  
   const hash = await walletClient.writeContract({
     address: contractAddress,
     abi: QIE_YAP_ABI,
@@ -138,7 +146,6 @@ export async function createSuperYap(
   contractAddress: `0x${string}`
 ) {
   const { walletClient, address } = await getWalletClient();
-  
   const hash = await walletClient.writeContract({
     address: contractAddress,
     abi: QIE_YAP_ABI,
@@ -155,7 +162,6 @@ export async function boostPost(
   durationHours: bigint
 ) {
   const { walletClient, address } = await getWalletClient();
-  
   const cost = 0.005 * Number(durationHours);
   const hash = await walletClient.writeContract({
     address: contractAddress,
