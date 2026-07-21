@@ -38,7 +38,7 @@ export const Route = createFileRoute("/profile/$address")({
 
 function ProfilePage() {
   const { address } = Route.useParams();
-  const { user, updateLocalProfile } = useAuth();
+  const { user } = useAuth();
   const [profile, setProfile] = useState<FeedProfile | null>(null);
   const [yaps, setYaps] = useState<FeedPost[]>([]);
   const [counts, setCounts] = useState({ followers: 0, following: 0, yaps: 0, balance: 0, staked: 0 });
@@ -65,8 +65,6 @@ function ProfilePage() {
     let active = true;
     const load = async () => {
       setLoading(true);
-      
-      // ✅ PERBAIKAN: Gunakan .eq() bukan .ilike() agar cocok dengan tipe UUID di kolom address
       const { data: p } = await supabase
         .from("profiles")
         .select("*")
@@ -137,6 +135,7 @@ function ProfilePage() {
 
     setIsSaving(true);
     try {
+      // ✅ UPDATE LANGSUNG KE SUPABASE
       const { error } = await supabase
         .from("profiles")
         .update({
@@ -148,18 +147,23 @@ function ProfilePage() {
 
       if (error) throw error;
 
-      updateLocalProfile({
-        displayName: editName.trim(),
-        bio: editBio.trim(),
-        avatarSeed: editAvatarSeed.trim() || profile.address,
-      });
-
+      // ✅ UPDATE STATE LOKAL
       setProfile((prev) => prev ? {
         ...prev,
         displayName: editName.trim(),
         bio: editBio.trim(),
         avatarSeed: editAvatarSeed.trim() || profile.address,
       } : null);
+
+      // ✅ UPDATE STATE GLOBAL (tanpa fungsi yang hilang)
+      useAuth.setState((state) => {
+        if (state.user) {
+          state.user.displayName = editName.trim();
+          state.user.bio = editBio.trim();
+          state.user.avatarSeed = editAvatarSeed.trim() || profile.address;
+        }
+        return state;
+      });
 
       toast.success("Profile updated successfully!");
       setIsEditModalOpen(false);
