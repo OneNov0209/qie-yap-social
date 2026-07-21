@@ -7,7 +7,6 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth-store";
 import { toggleLike, toggleRepost, toggleBookmark, type FeedPost, relativeTime, shortAddr } from "@/lib/posts";
-import { createWalletClient, custom } from "viem";
 import { QIE_CHAIN, sendTip, boostPost, createSuperYap } from "@/lib/qie-chain";
 
 function compact(n: number) {
@@ -26,14 +25,6 @@ export function PostCard({ post }: { post: FeedPost }) {
   const { user } = useAuth();
 
   const contractAddress = import.meta.env.VITE_QIE_YAP_CONTRACT as `0x${string}`;
-
-  const getWalletClient = async () => {
-    if (!window.ethereum) throw new Error("No wallet detected");
-    return createWalletClient({
-      chain: QIE_CHAIN,
-      transport: custom(window.ethereum),
-    });
-  };
 
   const onToggleLike = async () => {
     if (!user) return toast("Connect your wallet to like yaps");
@@ -97,7 +88,6 @@ export function PostCard({ post }: { post: FeedPost }) {
     
     try {
       setIsProcessing(true);
-      const walletClient = await getWalletClient();
       const amount = prompt("Enter tip amount in QIE (e.g. 0.1):", "0.1");
       if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
         toast.error("Invalid amount");
@@ -106,11 +96,10 @@ export function PostCard({ post }: { post: FeedPost }) {
       }
       
       const hash = await sendTip(
-      walletClient,
-      contractAddress,
-      String(post.author.address) as `0x${string}`,
-       amount,
-      `Tip for post ${post.id}`
+        contractAddress,
+        String(post.author.address) as `0x${string}`,
+        amount,
+        `Tip for post ${post.id}`
       );
       
       toast.success(`Tip sent! Tx: ${hash.slice(0, 10)}...`);
@@ -129,7 +118,6 @@ export function PostCard({ post }: { post: FeedPost }) {
 
     try {
       setIsProcessing(true);
-      const walletClient = await getWalletClient();
       const hours = prompt("Boost duration (1-72 hours):", "24");
       if (!hours || isNaN(parseInt(hours)) || parseInt(hours) < 1 || parseInt(hours) > 72) {
         toast.error("Duration must be 1-72 hours");
@@ -138,7 +126,6 @@ export function PostCard({ post }: { post: FeedPost }) {
       }
       
       const hash = await boostPost(
-        walletClient,
         contractAddress,
         BigInt(post.id || "0"),
         BigInt(hours)
@@ -160,8 +147,7 @@ export function PostCard({ post }: { post: FeedPost }) {
 
     try {
       setIsProcessing(true);
-      const walletClient = await getWalletClient();
-      const hash = await createSuperYap(walletClient, contractAddress);
+      const hash = await createSuperYap(contractAddress);
       toast.success(`Super Yap created! Tx: ${hash.slice(0, 10)}...`);
       setIsProcessing(false);
     } catch (error: any) {
