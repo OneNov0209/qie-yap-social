@@ -51,17 +51,16 @@ export function Composer({ onPosted, replyToId, onCancelReply }: ComposerProps) 
         cHash = hashContent(text.trim());
       }
       
-      // ✅ PERBAIKAN TERAKHIR: Kirim txHash dan onChain dengan benar
       await createPost(
         {
           content: text.trim(),
           isSuperYap: superYap,
           isBoosted: boostHours > 0,
           boostHours,
-          txHash: txHash, // Pastikan ini terkirim
+          txHash,
           contentHash: cHash,
-          replyToId: replyToId,
-          onChain: onChain, // Pastikan ini true jika ON-CHAIN ON
+          replyToId,
+          onChain: onChain,
         },
         user.id
       );
@@ -86,7 +85,7 @@ export function Composer({ onPosted, replyToId, onCancelReply }: ComposerProps) 
   const remaining = MAX - text.length;
 
   return (
-    <div className="mb-4 yap-card p-4 border-l-4 border-brand">
+    <div className="mb-6 yap-card p-4 border-l-4 border-brand/50">
       {replyToId && (
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs text-muted-foreground">Replying to a Yap</span>
@@ -102,15 +101,15 @@ export function Composer({ onPosted, replyToId, onCancelReply }: ComposerProps) 
             ref={ref}
             value={text}
             onChange={(e) => setText(e.target.value.slice(0, MAX))}
-            placeholder={user ? "Write your reply..." : "Connect your wallet to yap"}
+            placeholder={user ? "What's happening on QIE?" : "Connect your wallet to start yapping..."}
             disabled={!user || submitting}
             className="w-full resize-none border-none bg-transparent p-0 text-lg outline-none placeholder:text-muted-foreground disabled:opacity-70"
             rows={3}
           />
 
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-4">
             <div className="flex flex-wrap items-center gap-3">
-              <label className="inline-flex items-center gap-2 rounded-full border border-border px-2.5 py-1 text-xs">
+              <label className="inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-1.5 text-xs">
                 <Sparkles className={cn("size-3.5", superYap ? "text-gold" : "text-muted-foreground")} />
                 <span className={cn("font-bold uppercase tracking-wider", superYap ? "text-gold" : "text-muted-foreground")}>
                   Super
@@ -118,7 +117,7 @@ export function Composer({ onPosted, replyToId, onCancelReply }: ComposerProps) 
                 <Switch checked={superYap} onCheckedChange={setSuperYap} className="data-[state=checked]:bg-gold" />
               </label>
 
-              <div className="inline-flex items-center gap-1 rounded-full border border-border p-0.5 text-[11px]">
+              <div className="inline-flex items-center gap-1 rounded-full border border-white/10 p-0.5 text-[11px]">
                 <Rocket className="ml-1.5 size-3.5 text-muted-foreground" />
                 {([0, 1, 6, 24] as const).map((h) => (
                   <button
@@ -135,7 +134,7 @@ export function Composer({ onPosted, replyToId, onCancelReply }: ComposerProps) 
               </div>
 
               {YAP_CONTRACT && (
-                <label className="inline-flex items-center gap-2 rounded-full border border-border px-2.5 py-1 text-xs">
+                <label className="inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-1.5 text-xs">
                   <Link2 className={cn("size-3.5", onChain ? "text-brand" : "text-muted-foreground")} />
                   <span className={cn("font-bold uppercase tracking-wider", onChain ? "text-brand" : "text-muted-foreground")}>
                     On-chain
@@ -159,13 +158,13 @@ export function Composer({ onPosted, replyToId, onCancelReply }: ComposerProps) 
                   ✦ Premium Yap
                 </span>
               )}
-              <Button
+              <button
                 onClick={submit}
                 disabled={!text.trim() || remaining < 0 || submitting || !user}
-                className="rounded-full bg-brand px-6 font-bold text-primary-foreground hover:bg-brand/90 disabled:opacity-40"
+                className="btn-futuristic"
               >
                 {submitting ? "Yapping…" : "Yap"}
-              </Button>
+              </button>
             </div>
           </div>
         </div>
