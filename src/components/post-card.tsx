@@ -17,7 +17,6 @@ function compact(n: number) {
 }
 
 export function PostCard({ post }: { post: FeedPost }) {
-  // ✅ PERBAIKAN: Pastikan initial state dari post.liked yang benar
   const [liked, setLiked] = useState(post?.liked ?? false);
   const [likes, setLikes] = useState(post?.likes ?? 0);
   const [reposted, setReposted] = useState(post?.reposted ?? false);
@@ -192,9 +191,9 @@ export function PostCard({ post }: { post: FeedPost }) {
   return (
     <article
       className={cn(
-        "yap-card relative p-5 transition-shadow hover:shadow-md hover:shadow-brand/5",
-        post.isSuperYap && "border-2 border-gold bg-gold-soft/60 shadow-lg shadow-gold/10",
-        post.isBoosted && "border-2 border-brand/25",
+        "yap-card relative p-5",
+        post.isSuperYap && "border-2 border-gold bg-gold-soft/60 shadow-lg shadow-gold/20",
+        post.isBoosted && "border-2 border-brand/40",
       )}
     >
       {post.isSuperYap && (
@@ -300,11 +299,11 @@ export function PostCard({ post }: { post: FeedPost }) {
             </button>
           </div>
 
-          <div className="mt-3 flex flex-wrap gap-2 pt-2 border-t border-border/30">
+          <div className="mt-3 flex flex-wrap gap-2 pt-2 border-t border-white/10">
             <button
               onClick={handleTip}
               disabled={isProcessing}
-              className="inline-flex items-center gap-1 rounded-full border border-brand/30 px-3 py-1 text-xs font-semibold text-brand transition-colors hover:bg-brand hover:text-primary-foreground disabled:opacity-50"
+              className="btn-futuristic px-4 py-1.5 text-xs"
             >
               💎 {post.tipTotal > 0 ? `${post.tipTotal} QIE` : "Tip"}
             </button>
