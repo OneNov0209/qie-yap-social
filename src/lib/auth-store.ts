@@ -1,6 +1,7 @@
 import { create } from 'zustand';
-import { supabase } from '@/integrations/supabase/client';
 import { getQieBalance } from '@/lib/qie-chain';
+
+const API_BASE = import.meta.env.VITE_API_BASE || "http://api.yap.onenov.xyz/api";
 
 interface User {
   id: string;
@@ -26,10 +27,7 @@ export const useAuth = create<AuthState>((set, get) => ({
   connecting: false,
 
   init: async () => {
-    const { data } = await supabase.auth.getSession();
-    if (data.session?.user) {
-      await loadUserProfile(data.session.user.id);
-    }
+    // Tidak perlu init, karena kita pakai connect manual
   },
 
   connect: async () => {
@@ -37,61 +35,42 @@ export const useAuth = create<AuthState>((set, get) => ({
     set({ connecting: true });
 
     try {
+      // 1. Minta alamat wallet dari MetaMask
       const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
       const address = (accounts as string[])[0];
       if (!address) throw new Error("No account");
 
-      // ✅ Ubah format email agar valid untuk Supabase
-      const safeEmail = `wallet_${address.toLowerCase()}@qie.yap`;
-
-      // 1. Coba login dulu
-      const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
-        email: safeEmail,
-        password: address,
+      // 2. Kirim alamat wallet ke backend VPS untuk register/login otomatis
+      const res = await fetch(`${API_BASE}/profiles`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ address }),
       });
 
-      if (loginData.session?.user) {
-        await loadUserProfile(loginData.session.user.id);
-        set({ connecting: false });
-        return;
-      }
+      if (!res.ok) throw new Error("Failed to register/login");
 
-      // 2. Jika login gagal, coba signup
-      if (loginError && loginError.message.includes("Invalid login credentials")) {
-        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-          email: safeEmail,
-          password: address,
-          options: {
-            data: { wallet_address: address },
-          },
-        });
+      // 3. Backend mengembalikan data profil (termasuk UUID id)
+      const profile = await res.json();
+      console.log("✅ Profil dari VPS:", profile);
 
-        if (signUpData.session?.user) {
-          // Buat profil di tabel profiles
-          const { error: profileError } = await supabase
-            .from('profiles')
-            .insert({
-              id: signUpData.session.user.id,
-              address: address,
-              display_name: address.slice(0, 6) + '...',
-              username: address.slice(0, 6) + '...',
-              avatar_seed: address,
-              is_validator: false,
-            });
+      // 4. Ambil balance QIE dari blockchain
+      const balance = await getQieBalance(address as `0x${string}`).catch(() => 0);
 
-          if (profileError) {
-            console.error("Profile creation error:", profileError);
-            // Jika gagal, load dari session
-            await loadUserProfile(signUpData.session.user.id);
-          } else {
-            await loadUserProfile(signUpData.session.user.id);
-          }
-        } else if (signUpError) {
-          throw signUpError;
-        }
-      }
+      // 5. Set user ke state React (dengan UUID yang benar)
+      set({
+        user: {
+          id: profile.id,              // ✅ INI UUID YANG BENAR
+          address: profile.address,
+          displayName: profile.display_name,
+          bio: profile.bio || '',
+          avatarSeed: profile.avatar_seed,
+          badge: 'shrimp',
+          isValidator: profile.is_validator || false,
+          balance,
+        },
+        connecting: false,
+      });
 
-      set({ connecting: false });
     } catch (error) {
       console.error("Connect error:", error);
       set({ connecting: false });
@@ -100,32 +79,6 @@ export const useAuth = create<AuthState>((set, get) => ({
   },
 
   disconnect: async () => {
-    await supabase.auth.signOut();
     set({ user: null });
   },
 }));
-
-async function loadUserProfile(userId: string) {
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', userId)
-    .maybeSingle();
-
-  if (profile) {
-    const balance = await getQieBalance(profile.address as `0x${string}`).catch(() => 0);
-    const userState = {
-      id: profile.id,
-      address: profile.address,
-      displayName: profile.display_name,
-      bio: profile.bio || '',
-      avatarSeed: profile.avatar_seed,
-      badge: 'shrimp' as const,
-      isValidator: profile.is_validator || false,
-      balance,
-    };
-    useAuth.setState({ user: userState });
-  } else {
-    console.warn("Profile not found for user:", userId);
-  }
-}
