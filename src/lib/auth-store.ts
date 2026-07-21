@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { getQieBalance } from '@/lib/qie-chain';
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://api.yap.onenov.xyz/api";
@@ -22,63 +23,62 @@ interface AuthState {
   disconnect: () => Promise<void>;
 }
 
-export const useAuth = create<AuthState>((set, get) => ({
-  user: null,
-  connecting: false,
+export const useAuth = create<AuthState>()(
+  persist(
+    (set, get) => ({
+      user: null,
+      connecting: false,
 
-  init: async () => {
-    // Tidak perlu init, karena kita pakai connect manual
-  },
+      init: async () => {
+      },
 
-  connect: async () => {
-    if (!window.ethereum) throw new Error("No wallet detected");
-    set({ connecting: true });
+      connect: async () => {
+        if (!window.ethereum) throw new Error("No wallet detected");
+        set({ connecting: true });
 
-    try {
-      // 1. Minta alamat wallet dari MetaMask
-      const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
-      const address = (accounts as string[])[0];
-      if (!address) throw new Error("No account");
+        try {
+          const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+          const address = (accounts as string[])[0];
+          if (!address) throw new Error("No account");
 
-      // 2. Kirim alamat wallet ke backend VPS untuk register/login otomatis
-      const res = await fetch(`${API_BASE}/profiles`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ address }),
-      });
+          const res = await fetch(`${API_BASE}/profiles`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ address }),
+          });
 
-      if (!res.ok) throw new Error("Failed to register/login");
+          if (!res.ok) throw new Error("Failed to register/login");
 
-      // 3. Backend mengembalikan data profil (termasuk UUID id)
-      const profile = await res.json();
-      console.log("✅ Profil dari VPS:", profile);
+          const profile = await res.json();
+          const balance = await getQieBalance(address as `0x${string}`).catch(() => 0);
 
-      // 4. Ambil balance QIE dari blockchain
-      const balance = await getQieBalance(address as `0x${string}`).catch(() => 0);
+          set({
+            user: {
+              id: profile.id,
+              address: profile.address,
+              displayName: profile.display_name,
+              bio: profile.bio || '',
+              avatarSeed: profile.avatar_seed,
+              badge: 'shrimp',
+              isValidator: profile.is_validator || false,
+              balance,
+            },
+            connecting: false,
+          });
 
-      // 5. Set user ke state React (dengan UUID yang benar)
-      set({
-        user: {
-          id: profile.id,              // ✅ INI UUID YANG BENAR
-          address: profile.address,
-          displayName: profile.display_name,
-          bio: profile.bio || '',
-          avatarSeed: profile.avatar_seed,
-          badge: 'shrimp',
-          isValidator: profile.is_validator || false,
-          balance,
-        },
-        connecting: false,
-      });
+        } catch (error) {
+          console.error("Connect error:", error);
+          set({ connecting: false });
+          throw error;
+        }
+      },
 
-    } catch (error) {
-      console.error("Connect error:", error);
-      set({ connecting: false });
-      throw error;
+      disconnect: async () => {
+        set({ user: null });
+      },
+    }),
+    {
+      name: 'qie-auth-storage',
     }
-  },
-
-  disconnect: async () => {
-    set({ user: null });
-  },
-}));
+  )
+);
