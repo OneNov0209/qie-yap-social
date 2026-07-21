@@ -106,11 +106,11 @@ export function PostCard({ post }: { post: FeedPost }) {
       }
       
       const hash = await sendTip(
-        walletClient,
-        contractAddress,
-        post.author.address as `0x${string}`,
-        amount,
-        `Tip for post ${post.id}`
+      walletClient,
+      contractAddress,
+      String(post.author.address) as `0x${string}`,
+       amount,
+      `Tip for post ${post.id}`
       );
       
       toast.success(`Tip sent! Tx: ${hash.slice(0, 10)}...`);
