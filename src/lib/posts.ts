@@ -1,9 +1,9 @@
-// ✅ BASE URL API VPS (sudah HTTPS & domain)
-const API_BASE = import.meta.env.VITE_API_BASE || "https://api.yap.onenov.xyz/api";
+const API_BASE = import.meta.env.VITE_API_BASE || "http://api.yap.onenov.xyz/api";
 
 export interface FeedPost {
   id: string;
   content: string;
+  mediaUrl?: string | null;
   isSuperYap: boolean;
   isBoosted: boolean;
   createdAt: string;
@@ -28,6 +28,7 @@ export interface FeedPost {
 export async function createPost(
   postData: {
     content: string;
+    mediaUrl?: string;
     isSuperYap?: boolean;
     isBoosted?: boolean;
     boostHours?: number;
@@ -70,6 +71,16 @@ export async function toggleBookmark(postId: string, userId: string): Promise<vo
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ post_id: postId, user_id: userId }),
   });
+}
+
+export async function toggleFollow(followingId: string, userId: string): Promise<boolean> {
+  const res = await fetch(`${API_BASE}/follows`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ following_id: followingId, follower_id: userId }),
+  });
+  const data = await res.json();
+  return data.following;
 }
 
 export async function fetchReplies(parentId: string, userId: string | null): Promise<FeedPost[]> {
