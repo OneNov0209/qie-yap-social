@@ -155,16 +155,6 @@ function ProfilePage() {
         avatarSeed: editAvatarSeed.trim() || profile.address,
       } : null);
 
-      // ✅ UPDATE STATE GLOBAL (tanpa fungsi yang hilang)
-      useAuth.setState((state) => {
-        if (state.user) {
-          state.user.displayName = editName.trim();
-          state.user.bio = editBio.trim();
-          state.user.avatarSeed = editAvatarSeed.trim() || profile.address;
-        }
-        return state;
-      });
-
       toast.success("Profile updated successfully!");
       setIsEditModalOpen(false);
     } catch (error: any) {
