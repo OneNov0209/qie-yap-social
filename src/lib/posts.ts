@@ -1,5 +1,5 @@
-import { supabase } from "@/integrations/supabase/client";
-import { badgeFor } from "@/lib/qie-chain";
+// ✅ BASE URL API VPS (sudah HTTPS & domain)
+const API_BASE = import.meta.env.VITE_API_BASE || "https://api.yap.onenov.xyz/api";
 
 export interface FeedPost {
   id: string;
@@ -39,255 +39,51 @@ export async function createPost(
   },
   authorId: string
 ): Promise<{ id: string } | null> {
-  const { data, error } = await supabase
-    .from("posts")
-    .insert({
-      content: postData.content,
-      author_id: authorId,
-      is_super_yap: postData.isSuperYap || false,
-      is_boosted: postData.isBoosted || false,
-      boost_expires_at: postData.boostHours && postData.boostHours > 0 
-        ? new Date(Date.now() + postData.boostHours * 60 * 60 * 1000).toISOString() 
-        : null,
-      tx_hash: postData.txHash || null,
-      content_hash: postData.contentHash || null,
-      reply_to: postData.replyToId || null,
-      original_post_id: postData.originalPostId || null,
-      on_chain: postData.onChain || false,
-    })
-    .select("id")
-    .single();
-
-  if (error) {
-    console.error("Failed to create post:", error);
-    throw error;
-  }
-  return data;
+  const res = await fetch(`${API_BASE}/posts`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ...postData, author_id: authorId }),
+  });
+  if (!res.ok) throw new Error("Failed to create post");
+  return res.json();
 }
 
 export async function toggleLike(postId: string, userId: string): Promise<void> {
-  const { data: existing } = await supabase
-    .from("likes")
-    .select("id")
-    .eq("post_id", postId)
-    .eq("user_id", userId)
-    .maybeSingle();
-
-  if (existing) {
-    await supabase.from("likes").delete().eq("post_id", postId).eq("user_id", userId);
-  } else {
-    await supabase.from("likes").insert({ post_id: postId, user_id: userId });
-  }
+  await fetch(`${API_BASE}/likes`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ post_id: postId, user_id: userId }),
+  });
 }
 
 export async function toggleRepost(postId: string, userId: string): Promise<void> {
-  const { data: existing } = await supabase
-    .from("reposts")
-    .select("id")
-    .eq("post_id", postId)
-    .eq("user_id", userId)
-    .maybeSingle();
-
-  if (existing) {
-    await supabase.from("reposts").delete().eq("post_id", postId).eq("user_id", userId);
-  } else {
-    await supabase.from("reposts").insert({ post_id: postId, user_id: userId });
-  }
+  await fetch(`${API_BASE}/reposts`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ post_id: postId, user_id: userId }),
+  });
 }
 
 export async function toggleBookmark(postId: string, userId: string): Promise<void> {
-  const { data: existing } = await supabase
-    .from("bookmarks")
-    .select("id")
-    .eq("post_id", postId)
-    .eq("user_id", userId)
-    .maybeSingle();
-
-  if (existing) {
-    await supabase.from("bookmarks").delete().eq("post_id", postId).eq("user_id", userId);
-  } else {
-    await supabase.from("bookmarks").insert({ post_id: postId, user_id: userId });
-  }
+  await fetch(`${API_BASE}/bookmarks`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ post_id: postId, user_id: userId }),
+  });
 }
 
 export async function fetchReplies(parentId: string, userId: string | null): Promise<FeedPost[]> {
-  const { data: posts } = await supabase
-    .from("posts")
-    .select(`
-      id,
-      content,
-      is_super_yap,
-      is_boosted,
-      boost_expires_at,
-      created_at,
-      tx_hash,
-      on_chain,
-      reply_to,
-      author_id,
-      original_post_id
-    `)
-    .eq("reply_to", parentId)
-    .order("created_at", { ascending: false });
-
-  if (!posts) return [];
-
-  const authorIds = posts.map((p: any) => p.author_id).filter(Boolean);
-  const { data: profiles } = await supabase
-    .from("profiles")
-    .select("id, address, display_name, avatar_seed, is_validator")
-    .in("id", authorIds);
-
-  const profileMap: Record<string, any> = {};
-  if (profiles) profiles.forEach((p: any) => profileMap[p.id] = p);
-
-  let userLikes = new Set();
-  let userReposts = new Set();
-  let userBookmarks = new Set();
-  if (userId) {
-    const [likes, reposts, bookmarks] = await Promise.all([
-      supabase.from("likes").select("post_id").eq("user_id", userId),
-      supabase.from("reposts").select("post_id").eq("user_id", userId),
-      supabase.from("bookmarks").select("post_id").eq("user_id", userId),
-    ]);
-    if (likes.data) userLikes = new Set(likes.data.map((l) => l.post_id));
-    if (reposts.data) userReposts = new Set(reposts.data.map((r) => r.post_id));
-    if (bookmarks.data) userBookmarks = new Set(bookmarks.data.map((b) => b.post_id));
-  }
-
-  return posts.map((item: any) => {
-    const profile = profileMap[item.author_id] || {};
-    return {
-      id: item.id,
-      content: item.content,
-      isSuperYap: item.is_super_yap,
-      isBoosted: item.is_boosted && item.boost_expires_at > new Date().toISOString(),
-      createdAt: item.created_at,
-      txHash: item.tx_hash,
-      onChain: item.on_chain,
-      tipTotal: 0,
-      likes: 0,
-      liked: userLikes.has(item.id),
-      replies: 0,
-      reposts: 0,
-      reposted: userReposts.has(item.id),
-      bookmarked: userBookmarks.has(item.id),
-      author: {
-        address: profile.address || item.author_id || "unknown",
-        displayName: profile.display_name || "Anonymous",
-        avatarSeed: profile.avatar_seed || item.author_id || "0x0",
-        badge: badgeFor(0),
-        isValidator: profile.is_validator || false,
-      },
-    };
-  });
+  const url = `${API_BASE}/replies?parent_id=${parentId}${userId ? `&user_id=${userId}` : ""}`;
+  const res = await fetch(url);
+  if (!res.ok) return [];
+  return res.json();
 }
 
 export async function fetchFeed(tab: string, userId: string | null): Promise<FeedPost[]> {
-  const { data: posts } = await supabase
-    .from("posts")
-    .select(`
-      id,
-      content,
-      is_super_yap,
-      is_boosted,
-      boost_expires_at,
-      created_at,
-      tx_hash,
-      on_chain,
-      reply_to,
-      author_id,
-      original_post_id
-    `)
-    .is("reply_to", null)
-    .order("created_at", { ascending: false })
-    .limit(20);
-
-  if (!posts || posts.length === 0) return [];
-
-  const postIds = posts.map((p: any) => p.id);
-  const authorIds = posts.map((p: any) => p.author_id).filter(Boolean);
-
-  // Ambil semua data interaksi dalam 1 batch
-  const [profilesData, likesData, repostsData, bookmarksData, tipsData, repliesData] = await Promise.all([
-    supabase.from("profiles").select("id, address, display_name, avatar_seed, is_validator").in("id", authorIds),
-    supabase.from("likes").select("post_id").eq("user_id", userId || ""),
-    supabase.from("reposts").select("post_id").eq("user_id", userId || ""),
-    supabase.from("bookmarks").select("post_id").eq("user_id", userId || ""),
-    supabase.from("tips").select("post_id, amount").in("post_id", postIds),
-    supabase.from("posts").select("reply_to", { count: "exact", head: true }).in("reply_to", postIds),
-  ]);
-
-  const profileMap: Record<string, any> = {};
-  if (profilesData.data) profilesData.data.forEach((p) => profileMap[p.id] = p);
-
-  const userLikes = new Set((likesData.data || []).map((l) => l.post_id));
-  const userReposts = new Set((repostsData.data || []).map((r) => r.post_id));
-  const userBookmarks = new Set((bookmarksData.data || []).map((b) => b.post_id));
-
-  const tipMap: Record<string, number> = {};
-  if (tipsData.data) tipsData.data.forEach((t) => {
-    tipMap[t.post_id] = (tipMap[t.post_id] || 0) + Number(t.amount);
-  });
-
-  const replyCountMap: Record<string, number> = {};
-  if (repliesData.data) repliesData.data.forEach((r) => {
-    replyCountMap[r.reply_to] = (replyCountMap[r.reply_to] || 0) + 1;
-  });
-
-  let result = posts.map((item: any) => {
-    const profile = profileMap[item.author_id] || {};
-    return {
-      id: item.id,
-      content: item.content,
-      isSuperYap: item.is_super_yap,
-      isBoosted: item.is_boosted && item.boost_expires_at > new Date().toISOString(),
-      createdAt: item.created_at,
-      txHash: item.tx_hash,
-      onChain: item.on_chain,
-      tipTotal: tipMap[item.id] || 0,
-      likes: 0, // Akan dihitung di bawah
-      liked: userLikes.has(item.id),
-      replies: replyCountMap[item.id] || 0,
-      reposts: 0, // Akan dihitung di bawah
-      reposted: userReposts.has(item.id),
-      bookmarked: userBookmarks.has(item.id),
-      author: {
-        address: profile.address || item.author_id || "unknown",
-        displayName: profile.display_name || "Anonymous",
-        avatarSeed: profile.avatar_seed || item.author_id || "0x0",
-        badge: badgeFor(0),
-        isValidator: profile.is_validator || false,
-      },
-    };
-  });
-
-  // Hitung jumlah like dan repost per postingan
-  const [likesCount, repostsCount] = await Promise.all([
-    supabase.from("likes").select("post_id", { count: "exact", head: true }).in("post_id", postIds),
-    supabase.from("reposts").select("post_id", { count: "exact", head: true }).in("post_id", postIds),
-  ]);
-
-  const likeMap: Record<string, number> = {};
-  if (likesCount.data) likesCount.data.forEach((l: any) => {
-    likeMap[l.post_id] = (likeMap[l.post_id] || 0) + 1;
-  });
-
-  const repostMap: Record<string, number> = {};
-  if (repostsCount.data) repostsCount.data.forEach((r: any) => {
-    repostMap[r.post_id] = (repostMap[r.post_id] || 0) + 1;
-  });
-
-  result = result.map((item) => ({
-    ...item,
-    likes: likeMap[item.id] || 0,
-    reposts: repostMap[item.id] || 0,
-  }));
-
-  if (tab === "trending") {
-    result.sort((a, b) => (b.likes + b.replies + b.reposts) - (a.likes + a.replies + a.reposts));
-  }
-
-  return result;
+  const url = `${API_BASE}/feed?tab=${tab}&limit=10${userId ? `&user_id=${userId}` : ""}`;
+  const res = await fetch(url);
+  if (!res.ok) return [];
+  return res.json();
 }
 
 export function relativeTime(dateString: string): string {
