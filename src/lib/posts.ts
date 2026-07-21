@@ -183,7 +183,6 @@ export async function fetchReplies(parentId: string, userId: string | null): Pro
 }
 
 export async function fetchFeed(tab: string, userId: string | null): Promise<FeedPost[]> {
-  // ✅ OPTIMASI: Ambil posts tanpa join berat dulu
   const { data: posts } = await supabase
     .from("posts")
     .select(`
@@ -201,35 +200,39 @@ export async function fetchFeed(tab: string, userId: string | null): Promise<Fee
     `)
     .is("reply_to", null)
     .order("created_at", { ascending: false })
-    .limit(20); // Batasi 20 post agar cepat
+    .limit(20);
 
   if (!posts || posts.length === 0) return [];
 
-  // Ambil authorId dari posts
+  const postIds = posts.map((p: any) => p.id);
   const authorIds = posts.map((p: any) => p.author_id).filter(Boolean);
 
-  // Ambil data profil author dalam satu query terpisah
-  const { data: profiles } = await supabase
-    .from("profiles")
-    .select("id, address, display_name, avatar_seed, is_validator")
-    .in("id", authorIds);
+  // Ambil semua data interaksi dalam 1 batch
+  const [profilesData, likesData, repostsData, bookmarksData, tipsData, repliesData] = await Promise.all([
+    supabase.from("profiles").select("id, address, display_name, avatar_seed, is_validator").in("id", authorIds),
+    supabase.from("likes").select("post_id").eq("user_id", userId || ""),
+    supabase.from("reposts").select("post_id").eq("user_id", userId || ""),
+    supabase.from("bookmarks").select("post_id").eq("user_id", userId || ""),
+    supabase.from("tips").select("post_id, amount").in("post_id", postIds),
+    supabase.from("posts").select("reply_to", { count: "exact", head: true }).in("reply_to", postIds),
+  ]);
 
   const profileMap: Record<string, any> = {};
-  if (profiles) profiles.forEach((p: any) => profileMap[p.id] = p);
+  if (profilesData.data) profilesData.data.forEach((p) => profileMap[p.id] = p);
 
-  let userLikes = new Set();
-  let userReposts = new Set();
-  let userBookmarks = new Set();
-  if (userId) {
-    const [likes, reposts, bookmarks] = await Promise.all([
-      supabase.from("likes").select("post_id").eq("user_id", userId),
-      supabase.from("reposts").select("post_id").eq("user_id", userId),
-      supabase.from("bookmarks").select("post_id").eq("user_id", userId),
-    ]);
-    if (likes.data) userLikes = new Set(likes.data.map((l) => l.post_id));
-    if (reposts.data) userReposts = new Set(reposts.data.map((r) => r.post_id));
-    if (bookmarks.data) userBookmarks = new Set(bookmarks.data.map((b) => b.post_id));
-  }
+  const userLikes = new Set((likesData.data || []).map((l) => l.post_id));
+  const userReposts = new Set((repostsData.data || []).map((r) => r.post_id));
+  const userBookmarks = new Set((bookmarksData.data || []).map((b) => b.post_id));
+
+  const tipMap: Record<string, number> = {};
+  if (tipsData.data) tipsData.data.forEach((t) => {
+    tipMap[t.post_id] = (tipMap[t.post_id] || 0) + Number(t.amount);
+  });
+
+  const replyCountMap: Record<string, number> = {};
+  if (repliesData.data) repliesData.data.forEach((r) => {
+    replyCountMap[r.reply_to] = (replyCountMap[r.reply_to] || 0) + 1;
+  });
 
   let result = posts.map((item: any) => {
     const profile = profileMap[item.author_id] || {};
@@ -241,11 +244,11 @@ export async function fetchFeed(tab: string, userId: string | null): Promise<Fee
       createdAt: item.created_at,
       txHash: item.tx_hash,
       onChain: item.on_chain,
-      tipTotal: 0,
-      likes: 0,
+      tipTotal: tipMap[item.id] || 0,
+      likes: 0, // Akan dihitung di bawah
       liked: userLikes.has(item.id),
-      replies: 0,
-      reposts: 0,
+      replies: replyCountMap[item.id] || 0,
+      reposts: 0, // Akan dihitung di bawah
       reposted: userReposts.has(item.id),
       bookmarked: userBookmarks.has(item.id),
       author: {
@@ -257,6 +260,28 @@ export async function fetchFeed(tab: string, userId: string | null): Promise<Fee
       },
     };
   });
+
+  // Hitung jumlah like dan repost per postingan
+  const [likesCount, repostsCount] = await Promise.all([
+    supabase.from("likes").select("post_id", { count: "exact", head: true }).in("post_id", postIds),
+    supabase.from("reposts").select("post_id", { count: "exact", head: true }).in("post_id", postIds),
+  ]);
+
+  const likeMap: Record<string, number> = {};
+  if (likesCount.data) likesCount.data.forEach((l: any) => {
+    likeMap[l.post_id] = (likeMap[l.post_id] || 0) + 1;
+  });
+
+  const repostMap: Record<string, number> = {};
+  if (repostsCount.data) repostsCount.data.forEach((r: any) => {
+    repostMap[r.post_id] = (repostMap[r.post_id] || 0) + 1;
+  });
+
+  result = result.map((item) => ({
+    ...item,
+    likes: likeMap[item.id] || 0,
+    reposts: repostMap[item.id] || 0,
+  }));
 
   if (tab === "trending") {
     result.sort((a, b) => (b.likes + b.replies + b.reposts) - (a.likes + a.replies + a.reposts));
