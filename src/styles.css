@@ -140,9 +140,109 @@
   .font-mono { font-family: var(--font-mono); }
 }
 
+/* ============================================ */
+/* 🚀 TAMBAHAN STYLE FUTURISTIK (Glassmorphism)  */
+/* ============================================ */
+
+/* Background Global dengan Glow */
+body {
+  background: radial-gradient(circle at top right, rgba(236, 72, 153, 0.1), transparent 40%),
+              radial-gradient(circle at bottom left, rgba(139, 92, 246, 0.05), transparent 40%),
+              var(--color-background);
+}
+
+/* .yap-card - efek futuristik (Glassmorphism) */
 @utility yap-card {
   border-radius: var(--radius-2xl);
   background-color: var(--color-card);
   border: 1px solid var(--color-border);
   box-shadow: 0 1px 2px 0 oklch(0 0 0 / 0.03);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.yap-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(236, 72, 153, 0.05), transparent 50%);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.yap-card:hover {
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: 0 12px 48px rgba(236, 72, 153, 0.15);
+  border-color: rgba(236, 72, 153, 0.2);
+}
+
+.yap-card:hover::before {
+  opacity: 1;
+}
+
+/* Tombol Futuristik (Neon / Gradient) */
+.btn-futuristic {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: white;
+  background: linear-gradient(135deg, #ec4899, #8b5cf6);
+  box-shadow: 0 4px 20px rgba(236, 72, 153, 0.3);
+  border: none;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.btn-futuristic:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 40px rgba(236, 72, 153, 0.5);
+}
+
+.btn-futuristic:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Navbar dengan Glass Effect */
+header {
+  border-bottom: 1px solid var(--color-border);
+  background-color: oklch(0 0 0 / 0.3);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Input & Textarea Futuristik */
+input, textarea {
+  border-radius: 0.75rem;
+  border: 1px solid var(--color-border);
+  background-color: oklch(0 0 0 / 0.2);
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  color: var(--color-foreground);
+  transition: all 0.3s ease;
+  width: 100%;
+}
+
+input:focus, textarea:focus {
+  border-color: var(--color-brand);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(236, 72, 153, 0.15);
+}
+
+input::placeholder, textarea::placeholder {
+  color: var(--color-muted-foreground);
 }
