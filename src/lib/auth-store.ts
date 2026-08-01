@@ -56,17 +56,25 @@ export const useAuth = create<AuthState>()(
           const profile = await res.json();
           const balance = await getQieBalance(address as `0x${string}`).catch(() => 0);
 
+          
+          const displayName = 
+            profile.display_name || 
+            profile.displayName || 
+            `${address.slice(0, 6)}…${address.slice(-4)}`;
+
+          const avatarSeed = 
+            profile.avatar_seed || 
+            profile.avatarSeed || 
+            address;
+
           set({
             user: {
               id: profile.id,
               address: profile.address ?? address,
               username: profile.username,
-              displayName:
-                profile.display_name ??
-                profile.displayName ??
-                `${address.slice(0, 6)}…${address.slice(-4)}`,
+              displayName: displayName,
               bio: profile.bio ?? '',
-              avatarSeed: profile.avatar_seed ?? profile.avatarSeed ?? address,
+              avatarSeed: avatarSeed,
               badge: 'shrimp',
               isValidator: Boolean(profile.is_validator ?? profile.isValidator),
               balance,
