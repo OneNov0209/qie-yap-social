@@ -25,6 +25,40 @@ export interface FeedPost {
   };
 }
 
+// ✅ TAMBAHAN: Fungsi mapPost agar bookmarks.tsx bisa mengimport
+export function mapPost(item: any): FeedPost {
+  const authorData = item.author || {};
+  const address = authorData.address || item.author_address || item.author_id || "unknown";
+  const displayName = authorData.display_name || authorData.displayName || item.author_display_name || item.author_name || "Anonymous";
+  const avatarSeed = authorData.avatar_seed || authorData.avatarSeed || item.author_avatar_seed || "default";
+  const isValidator = authorData.is_validator || authorData.isValidator || item.author_is_validator || false;
+
+  return {
+    id: item.id,
+    content: item.content,
+    mediaUrl: item.media_url || item.mediaUrl || null,
+    isSuperYap: item.is_super_yap || item.isSuperYap || false,
+    isBoosted: item.is_boosted || item.isBoosted || false,
+    createdAt: item.created_at || item.createdAt || new Date().toISOString(),
+    txHash: item.tx_hash || item.txHash || null,
+    onChain: item.on_chain || item.onChain || false,
+    tipTotal: item.tip_total || item.tipTotal || 0,
+    likes: item.likes || 0,
+    liked: item.liked || false,
+    replies: item.replies || item.reply_count || 0,
+    reposts: item.reposts || 0,
+    reposted: item.reposted || false,
+    bookmarked: item.bookmarked || false,
+    author: {
+      address,
+      displayName,
+      avatarSeed,
+      badge: "shrimp",
+      isValidator,
+    },
+  };
+}
+
 export async function createPost(
   postData: {
     content: string;
@@ -118,39 +152,7 @@ export async function fetchFeed(tab: string, userId: string | null): Promise<Fee
   if (!res.ok) return [];
   
   const posts = await res.json();
-
-  return posts.map((p: any) => {
-    const authorData = p.author || {};
-    const address = authorData.address || p.author_address || p.author_id || "unknown";
-    const displayName = authorData.display_name || authorData.displayName || p.author_display_name || p.author_name || "Anonymous";
-    const avatarSeed = authorData.avatar_seed || authorData.avatarSeed || p.author_avatar_seed || "default";
-    const isValidator = authorData.is_validator || authorData.isValidator || p.author_is_validator || false;
-
-    return {
-      id: p.id,
-      content: p.content,
-      mediaUrl: p.media_url || p.mediaUrl || null,
-      isSuperYap: p.is_super_yap || p.isSuperYap || false,
-      isBoosted: p.is_boosted || p.isBoosted || false,
-      createdAt: p.created_at || p.createdAt || new Date().toISOString(),
-      txHash: p.tx_hash || p.txHash || null,
-      onChain: p.on_chain || p.onChain || false,
-      tipTotal: p.tip_total || p.tipTotal || 0,
-      likes: p.likes || 0,
-      liked: p.liked || false,
-      replies: p.replies || p.reply_count || 0,
-      reposts: p.reposts || 0,
-      reposted: p.reposted || false,
-      bookmarked: p.bookmarked || false,
-      author: {
-        address,
-        displayName,
-        avatarSeed,
-        badge: "shrimp",
-        isValidator,
-      },
-    };
-  });
+  return posts.map(mapPost);
 }
 
 export function relativeTime(dateString: string): string {
