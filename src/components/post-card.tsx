@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { Heart, MessageCircle, Pin, Sparkles, BadgeCheck, Flame, Zap, Link as LinkIcon, Repeat, Bookmark, MoreHorizontal } from "lucide-react";
+import { Heart, MessageCircle, Pin, Sparkles, BadgeCheck, Flame, Zap, Link as LinkIcon, Repeat, Bookmark } from "lucide-react";
 import { StakingBadgeChip } from "./staking-badge";
 import { Avatar } from "./avatar-img";
 import { cn } from "@/lib/utils";
@@ -197,7 +197,7 @@ export function PostCard({ post }: { post: FeedPost }) {
 
   if (!post || !post.id) {
     return (
-      <div className="yap-card p-5 border border-dashed border-border/50 bg-card/50 text-center text-muted-foreground">
+      <div className="rounded-2xl border border-dashed border-border/50 bg-card/50 p-6 text-center text-muted-foreground">
         <p className="text-sm">Post data unavailable</p>
       </div>
     );
@@ -206,155 +206,150 @@ export function PostCard({ post }: { post: FeedPost }) {
   return (
     <article
       className={cn(
-        "yap-card group p-5",
-        post.isSuperYap && "border-2 border-gold bg-gold-soft/60 shadow-lg shadow-gold/20",
-        post.isBoosted && "border-2 border-brand-start/40",
+        "group relative flex flex-col gap-3 rounded-2xl border border-border/50 bg-card p-5 shadow-sm transition-all hover:shadow-md hover:border-brand-start/20",
+        post.isSuperYap && "border-2 border-gold bg-gold-soft/20 shadow-gold/10",
+        post.isBoosted && "border-2 border-brand-start/20",
       )}
     >
-      {/* Status Badges */}
-      <div className="absolute -top-3 left-5 right-5 flex justify-between pointer-events-none">
-        {post.txHash && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-background/80 backdrop-blur-sm px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider text-brand-start shadow-sm border border-border/50">
-            <LinkIcon className="size-3" />
-            On-Chain
-          </span>
-        )}
+      {/* === Header: Avatar & Identity === */}
+      <div className="flex items-start gap-3">
+        <Link to="/profile/$address" params={{ address: post.author?.address || "" }}>
+          <Avatar seed={post.author?.avatarSeed || "default"} size={48} className="ring-2 ring-border/50" />
+        </Link>
+        
+        <div className="flex-1 min-w-0 pt-0.5">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+            <Link
+              to="/profile/$address"
+              params={{ address: post.author?.address || "" }}
+              className="text-base font-bold text-foreground hover:underline underline-offset-2"
+            >
+              {post.author?.displayName || "Unknown"}
+            </Link>
+            
+            <StakingBadgeChip badge={post.author?.badge || "shrimp"} />
+            {post.author?.isValidator && <BadgeCheck className="size-4 text-brand-start fill-current" />}
+            
+            <span className="text-sm text-muted-foreground">· {relativeTime(post.createdAt)}</span>
+          </div>
+          
+          <div className="flex flex-wrap items-center gap-x-3 text-xs text-muted-foreground">
+            <span>@{post.author?.username || shortAddr(post.author?.address || "")}</span>
+            <span>· {shortAddr(post.author?.address || "")}</span>
+            {post.txHash && (
+              <span className="inline-flex items-center gap-1 text-brand-start">
+                <LinkIcon className="size-3" /> On-Chain
+              </span>
+            )}
+            {post.isBoosted && (
+              <span className="inline-flex items-center gap-1 text-brand-start font-medium">
+                <Pin className="size-3.5" /> Promoted
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Badge Super Yap (Pojok Kanan Atas) */}
         {post.isSuperYap && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-gold/90 backdrop-blur-sm px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-white shadow-lg">
+          <span className="flex items-center gap-1.5 rounded-full bg-gold/90 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-white shadow-sm">
             <Sparkles className="size-3" />
-            Super Yap
+            Super
           </span>
         )}
       </div>
 
-      {post.isBoosted && (
-        <div className="mb-3 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-brand-start">
-          <Pin className="size-3.5" />
-          Promoted
-        </div>
-      )}
-
-      <div className="flex gap-4">
-        <Link to="/profile/$address" params={{ address: post.author?.address || "" }}>
-          <Avatar seed={post.author?.avatarSeed || "default"} size={48} />
+      {/* === Content === */}
+      <div className="ml-[60px] -mt-1">
+        <Link
+          to="/yap/$id"
+          params={{ id: post.id }}
+          className="block text-[15px] leading-relaxed text-foreground/90 whitespace-pre-wrap hover:text-foreground transition-colors"
+        >
+          {post.content}
         </Link>
+      </div>
 
-        <div className="min-w-0 flex-1">
-          {/* Header User */}
-          <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
-            <Link
-              to="/profile/$address"
-              params={{ address: post.author?.address || "" }}
-              className="font-semibold text-foreground hover:text-brand-start transition-colors underline-offset-2 hover:underline"
-            >
-              {post.author?.displayName || "Unknown"}
-            </Link>
-            <StakingBadgeChip badge={post.author?.badge || "shrimp"} />
-            {post.author?.isValidator && <BadgeCheck className="size-4 text-brand-start fill-current" />}
-            
-            {post.onChain && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-brand-start/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-brand-start border border-brand-start/20">
-                ⚡ On-Chain
-              </span>
+      {/* === Action Bar (Gaya Facebook Desktop) === */}
+      <div className="ml-[60px] mt-2 flex items-center justify-between border-t border-border/40 pt-3">
+        {/* Left: Interaksi Sosial */}
+        <div className="flex items-center gap-6">
+          <button
+            onClick={onToggleLike}
+            className={cn(
+              "flex items-center gap-1.5 text-sm font-medium transition-colors hover:text-brand-start group",
+              liked ? "text-brand-start" : "text-muted-foreground"
             )}
-            
-            <span className="font-mono text-[11px] text-muted-foreground">
-              {shortAddr(post.author?.address || "")}
-            </span>
-            <span className="text-xs text-muted-foreground">· {relativeTime(post.createdAt)}</span>
-          </div>
-
-          {/* Konten Postingan */}
-          <Link
-            to="/yap/$id"
-            params={{ id: post.id }}
-            className="mt-2 block text-[15px] leading-relaxed text-foreground/90 whitespace-pre-wrap"
           >
-            {post.content}
+            <Heart className={cn("size-5 transition-transform group-hover:scale-110", liked && "fill-current")} />
+            <span>{compact(likes)}</span>
+          </button>
+
+          <Link to="/yap/$id" params={{ id: post.id }} className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-brand-start group">
+            <MessageCircle className="size-5 group-hover:scale-110 transition-transform" />
+            <span>{compact(post.replies || 0)}</span>
           </Link>
 
-          {/* Action Bar */}
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-muted-foreground">
-            <div className="flex flex-wrap items-center gap-4">
-              <Link to="/yap/$id" params={{ id: post.id }} className="group flex items-center gap-1.5 text-xs transition-colors hover:text-brand-start">
-                <MessageCircle className="size-4 group-hover:scale-110 transition-transform" />
-                <span className="font-medium">{compact(post.replies || 0)}</span>
-              </Link>
-              
-              <button
-                onClick={onToggleRepost}
-                className={cn(
-                  "group flex items-center gap-1.5 text-xs transition-colors hover:text-brand-start",
-                  reposted && "text-brand-start",
-                )}
-              >
-                <Repeat className={cn("size-4 transition-transform group-active:scale-90", reposted && "fill-current")} />
-                <span className="font-medium">{compact(reposts || 0)}</span>
-              </button>
-
-              <button
-                onClick={onToggleLike}
-                className={cn(
-                  "group flex items-center gap-1.5 text-xs transition-colors hover:text-brand-start",
-                  liked && "text-brand-start",
-                )}
-              >
-                <Heart className={cn("size-4 transition-transform group-active:scale-90", liked && "fill-current")} />
-                <span className="font-medium">{compact(likes || 0)}</span>
-              </button>
-            </div>
-
-            <div className="flex items-center gap-1">
-              <button
-                onClick={onToggleBookmark}
-                className={cn(
-                  "group flex items-center justify-center size-8 rounded-full transition-colors hover:bg-muted",
-                  bookmarked && "text-brand-start",
-                )}
-              >
-                <Bookmark className={cn("size-4 transition-transform group-active:scale-90", bookmarked && "fill-current")} />
-              </button>
-
-              <button
-                onClick={handleCopyLink}
-                className="group flex items-center justify-center size-8 rounded-full transition-colors hover:bg-muted"
-              >
-                <LinkIcon className="size-4" />
-              </button>
-            </div>
-          </div>
-
-          {/* Action Buttons (Tip, SuperYap, Boost) */}
-          <div className="mt-4 flex flex-wrap gap-2 pt-3 border-t border-border/30">
-            <button
-              onClick={handleTip}
-              disabled={isProcessing}
-              className="btn-futuristic px-4 py-1.5 text-xs gap-1.5"
-            >
-              💎 {post.tipTotal > 0 ? `${post.tipTotal} QIE` : "Tip"}
-            </button>
-
-            {user?.address === post.author?.address && (
-              <button
-                onClick={handleSuperYap}
-                disabled={isProcessing}
-                className="inline-flex items-center gap-1 rounded-full border border-gold/40 px-3 py-1.5 text-xs font-semibold text-gold transition-all hover:bg-gold hover:text-white hover:shadow-lg disabled:opacity-50"
-              >
-                <Flame className="size-3" />
-                Super Yap
-              </button>
+          <button
+            onClick={onToggleRepost}
+            className={cn(
+              "flex items-center gap-1.5 text-sm font-medium transition-colors hover:text-brand-start group",
+              reposted ? "text-brand-start" : "text-muted-foreground"
             )}
-
-            <button
-              onClick={handleBoost}
-              disabled={isProcessing}
-              className="inline-flex items-center gap-1 rounded-full border border-brand-start/20 px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-all hover:bg-brand-start/10 hover:text-brand-start disabled:opacity-50"
-            >
-              <Zap className="size-3" />
-              Boost
-            </button>
-          </div>
+          >
+            <Repeat className={cn("size-5 transition-transform group-hover:scale-110", reposted && "fill-current")} />
+            <span>{compact(reposts)}</span>
+          </button>
         </div>
+
+        {/* Right: Bookmark & Copy */}
+        <div className="flex items-center gap-1">
+          <button
+            onClick={onToggleBookmark}
+            className={cn(
+              "p-1.5 rounded-full transition-colors hover:bg-muted",
+              bookmarked ? "text-brand-start" : "text-muted-foreground"
+            )}
+          >
+            <Bookmark className={cn("size-5", bookmarked && "fill-current")} />
+          </button>
+          <button
+            onClick={handleCopyLink}
+            className="p-1.5 rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-brand-start"
+          >
+            <LinkIcon className="size-5" />
+          </button>
+        </div>
+      </div>
+
+      {/* === Bottom: Premium Actions (Tip / SuperYap / Boost) === */}
+      <div className="ml-[60px] mt-1 flex flex-wrap items-center gap-2 border-t border-border/20 pt-3">
+        <button
+          onClick={handleTip}
+          disabled={isProcessing}
+          className="flex items-center gap-1.5 rounded-full bg-gradient-to-r from-[#FF0A6C] to-[#0040FF] px-4 py-1.5 text-xs font-semibold text-white shadow-md shadow-brand-start/25 transition-all hover:scale-105 hover:shadow-lg disabled:opacity-50 disabled:hover:scale-100"
+        >
+          💎 {post.tipTotal > 0 ? `${post.tipTotal} QIE` : "Tip"}
+        </button>
+
+        {user?.address === post.author?.address && (
+          <button
+            onClick={handleSuperYap}
+            disabled={isProcessing}
+            className="flex items-center gap-1.5 rounded-full border border-gold/40 px-4 py-1.5 text-xs font-semibold text-gold transition-all hover:bg-gold hover:text-white hover:shadow-md disabled:opacity-50"
+          >
+            <Flame className="size-3.5" />
+            Super Yap
+          </button>
+        )}
+
+        <button
+          onClick={handleBoost}
+          disabled={isProcessing}
+          className="flex items-center gap-1.5 rounded-full border border-brand-start/20 px-4 py-1.5 text-xs font-semibold text-muted-foreground transition-all hover:border-brand-start hover:bg-brand-start/5 hover:text-brand-start disabled:opacity-50"
+        >
+          <Zap className="size-3.5" />
+          Boost
+        </button>
       </div>
     </article>
   );
