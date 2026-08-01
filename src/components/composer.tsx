@@ -6,7 +6,7 @@ import { Avatar } from "./avatar-img";
 import { useAuth } from "@/lib/auth-store";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { createPost } from "@/lib/posts";
+import { createPost, API_BASE } from "@/lib/posts";
 import { submitYapOnChain, YAP_CONTRACT, hashContent } from "@/lib/yap-onchain";
 
 const MAX = 280;
@@ -51,7 +51,8 @@ export function Composer({ onPosted, replyToId, onCancelReply }: ComposerProps) 
         cHash = hashContent(text.trim());
       }
       
-      await createPost(
+      // ✅ 1. Simpan post ke tabel posts
+      const newPost = await createPost(
         {
           content: text.trim(),
           isSuperYap: superYap,
@@ -64,6 +65,24 @@ export function Composer({ onPosted, replyToId, onCancelReply }: ComposerProps) 
         },
         user.id
       );
+
+      // ✅ 2. Jika ini reply/comment, simpan juga ke tabel comments (agar muncul di Admin Panel)
+      if (replyToId && newPost) {
+        try {
+          await fetch(`${API_BASE}/comments`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              post_id: replyToId,
+              author_id: user.id,
+              content: text.trim(),
+            }),
+          });
+        } catch (err) {
+          console.warn("Comment save to comments table failed:", err);
+          // Tidak perlu toast error, karena post utama sudah tersimpan
+        }
+      }
 
       const desc: string[] = [];
       if (txHash) desc.push("On-chain ✓");
