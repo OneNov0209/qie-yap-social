@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth-store";
 import { toggleLike, toggleRepost, toggleBookmark, type FeedPost, relativeTime, shortAddr } from "@/lib/posts";
-import { sendTip, boostPost, createSuperYap } from "@/lib/qie-chain";
+import { sendTip, boostPost, createSuperYap, checkWalletConnection, switchToQieNetwork } from "@/lib/qie-chain";
 
 function compact(n: number) {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -25,6 +25,9 @@ export function PostCard({ post }: { post: FeedPost }) {
   const { user } = useAuth();
 
   const contractAddress = import.meta.env.VITE_QIE_YAP_CONTRACT as `0x${string}`;
+
+  // ✅ Debug: Cek contract address
+  console.log("🔍 Contract address:", contractAddress);
 
   const onToggleLike = async () => {
     if (!user) return toast("Connect your wallet to like yaps");
@@ -85,28 +88,53 @@ export function PostCard({ post }: { post: FeedPost }) {
     if (!user) return toast.error("Connect your wallet to tip");
     if (!contractAddress) return toast.error("Contract not deployed yet");
     if (isProcessing) return;
-    
+
+    // ✅ Cek wallet terlebih dahulu
+    const isConnected = await checkWalletConnection();
+    if (!isConnected) {
+      toast.error("Please connect your wallet first");
+      return;
+    }
+
+    // ✅ Switch ke QIE network
     try {
-      setIsProcessing(true);
-      const amount = prompt("Enter tip amount in QIE (e.g. 0.1):", "0.1");
-      if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
-        toast.error("Invalid amount");
-        setIsProcessing(false);
-        return;
-      }
-      
+      await switchToQieNetwork();
+    } catch (err) {
+      console.error("Network switch error:", err);
+      toast.error("Failed to switch to QIE network");
+      return;
+    }
+
+    // ✅ Gunakan input modal (bukan prompt)
+    const amount = window.prompt("Enter tip amount in QIE (e.g. 0.1):", "0.1");
+    if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
+      toast.error("Invalid amount");
+      return;
+    }
+    
+    setIsProcessing(true);
+    try {
+      toast.loading("Waiting for wallet confirmation...");
       const hash = await sendTip(
         contractAddress,
         String(post.author.address) as `0x${string}`,
         amount,
         `Tip for post ${post.id}`
       );
-      
+      toast.dismiss();
       toast.success(`Tip sent! Tx: ${hash.slice(0, 10)}...`);
-      setIsProcessing(false);
     } catch (error: any) {
-      console.error(error);
-      toast.error(error.message || "Tip failed");
+      toast.dismiss();
+      console.error("❌ Tip error:", error);
+      // Periksa error spesifik
+      if (error.message?.includes("insufficient funds")) {
+        toast.error("Insufficient QIE balance");
+      } else if (error.message?.includes("user rejected")) {
+        toast.error("Transaction rejected by user");
+      } else {
+        toast.error(error.message || "Tip failed");
+      }
+    } finally {
       setIsProcessing(false);
     }
   };
@@ -116,26 +144,40 @@ export function PostCard({ post }: { post: FeedPost }) {
     if (!contractAddress) return toast.error("Contract not deployed yet");
     if (isProcessing) return;
 
+    const isConnected = await checkWalletConnection();
+    if (!isConnected) {
+      toast.error("Please connect your wallet first");
+      return;
+    }
+
     try {
-      setIsProcessing(true);
-      const hours = prompt("Boost duration (1-72 hours):", "24");
-      if (!hours || isNaN(parseInt(hours)) || parseInt(hours) < 1 || parseInt(hours) > 72) {
-        toast.error("Duration must be 1-72 hours");
-        setIsProcessing(false);
-        return;
-      }
-      
+      await switchToQieNetwork();
+    } catch (err) {
+      toast.error("Failed to switch to QIE network");
+      return;
+    }
+
+    const hours = window.prompt("Boost duration (1-72 hours):", "24");
+    if (!hours || isNaN(parseInt(hours)) || parseInt(hours) < 1 || parseInt(hours) > 72) {
+      toast.error("Duration must be 1-72 hours");
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      toast.loading("Waiting for wallet confirmation...");
       const hash = await boostPost(
         contractAddress,
         BigInt(post.id || "0"),
         BigInt(hours)
       );
-      
+      toast.dismiss();
       toast.success(`Post boosted for ${hours}h! Tx: ${hash.slice(0, 10)}...`);
-      setIsProcessing(false);
     } catch (error: any) {
-      console.error(error);
+      toast.dismiss();
+      console.error("❌ Boost error:", error);
       toast.error(error.message || "Boost failed");
+    } finally {
       setIsProcessing(false);
     }
   };
@@ -145,14 +187,30 @@ export function PostCard({ post }: { post: FeedPost }) {
     if (!contractAddress) return toast.error("Contract not deployed yet");
     if (isProcessing) return;
 
+    const isConnected = await checkWalletConnection();
+    if (!isConnected) {
+      toast.error("Please connect your wallet first");
+      return;
+    }
+
     try {
-      setIsProcessing(true);
+      await switchToQieNetwork();
+    } catch (err) {
+      toast.error("Failed to switch to QIE network");
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      toast.loading("Waiting for wallet confirmation...");
       const hash = await createSuperYap(contractAddress);
+      toast.dismiss();
       toast.success(`Super Yap created! Tx: ${hash.slice(0, 10)}...`);
-      setIsProcessing(false);
     } catch (error: any) {
-      console.error(error);
+      toast.dismiss();
+      console.error("❌ SuperYap error:", error);
       toast.error(error.message || "Super Yap failed");
+    } finally {
       setIsProcessing(false);
     }
   };
