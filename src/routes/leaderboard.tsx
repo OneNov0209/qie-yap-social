@@ -1,12 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Header } from "@/components/header";
 import { Avatar } from "@/components/avatar-img";
 import { StakingBadgeChip } from "@/components/staking-badge";
-import { supabase } from "@/integrations/supabase/client";
-import { shortAddr } from "@/lib/posts";
+import { shortAddr, API_BASE } from "@/lib/posts";
 import { cn } from "@/lib/utils";
-import { Crown, Medal, User, ArrowUp, ArrowDown } from "lucide-react";
+import { Crown, Medal, User, ArrowUp, ArrowDown, Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/leaderboard")({
   head: () => ({
@@ -28,6 +27,7 @@ interface LeaderboardEntry {
   totalTipsReceived: number;
   yapCount: number;
   followerCount: number;
+  isValidator: boolean;
 }
 
 function LeaderboardPage() {
@@ -39,48 +39,117 @@ function LeaderboardPage() {
     const loadLeaderboard = async () => {
       setLoading(true);
       try {
-        // Ambil semua profil
-        const { data: profiles } = await supabase
-          .from("profiles")
-          .select("id, address, display_name, username, avatar_seed, is_validator");
+        // 1. Ambil semua profil dari VPS
+        let profiles: any[] = [];
+        try {
+          const res = await fetch(`${API_BASE}/profiles?limit=100`);
+          if (res.ok) {
+            profiles = await res.json();
+          }
+        } catch (err) {
+          console.warn("Failed to fetch profiles");
+        }
 
-        if (!profiles) return;
+        if (!profiles.length) {
+          setUsers([]);
+          setLoading(false);
+          return;
+        }
 
-        // Ambil statistik untuk setiap user
-        const leaderboard = await Promise.all(
-          profiles.map(async (p) => {
-            const [tipsReceived, yaps, followers] = await Promise.all([
-              supabase
-                .from("tips")
-                .select("amount", { count: "exact", head: true })
-                .eq("to_user_id", p.id),
-              supabase
-                .from("posts")
-                .select("id", { count: "exact", head: true })
-                .eq("author_id", p.id)
-                .is("reply_to", null),
-              supabase
-                .from("follows")
-                .select("follower_id", { count: "exact", head: true })
-                .eq("following_id", p.id),
-            ]);
+        // 2. Ambil semua tips dari VPS (untuk menghitung total per user)
+        let allTips: any[] = [];
+        try {
+          const res = await fetch(`${API_BASE}/tips?limit=500`);
+          if (res.ok) {
+            allTips = await res.json();
+          }
+        } catch (err) {
+          console.warn("Failed to fetch tips");
+        }
 
-            return {
-              id: p.id,
-              address: p.address,
-              displayName: p.display_name,
-              username: p.username,
-              avatarSeed: p.avatar_seed,
-              badge: "shrimp",
-              totalTipsReceived: tipsReceived.count || 0,
-              yapCount: yaps.count || 0,
-              followerCount: followers.count || 0,
-            };
-          })
+        // 3. Ambil semua postingan dari VPS (untuk menghitung yaps per user)
+        let allPosts: any[] = [];
+        try {
+          const res = await fetch(`${API_BASE}/feed?limit=200`);
+          if (res.ok) {
+            allPosts = await res.json();
+          }
+        } catch (err) {
+          console.warn("Failed to fetch posts");
+        }
+
+        // 4. Ambil semua follows dari VPS (untuk menghitung followers per user)
+        let allFollows: any[] = [];
+        try {
+          const res = await fetch(`${API_BASE}/follows?limit=500`);
+          if (res.ok) {
+            allFollows = await res.json();
+          }
+        } catch (err) {
+          console.warn("Failed to fetch follows");
+        }
+
+        // 5. Proses data: hitung statistik per user
+        const userStats: Record<string, any> = {};
+
+        // Inisialisasi semua profil
+        profiles.forEach((p: any) => {
+          userStats[p.id] = {
+            id: p.id,
+            address: p.address,
+            displayName: p.display_name || p.address.slice(0, 8),
+            username: p.username || p.address.slice(0, 8),
+            avatarSeed: p.avatar_seed || p.address,
+            badge: "shrimp",
+            isValidator: Boolean(p.is_validator),
+            totalTipsReceived: 0,
+            yapCount: 0,
+            followerCount: 0,
+          };
+        });
+
+        // Hitung total tips yang diterima per user
+        allTips.forEach((tip: any) => {
+          const toUserId = tip.to_user_id;
+          if (userStats[toUserId]) {
+            userStats[toUserId].totalTipsReceived += Number(tip.amount || 0);
+          }
+        });
+
+        // Hitung jumlah yaps per user (hanya post utama, bukan reply)
+        allPosts.forEach((post: any) => {
+          // Ambil author_id dari field author (object) atau author_id langsung
+          let authorId = post.author_id;
+          if (post.author && post.author.id) {
+            authorId = post.author.id;
+          }
+          // Jika post adalah reply, jangan dihitung
+          if (post.reply_to) return;
+          
+          if (userStats[authorId]) {
+            userStats[authorId].yapCount += 1;
+          }
+        });
+
+        // Hitung jumlah followers per user
+        allFollows.forEach((follow: any) => {
+          const followingId = follow.following_id;
+          if (userStats[followingId]) {
+            userStats[followingId].followerCount += 1;
+          }
+        });
+
+        // 6. Konversi ke array dan urutkan berdasarkan totalTipsReceived
+        let leaderboard = Object.values(userStats) as LeaderboardEntry[];
+        
+        // Filter hanya yang punya tips atau yaps (supaya tidak muncul user kosong)
+        leaderboard = leaderboard.filter(
+          (u) => u.totalTipsReceived > 0 || u.yapCount > 0
         );
 
-        // Urutkan berdasarkan total tip diterima (descending)
+        // Urutkan descending berdasarkan totalTipsReceived
         leaderboard.sort((a, b) => b.totalTipsReceived - a.totalTipsReceived);
+
         setUsers(leaderboard.slice(0, 50));
       } catch (err) {
         console.error("Leaderboard error:", err);
@@ -167,6 +236,11 @@ function LeaderboardPage() {
                   <div className="flex items-center gap-2">
                     <span className="font-semibold truncate">{user.displayName}</span>
                     <StakingBadgeChip badge={user.badge as any} />
+                    {user.isValidator && (
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-brand">
+                        Validator
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center gap-3 text-xs text-muted-foreground">
                     <span>@{user.username}</span>
@@ -175,7 +249,7 @@ function LeaderboardPage() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-sm font-bold text-brand">{user.totalTipsReceived} QIE</div>
+                  <div className="text-sm font-bold text-brand">{user.totalTipsReceived.toFixed(4)} QIE</div>
                   <div className="text-[10px] text-muted-foreground">Tips Received</div>
                 </div>
               </Link>
