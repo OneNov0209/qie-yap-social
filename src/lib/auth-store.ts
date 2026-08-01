@@ -1,7 +1,9 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { getQieBalance } from '@/lib/qie-chain';
-import { API_BASE } from '@/lib/posts';
+
+// Gunakan API_BASE dari environment variable
+const API_BASE = import.meta.env.VITE_API_BASE || "https://api.yap.onenov.xyz/api";
 
 export interface User {
   id: string;
@@ -20,7 +22,7 @@ interface AuthState {
   connecting: boolean;
   connect: () => Promise<void>;
   disconnect: () => void;
-  setUser: (patch: Partial<User>) => void;
+  updateProfile: (updates: Partial<User>) => void;
 }
 
 export const useAuth = create<AuthState>()(
@@ -42,13 +44,10 @@ export const useAuth = create<AuthState>()(
           const address = (accounts as string[])[0];
           if (!address) throw new Error('No account');
 
-          // ✅ Pastikan address disimpan sebelum fetch
-          const walletAddress = address;
-
           const res = await fetch(`${API_BASE}/profiles`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ address: walletAddress }),
+            body: JSON.stringify({ address }),
           });
 
           if (!res.ok) {
@@ -57,26 +56,16 @@ export const useAuth = create<AuthState>()(
           }
 
           const profile = await res.json();
-          const balance = await getQieBalance(walletAddress as `0x${string}`).catch(() => 0);
-
-          const displayName = 
-            profile.display_name || 
-            profile.displayName || 
-            `${walletAddress.slice(0, 6)}…${walletAddress.slice(-4)}`;
-
-          const avatarSeed = 
-            profile.avatar_seed || 
-            profile.avatarSeed || 
-            walletAddress;
+          const balance = await getQieBalance(address as `0x${string}`).catch(() => 0);
 
           set({
             user: {
               id: profile.id,
-              address: walletAddress,
+              address: profile.address ?? address,
               username: profile.username,
-              displayName: displayName,
+              displayName: profile.display_name ?? profile.displayName ?? `${address.slice(0, 6)}…${address.slice(-4)}`,
               bio: profile.bio ?? '',
-              avatarSeed: avatarSeed,
+              avatarSeed: profile.avatar_seed ?? profile.avatarSeed ?? address,
               badge: 'shrimp',
               isValidator: Boolean(profile.is_validator ?? profile.isValidator),
               balance,
@@ -92,15 +81,14 @@ export const useAuth = create<AuthState>()(
 
       disconnect: () => set({ user: null }),
 
-      setUser: (patch) => {
+      updateProfile: (updates) => {
         const current = get().user;
         if (!current) return;
-        set({ user: { ...current, ...patch } });
+        set({ user: { ...current, ...updates } });
       },
     }),
     {
       name: 'qie-auth-storage',
-      partialize: (state) => ({ user: state.user }),
     }
   )
 );
