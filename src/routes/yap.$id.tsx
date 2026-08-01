@@ -4,8 +4,7 @@ import { ArrowLeft, MessageCircle } from "lucide-react";
 import { Header } from "@/components/header";
 import { PostCard } from "@/components/post-card";
 import { Composer } from "@/components/composer";
-import { supabase } from "@/integrations/supabase/client";
-import { fetchFeed, fetchReplies, type FeedPost } from "@/lib/posts";
+import { API_BASE, mapPost, fetchFeed, fetchReplies, type FeedPost } from "@/lib/posts";
 import { useAuth } from "@/lib/auth-store";
 
 export const Route = createFileRoute("/yap/$id")({
@@ -33,66 +32,25 @@ function YapDetailPage() {
     try {
       const allPosts = await fetchFeed("latest", user?.id || null);
       const found = allPosts.find((p) => p.id === id);
-      
+
       if (found) {
         setPost(found);
       } else {
-        const { data, error } = await supabase
-          .from("posts")
-          .select(`
-            id,
-            content,
-            is_super_yap,
-            is_boosted,
-            boost_expires_at,
-            created_at,
-            tx_hash,
-            on_chain,
-            author_id
-          `)
-          .eq("id", id)
-          .single();
-
-        if (error || !data) {
+        const res = await fetch(
+          `${API_BASE}/posts/${encodeURIComponent(id)}${user?.id ? `?user_id=${encodeURIComponent(user.id)}` : ""}`
+        );
+        if (!res.ok) {
           setError(true);
           setLoading(false);
           return;
         }
-
-        const { data: authorData } = await supabase
-          .from("profiles")
-          .select("id, address, display_name, avatar_seed, is_validator")
-          .eq("id", data.author_id)
-          .single();
-
-        const author = authorData || {
-          id: data.author_id,
-          address: data.author_id,
-          displayName: "Anonymous",
-          avatarSeed: data.author_id,
-          isValidator: false,
-        };
-
-        setPost({
-          id: data.id,
-          content: data.content,
-          isSuperYap: data.is_super_yap,
-          isBoosted: data.is_boosted && data.boost_expires_at > new Date().toISOString(),
-          createdAt: data.created_at,
-          txHash: data.tx_hash,
-          onChain: data.on_chain,
-          tipTotal: 0,
-          likes: 0,
-          liked: false,
-          replies: 0,
-          author: {
-            address: author.address || "unknown",
-            displayName: author.display_name || "Anonymous",
-            avatarSeed: author.avatar_seed || "0x0",
-            badge: "shrimp",
-            isValidator: author.is_validator || false,
-          },
-        });
+        const data = await res.json().catch(() => null);
+        if (!data) {
+          setError(true);
+          setLoading(false);
+          return;
+        }
+        setPost(mapPost(data));
       }
 
       const repliesData = await fetchReplies(id, user?.id || null);
