@@ -15,8 +15,7 @@ export function StakingBadgeChip({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
-        meta.className,
+        "inline-flex items-center gap-1 rounded-full border border-brand/30 bg-brand-soft/60 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-foreground/80",
         className
       )}
     >

@@ -4,7 +4,7 @@ import { Header } from "@/components/header";
 import { Avatar } from "@/components/avatar-img";
 import { StakingBadgeChip } from "@/components/staking-badge";
 import { supabase } from "@/integrations/supabase/client";
-import { shortAddr, avatarUrl } from "@/lib/posts";
+import { shortAddr } from "@/lib/posts";
 import { cn } from "@/lib/utils";
 import { Crown, Medal, User, ArrowUp, ArrowDown } from "lucide-react";
 
