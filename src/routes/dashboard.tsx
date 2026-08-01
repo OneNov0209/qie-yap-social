@@ -55,31 +55,35 @@ function DashboardPage() {
     if (!user) return;
     setLoading(true);
     try {
-      // 1. Ambil data tips yang diterima user dari VPS
+      // ✅ 1. Ambil data tips yang diterima user dari endpoint baru
       let tipsData: TipRecord[] = [];
       try {
-        const tipsRes = await fetch(`${API_BASE}/tips?to_user_id=${user.id}&limit=50`);
+        const tipsRes = await fetch(`${API_BASE}/tips/user/${user.id}?limit=50`);
         if (tipsRes.ok) {
           tipsData = await tipsRes.json();
+          console.log("📦 Tips data from VPS:", tipsData);
+        } else {
+          console.warn("Tips endpoint returned status:", tipsRes.status);
         }
       } catch (err) {
-        console.warn("Failed to fetch tips from VPS, using fallback...");
+        console.warn("Failed to fetch tips from VPS:", err);
       }
 
+      // Hitung total amount
       const totalAmount = tipsData.reduce((sum, t) => sum + Number(t.amount), 0);
       const feeEarned = isDev ? totalAmount * 0.02 : 0;
 
-      // 2. Ambil jumlah Yaps user (dari feed yang difilter)
+      // ✅ 2. Ambil jumlah Yaps user (dari feed yang difilter)
       const allPosts = await fetchFeed("latest", user.id);
       const userYaps = allPosts.filter((p) => p.author.address === user.address);
 
-      // 3. Balance on-chain
+      // ✅ 3. Balance on-chain
       const balance = await getQieBalance(user.address as `0x${string}`).catch(() => 0);
 
-      // 4. Hitung followers (dari VPS - endpoint follows)
+      // ✅ 4. Hitung followers (dari VPS)
       let followersCount = 0;
       try {
-        const followsRes = await fetch(`${API_BASE}/follows?following_id=${user.id}&count=true`);
+        const followsRes = await fetch(`${API_BASE}/follows?following_id=${user.id}&count=followers`);
         if (followsRes.ok) {
           const data = await followsRes.json();
           followersCount = data.count || 0;
@@ -109,7 +113,6 @@ function DashboardPage() {
     if (stats.totalTipsReceived === 0) return toast.error("No tips to withdraw");
     if (withdrawing) return;
 
-    // ✅ Cek koneksi wallet
     const isConnected = await checkWalletConnection();
     if (!isConnected) {
       toast.error("Please connect your QIE Wallet first");
