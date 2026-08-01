@@ -1,15 +1,17 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { useDebounce } from "@/hooks/use-mobile";
 import { Header } from "@/components/header";
 import { PostCard } from "@/components/post-card";
 import { Avatar } from "@/components/avatar-img";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/lib/auth-store";
-import { fetchFeed, shortAddr, type FeedPost } from "@/lib/posts";
-import { Search, User, FileText, Loader2 } from "lucide-react";
+import { fetchFeed, shortAddr, type FeedPost, API_BASE } from "@/lib/posts";
+import { Search, User, FileText, Loader2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/search")({
   head: () => ({
@@ -21,50 +23,121 @@ export const Route = createFileRoute("/search")({
   component: SearchPage,
 });
 
+interface SearchUser {
+  id: string;
+  address: string;
+  username: string;
+  display_name: string;
+  avatar_seed: string;
+  is_validator: boolean;
+}
+
+type SearchTab = "all" | "users" | "yaps";
+
 function SearchPage() {
   const { user } = useAuth();
   const [query, setQuery] = useState("");
+  const [tab, setTab] = useState<SearchTab>("all");
   const [results, setResults] = useState<{
-    users: any[];
+    users: SearchUser[];
     posts: FeedPost[];
   }>({ users: [], posts: [] });
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  
+  // Debounce 300ms untuk realtime search
+  const debouncedQuery = useDebounce(query, 300);
 
-  const handleSearch = async () => {
-    if (!query.trim()) return;
+  // ✅ Search function (menggunakan VPS API + local filter)
+  const performSearch = useCallback(async (searchTerm: string) => {
+    if (!searchTerm.trim()) {
+      setResults({ users: [], posts: [] });
+      setHasSearched(false);
+      return;
+    }
+
     setLoading(true);
     setHasSearched(true);
-    try {
-      // 1. Search Users
-      const { data: users } = await supabase
-        .from("profiles")
-        .select("id, address, display_name, username, avatar_seed, is_validator")
-        .or(`display_name.ilike.%${query}%,username.ilike.%${query}%,address.ilike.%${query}%`)
-        .limit(10);
 
-      // 2. Search Posts (hanya konten yang mengandung query)
+    try {
+      // 1. Search Users dari VPS (endpoint khusus search)
+      let users: SearchUser[] = [];
+      try {
+        const usersRes = await fetch(
+          `${API_BASE}/search/users?q=${encodeURIComponent(searchTerm)}&limit=10`
+        );
+        if (usersRes.ok) {
+          users = await usersRes.json();
+        } else {
+          // Fallback: fetch semua profil lalu filter lokal
+          console.warn("Search users endpoint not available, falling back to local filter");
+          const allProfilesRes = await fetch(`${API_BASE}/profiles?limit=100`);
+          if (allProfilesRes.ok) {
+            const allProfiles = await allProfilesRes.json();
+            const term = searchTerm.toLowerCase();
+            users = allProfiles.filter((p: any) => 
+              p.display_name?.toLowerCase().includes(term) ||
+              p.username?.toLowerCase().includes(term) ||
+              p.address?.toLowerCase().includes(term)
+            ).slice(0, 10);
+          }
+        }
+      } catch (err) {
+        console.error("User search error:", err);
+      }
+
+      // 2. Search Posts (filter dari feed lokal)
       const allPosts = await fetchFeed("latest", user?.id || null);
+      const term = searchTerm.toLowerCase();
       const filteredPosts = allPosts.filter((p) => 
-        p.content.toLowerCase().includes(query.toLowerCase())
-      );
+        p.content.toLowerCase().includes(term) ||
+        p.author.displayName.toLowerCase().includes(term) ||
+        p.author.address.toLowerCase().includes(term)
+      ).slice(0, 20);
 
       setResults({
         users: users || [],
-        posts: filteredPosts.slice(0, 10),
+        posts: filteredPosts,
       });
     } catch (err) {
       console.error("Search error:", err);
+      toast.error("Search failed, please try again");
     } finally {
       setLoading(false);
     }
+  }, [user]);
+
+  // ✅ Trigger search saat debouncedQuery berubah
+  useEffect(() => {
+    performSearch(debouncedQuery);
+  }, [debouncedQuery, performSearch]);
+
+  // ✅ Filter hasil berdasarkan tab
+  const filteredResults = useMemo(() => {
+    if (tab === "users") {
+      return { users: results.users, posts: [] };
+    }
+    if (tab === "yaps") {
+      return { users: [], posts: results.posts };
+    }
+    return results;
+  }, [results, tab]);
+
+  // ✅ Highlight keyword di konten
+  const highlightText = (text: string, keyword: string) => {
+    if (!keyword.trim()) return text;
+    const parts = text.split(new RegExp(`(${keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'));
+    return parts.map((part, i) => 
+      part.toLowerCase() === keyword.toLowerCase() ? 
+        <mark key={i} className="bg-yellow-200/50 dark:bg-yellow-800/50 rounded px-0.5">{part}</mark> : 
+        part
+    );
   };
 
-  // Trigger search saat user menekan Enter
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      handleSearch();
-    }
+  const handleClear = () => {
+    setQuery("");
+    setResults({ users: [], posts: [] });
+    setHasSearched(false);
   };
 
   return (
@@ -73,24 +146,85 @@ function SearchPage() {
       <div className="mx-auto max-w-2xl px-4 py-6">
         <div className="mb-6">
           <h1 className="font-display text-2xl font-bold mb-4">Search</h1>
+          
           <div className="flex gap-2">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
               <Input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Search users or Yaps..."
-                className="pl-9"
+                placeholder="Search users, Yaps, or addresses..."
+                className="pl-9 pr-9"
+                autoFocus
               />
+              {query && (
+                <button
+                  onClick={handleClear}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="size-4" />
+                </button>
+              )}
             </div>
-            <Button onClick={handleSearch} disabled={loading || !query.trim()}>
+            <Button 
+              onClick={() => performSearch(query)} 
+              disabled={loading || !query.trim()}
+              className="shrink-0"
+            >
               {loading ? <Loader2 className="size-4 animate-spin" /> : "Search"}
             </Button>
           </div>
+
+          {/* Tab Filter */}
+          {(hasSearched || results.users.length > 0 || results.posts.length > 0) && (
+            <Tabs 
+              value={tab} 
+              onValueChange={(v) => setTab(v as SearchTab)}
+              className="mt-4"
+            >
+              <TabsList className="w-full grid grid-cols-3">
+                <TabsTrigger value="all" className="flex items-center gap-2">
+                  <Search className="size-3.5" />
+                  All
+                </TabsTrigger>
+                <TabsTrigger value="users" className="flex items-center gap-2">
+                  <User className="size-3.5" />
+                  Users
+                </TabsTrigger>
+                <TabsTrigger value="yaps" className="flex items-center gap-2">
+                  <FileText className="size-3.5" />
+                  Yaps
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          )}
         </div>
 
-        {hasSearched && !loading && results.users.length === 0 && results.posts.length === 0 && (
+        {/* Loading State */}
+        {loading && (
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="yap-card p-5 animate-pulse border border-border/50 bg-card/50">
+                <div className="flex gap-4">
+                  <div className="size-12 rounded-full bg-muted" />
+                  <div className="flex-1 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <div className="h-4 w-32 rounded bg-muted" />
+                      <div className="h-3 w-16 rounded bg-muted" />
+                    </div>
+                    <div className="h-4 w-full rounded bg-muted" />
+                    <div className="h-4 w-3/4 rounded bg-muted" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Empty State */}
+        {!loading && hasSearched && 
+          filteredResults.users.length === 0 && 
+          filteredResults.posts.length === 0 && (
           <div className="rounded-2xl border border-dashed border-border bg-card p-12 text-center">
             <div className="mx-auto mb-3 grid size-12 place-items-center rounded-full bg-muted text-2xl">🔍</div>
             <h3 className="font-display text-lg font-semibold">No results found</h3>
@@ -101,14 +235,14 @@ function SearchPage() {
         )}
 
         {/* Hasil User */}
-        {results.users.length > 0 && (
+        {!loading && filteredResults.users.length > 0 && (
           <div className="mb-6">
             <h2 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
               <User className="size-4" />
-              Users
+              Users ({filteredResults.users.length})
             </h2>
             <div className="space-y-2">
-              {results.users.map((u) => (
+              {filteredResults.users.map((u) => (
                 <Link
                   key={u.id}
                   to="/profile/$address"
@@ -116,10 +250,19 @@ function SearchPage() {
                   className="flex items-center gap-3 rounded-xl border border-border/50 bg-card/50 p-3 transition-colors hover:bg-card/80"
                 >
                   <Avatar seed={u.avatar_seed || u.address} size={40} />
-                  <div>
-                    <p className="font-semibold">{u.display_name}</p>
-                    <p className="text-xs text-muted-foreground">@{u.username} · {shortAddr(u.address)}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold truncate">
+                      {highlightText(u.display_name || u.username || u.address, query)}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      @{u.username || u.address.slice(0, 8)} · {shortAddr(u.address)}
+                    </p>
                   </div>
+                  {u.is_validator && (
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-brand">
+                      Validator
+                    </span>
+                  )}
                 </Link>
               ))}
             </div>
@@ -127,14 +270,14 @@ function SearchPage() {
         )}
 
         {/* Hasil Postingan */}
-        {results.posts.length > 0 && (
+        {!loading && filteredResults.posts.length > 0 && (
           <div>
             <h2 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
               <FileText className="size-4" />
-              Yaps
+              Yaps ({filteredResults.posts.length})
             </h2>
             <div className="space-y-4">
-              {results.posts.map((p) => (
+              {filteredResults.posts.map((p) => (
                 <PostCard key={p.id} post={p} />
               ))}
             </div>
