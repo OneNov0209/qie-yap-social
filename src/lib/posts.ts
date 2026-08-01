@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_BASE || "https://api.yap.onenov.xyz/api";
+export const API_BASE = import.meta.env.VITE_API_BASE || "https://api.yap.onenov.xyz/api";
 
 export interface FeedPost {
   id: string;
@@ -119,9 +119,7 @@ export async function fetchFeed(tab: string, userId: string | null): Promise<Fee
   
   const posts = await res.json();
 
-  // ✅ PERBAIKAN: Memetakan data author langsung dari backend
   return posts.map((p: any) => {
-    // Ambil data author dari berbagai kemungkinan format backend
     const authorData = p.author || {};
     const address = authorData.address || p.author_address || p.author_id || "unknown";
     const displayName = authorData.display_name || authorData.displayName || p.author_display_name || p.author_name || "Anonymous";
