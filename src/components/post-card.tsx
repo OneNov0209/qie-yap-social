@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth-store";
 import { toggleLike, toggleRepost, toggleBookmark, type FeedPost, relativeTime, shortAddr } from "@/lib/posts";
-import { sendTip, boostPost, createSuperYap, checkWalletConnection, switchToQieNetwork } from "@/lib/qie-chain";
+import { sendTip, boostPost, createSuperYap, checkWalletConnection } from "@/lib/qie-chain";
 
 function compact(n: number) {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -92,16 +92,7 @@ export function PostCard({ post }: { post: FeedPost }) {
     // ✅ Cek wallet terlebih dahulu
     const isConnected = await checkWalletConnection();
     if (!isConnected) {
-      toast.error("Please connect your wallet first");
-      return;
-    }
-
-    // ✅ Switch ke QIE network
-    try {
-      await switchToQieNetwork();
-    } catch (err) {
-      console.error("Network switch error:", err);
-      toast.error("Failed to switch to QIE network");
+      toast.error("Please connect your QIE Wallet first");
       return;
     }
 
@@ -146,14 +137,7 @@ export function PostCard({ post }: { post: FeedPost }) {
 
     const isConnected = await checkWalletConnection();
     if (!isConnected) {
-      toast.error("Please connect your wallet first");
-      return;
-    }
-
-    try {
-      await switchToQieNetwork();
-    } catch (err) {
-      toast.error("Failed to switch to QIE network");
+      toast.error("Please connect your QIE Wallet first");
       return;
     }
 
@@ -189,14 +173,7 @@ export function PostCard({ post }: { post: FeedPost }) {
 
     const isConnected = await checkWalletConnection();
     if (!isConnected) {
-      toast.error("Please connect your wallet first");
-      return;
-    }
-
-    try {
-      await switchToQieNetwork();
-    } catch (err) {
-      toast.error("Failed to switch to QIE network");
+      toast.error("Please connect your QIE Wallet first");
       return;
     }
 
