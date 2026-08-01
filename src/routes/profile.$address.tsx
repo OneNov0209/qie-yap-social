@@ -9,9 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/lib/auth-store";
-import { shortAddr, type FeedPost, type FeedProfile, fetchFeed } from "@/lib/posts";
-import { badgeFor, getQieBalance, getStakedQie } from "@/lib/qie-chain";
-import { BADGE_META } from "@/lib/mock-data";
+import { shortAddr, type FeedPost, fetchFeed } from "@/lib/posts";
+import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -34,6 +33,17 @@ export const Route = createFileRoute("/profile/$address")({
   ),
   component: ProfilePage,
 });
+
+interface FeedProfile {
+  id: string;
+  address: string;
+  username: string;
+  displayName: string;
+  bio: string;
+  avatarSeed: string;
+  isValidator: boolean;
+  badge: 'shrimp' | 'fish' | 'dolphin' | 'shark' | 'whale';
+}
 
 function ProfilePage() {
   const { address } = Route.useParams();
@@ -60,25 +70,51 @@ function ProfilePage() {
     }
   }, [isEditModalOpen, profile]);
 
-  // ✅ PERBAIKAN: Tidak perlu fetch ke Supabase. Langsung pakai data dari Zustand
+  // ✅ PERBAIKAN: Load profile dari Supabase langsung jika bukan user sendiri
   useEffect(() => {
-    if (user && user.address === address) {
-      const fp: FeedProfile = {
-        id: user.id,
-        address: user.address,
-        username: user.username || user.address.slice(0, 8),
-        displayName: user.displayName,
-        bio: user.bio || "",
-        avatarSeed: user.avatarSeed,
-        isValidator: user.isValidator,
-        badge: user.badge,
-      };
-      setProfile(fp);
-      setLoading(false);
-    } else {
-      setProfile(null);
-      setLoading(false);
-    }
+    const loadProfile = async () => {
+      setLoading(true);
+      if (user && user.address === address) {
+        const fp: FeedProfile = {
+          id: user.id,
+          address: user.address,
+          username: user.username || user.address.slice(0, 8),
+          displayName: user.displayName,
+          bio: user.bio || "",
+          avatarSeed: user.avatarSeed,
+          isValidator: user.isValidator,
+          badge: user.badge,
+        };
+        setProfile(fp);
+        setLoading(false);
+      } else {
+        // Ambil dari Supabase langsung
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('address', address)
+          .single();
+        
+        if (error) {
+          console.warn("Profile not found:", error);
+          setProfile(null);
+        } else if (data) {
+          const fp: FeedProfile = {
+            id: data.id,
+            address: data.address,
+            username: data.username || data.address.slice(0, 8),
+            displayName: data.display_name || `${address.slice(0, 6)}…${address.slice(-4)}`,
+            bio: data.bio || "",
+            avatarSeed: data.avatar_seed || address,
+            isValidator: Boolean(data.is_validator),
+            badge: 'shrimp', // default
+          };
+          setProfile(fp);
+        }
+        setLoading(false);
+      }
+    };
+    loadProfile();
   }, [user, address]);
 
   // ✅ AMBIL POSTINGAN DARI VPS
