@@ -47,7 +47,6 @@ export async function getStakedQie(address: string): Promise<number | null> {
         return Number(data.items[0].value) / 1e18;
       }
     }
-
     const privateRes = await fetch(`${PRIVATE_API}/cosmos/staking/v1beta1/delegations/${address}`);
     if (privateRes.ok) {
       const data = await privateRes.json();
@@ -57,7 +56,6 @@ export async function getStakedQie(address: string): Promise<number | null> {
       );
       return total / 1e18;
     }
-
     return null;
   } catch {
     return null;
@@ -106,10 +104,10 @@ export async function getQieYapContract(contractAddress: `0x${string}`) {
   });
 }
 
-// ✅ Fungsi cek koneksi wallet
+// ✅ CEK HANYA QIE WALLET
 export async function checkWalletConnection(): Promise<boolean> {
   if (typeof window === "undefined" || !window.ethereum) {
-    console.error("No wallet detected");
+    console.error("❌ QIE Wallet tidak terdeteksi. Install QIE Wallet.");
     return false;
   }
   try {
@@ -120,45 +118,14 @@ export async function checkWalletConnection(): Promise<boolean> {
   }
 }
 
-// ✅ Fungsi switch network ke QIE
-export async function switchToQieNetwork(): Promise<void> {
-  if (typeof window === "undefined" || !window.ethereum) return;
-  try {
-    await window.ethereum.request({
-      method: "wallet_switchEthereumChain",
-      params: [{ chainId: "0x7C6" }], // 1990 dalam hex
-    });
-  } catch (error: any) {
-    if (error.code === 4902) {
-      // Network belum ada, tambahkan
-      await window.ethereum.request({
-        method: "wallet_addEthereumChain",
-        params: [{
-          chainId: "0x7C6",
-          chainName: "QIE Mainnet",
-          nativeCurrency: { name: "QIE", symbol: "QIE", decimals: 18 },
-          rpcUrls: ["https://rpc-evm.qie.onenov.xyz"],
-          blockExplorerUrls: ["https://qie.explorer.onenov.xyz"],
-        }],
-      });
-    } else {
-      throw error;
-    }
-  }
-}
-
-// ✅ Fungsi get wallet client dengan switch network otomatis
+// ✅ AMBIL WALLET CLIENT (HANYA QIE WALLET)
 export async function getWalletClient() {
   if (typeof window === "undefined" || !window.ethereum) {
-    throw new Error("No EVM wallet detected. Install MetaMask or the QIE wallet extension.");
+    throw new Error("❌ QIE Wallet tidak terdeteksi. Harap install QIE Wallet dan login.");
   }
-  
-  await switchToQieNetwork();
-  
   const accounts = await window.ethereum.request({ method: "eth_requestAccounts" }) as string[];
   const address = accounts[0];
-  if (!address) throw new Error("No account returned by wallet");
-  
+  if (!address) throw new Error("Tidak ada akun yang ditemukan di QIE Wallet.");
   const walletClient = createWalletClient({
     chain: QIE_CHAIN,
     transport: custom(window.ethereum),
@@ -166,16 +133,10 @@ export async function getWalletClient() {
   return { walletClient, address: address as `0x${string}` };
 }
 
-// ✅ Fungsi Tip dengan error handling
-export async function sendTip(
-  contractAddress: `0x${string}`,
-  recipient: `0x${string}`,
-  amountInQie: string,
-  message: string
-) {
+// ✅ TIP
+export async function sendTip(contractAddress: `0x${string}`, recipient: `0x${string}`, amountInQie: string, message: string) {
   console.log("📤 Sending tip to:", recipient, "amount:", amountInQie);
   const { walletClient, address } = await getWalletClient();
-  
   try {
     const hash = await walletClient.writeContract({
       address: contractAddress,
@@ -189,17 +150,14 @@ export async function sendTip(
     return hash;
   } catch (error: any) {
     console.error("❌ Tip error:", error);
-    throw new Error(error.message || "Tip failed");
+    throw new Error(error.message || "Tip gagal");
   }
 }
 
-// ✅ Fungsi SuperYap dengan error handling
-export async function createSuperYap(
-  contractAddress: `0x${string}`
-) {
+// ✅ SUPER YAP
+export async function createSuperYap(contractAddress: `0x${string}`) {
   console.log("📤 Creating SuperYap");
   const { walletClient, address } = await getWalletClient();
-  
   try {
     const hash = await walletClient.writeContract({
       address: contractAddress,
@@ -212,20 +170,15 @@ export async function createSuperYap(
     return hash;
   } catch (error: any) {
     console.error("❌ SuperYap error:", error);
-    throw new Error(error.message || "SuperYap failed");
+    throw new Error(error.message || "SuperYap gagal");
   }
 }
 
-// ✅ Fungsi Boost dengan error handling
-export async function boostPost(
-  contractAddress: `0x${string}`,
-  postId: bigint,
-  durationHours: bigint
-) {
+// ✅ BOOST
+export async function boostPost(contractAddress: `0x${string}`, postId: bigint, durationHours: bigint) {
   console.log("📤 Boosting post:", postId, "duration:", durationHours);
   const { walletClient, address } = await getWalletClient();
   const cost = 0.005 * Number(durationHours);
-  
   try {
     const hash = await walletClient.writeContract({
       address: contractAddress,
@@ -239,6 +192,6 @@ export async function boostPost(
     return hash;
   } catch (error: any) {
     console.error("❌ Boost error:", error);
-    throw new Error(error.message || "Boost failed");
+    throw new Error(error.message || "Boost gagal");
   }
 }
