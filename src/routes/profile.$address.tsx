@@ -145,7 +145,6 @@ function ProfilePage() {
 
       if (error) throw error;
 
-      // ✅ UPDATE LOCAL STATE
       const updatedProfile = {
         ...profile,
         displayName: editName.trim(),
@@ -154,7 +153,6 @@ function ProfilePage() {
       };
       setProfile(updatedProfile);
 
-      // ✅ UPDATE GLOBAL STATE & LOCALSTORAGE
       updateProfile({
         displayName: editName.trim(),
         bio: editBio.trim(),
