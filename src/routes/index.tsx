@@ -37,30 +37,39 @@ function FeedPage() {
   const { user } = useAuth();
 
   const load = useCallback(async () => {
-    if (!user) {
-      setPosts([]);
-      setLoading(false);
-      return;
-    }
     setLoading(true);
     try {
-      const data = await fetchFeed(tab, user.id);
+      // ✅ PERBAIKAN: Kirim user.id atau null
+      const userId = user?.id || null;
+      console.log("🔍 Loading feed for user:", userId);
+      const data = await fetchFeed(tab, userId);
+      console.log("📊 Posts loaded:", data.length);
+      if (data.length > 0) {
+        console.log("📊 Sample author:", data[0].author);
+      }
       setPosts(data);
+    } catch (err) {
+      console.error("❌ Error loading feed:", err);
     } finally {
       setLoading(false);
     }
   }, [tab, user]);
 
-  useEffect(() => { 
-    // ✅ PERBAIKAN: Pastikan user sudah ada sebelum load
-    if (user) load(); 
-  }, [user, load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   useEffect(() => {
     const ch = supabase
       .channel("feed")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "posts" }, load)
-      .on("postgres_changes", { event: "*", schema: "public", table: "likes" }, load)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "posts" }, () => {
+        console.log("🔄 Real-time update: new post detected");
+        load();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "likes" }, () => {
+        console.log("🔄 Real-time update: likes changed");
+        load();
+      })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [load]);
