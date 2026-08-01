@@ -132,6 +132,33 @@ export async function fetchFeed(tab: string, userId: string | null): Promise<Fee
   }));
 }
 
+export function mapPost(item: any): FeedPost {
+  return {
+    id: item.id,
+    content: item.content,
+    mediaUrl: item.media_url || item.mediaUrl,
+    isSuperYap: item.is_super_yap || false,
+    isBoosted: item.is_boosted || false,
+    createdAt: item.created_at || item.createdAt || new Date().toISOString(),
+    txHash: item.tx_hash || item.txHash,
+    onChain: item.on_chain || item.onChain,
+    tipTotal: item.tip_total || item.tipTotal || 0,
+    likes: item.likes || 0,
+    liked: item.liked || false,
+    replies: item.replies || 0,
+    reposts: item.reposts || 0,
+    reposted: item.reposted || false,
+    bookmarked: item.bookmarked || false,
+    author: item.author || {
+      address: item.author_address || item.author_id || "unknown",
+      displayName: item.author_display_name || item.display_name || "Anonymous",
+      avatarSeed: item.author_avatar_seed || item.avatar_seed || "default",
+      badge: item.author_badge || "shrimp",
+      isValidator: item.author_is_validator || false,
+    },
+  };
+}
+
 export function relativeTime(dateString: string): string {
   const date = new Date(dateString + 'Z');
   const now = new Date();
