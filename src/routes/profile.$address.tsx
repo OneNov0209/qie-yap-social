@@ -74,13 +74,14 @@ function ProfilePage() {
       if (!active) return;
       if (!p) { setProfile(null); setLoading(false); return; }
 
+      // ✅ Deklarasi variabel yapsData di dalam scope yang benar
+      const yapsData = await fetchFeed("latest", user?.id || null).then((posts) => 
+        posts.filter((post) => post.author.address === address)
+      );
+
       const [balance, staked, followers, followingCount] = await Promise.all([
         getQieBalance(p.address as `0x${string}`).catch(() => 0),
         getStakedQie(p.address).then((s) => s ?? 0),
-        // ✅ AMBIL POSTINGAN MENGGUNAKAN fetchFeed
-        fetchFeed("latest", user?.id || null).then((posts) => 
-          posts.filter((post) => post.author.address === address)
-        ),
         supabase.from("follows").select("follower_id", { count: "exact", head: true }).eq("following_id", p.id),
         supabase.from("follows").select("following_id", { count: "exact", head: true }).eq("follower_id", p.id),
       ]);
