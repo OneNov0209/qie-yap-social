@@ -44,6 +44,7 @@ function DashboardPage() {
   }, [user]);
 
   const loadDashboard = async () => {
+    if (!user) return;
     setLoading(true);
     try {
       const { data: tipsReceived } = await supabase
@@ -88,7 +89,7 @@ function DashboardPage() {
     setWithdrawing(true);
     try {
       const contractAddress = import.meta.env.VITE_QIE_YAP_CONTRACT as `0x${string}`;
-      const walletClient = await getWalletClient();
+      const { walletClient } = await getWalletClient();
       
       const hash = await walletClient.writeContract({
         address: contractAddress,

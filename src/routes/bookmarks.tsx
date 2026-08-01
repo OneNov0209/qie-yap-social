@@ -2,8 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Header } from "@/components/header";
 import { PostCard } from "@/components/post-card";
-import { supabase } from "@/integrations/supabase/client";
-import { fetchFeed, type FeedPost } from "@/lib/posts";
+import { API_BASE, mapPost, fetchFeed, type FeedPost } from "@/lib/posts";
 import { useAuth } from "@/lib/auth-store";
 import { Bookmark, ArrowLeft } from "lucide-react";
 
@@ -31,24 +30,22 @@ function BookmarksPage() {
 
       setLoading(true);
       try {
-        // Ambil semua ID bookmark milik user
-        const { data: bookmarks } = await supabase
-          .from("bookmarks")
-          .select("post_id")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false });
-
-        if (!bookmarks || bookmarks.length === 0) {
+        const res = await fetch(
+          `${API_BASE}/bookmarks?user_id=${encodeURIComponent(user.id)}`
+        );
+        if (res.ok) {
+          const data = await res.json().catch(() => []);
+          const list = Array.isArray(data) ? data : (data?.posts ?? []);
+          if (list.length && list[0]?.content !== undefined) {
+            setBookmarkedPosts(list.map(mapPost));
+          } else {
+            const ids = list.map((b: any) => String(b.post_id ?? b.id));
+            const allPosts = await fetchFeed("latest", user.id);
+            setBookmarkedPosts(allPosts.filter((p) => ids.includes(p.id)));
+          }
+        } else {
           setBookmarkedPosts([]);
-          setLoading(false);
-          return;
         }
-
-        // Ambil semua post yang di-bookmark
-        const postIds = bookmarks.map((b) => b.post_id);
-        const allPosts = await fetchFeed("latest", user.id);
-        const filtered = allPosts.filter((p) => postIds.includes(p.id));
-        setBookmarkedPosts(filtered);
       } catch (err) {
         console.error("Bookmarks error:", err);
       } finally {

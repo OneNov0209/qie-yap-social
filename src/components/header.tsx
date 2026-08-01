@@ -49,7 +49,7 @@ export function Header() {
     { to: "/dashboard", label: "Dashboard", icon: Wallet, active: path.startsWith("/dashboard") },
     { to: "/leaderboard", label: "Leaderboard", icon: Trophy, active: path.startsWith("/leaderboard") },
     { to: `/profile/${profilePath}`, label: "Profile", icon: User, active: path.startsWith("/profile") },
-    { to: "/add-qie-network", label: "Add Network", icon: PlusCircle }
+    { to: "/add-qie-network", label: "Add Network", icon: PlusCircle, active: path.startsWith("/add-qie-network") }
   ];
 
   return (

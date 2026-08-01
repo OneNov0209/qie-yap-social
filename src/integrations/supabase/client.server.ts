@@ -22,10 +22,12 @@ export function createSupabaseAdminClient() {
 }
 
 // Export dengan Proxy yang aman
-export const supabaseAdmin = new Proxy({} as ReturnType<typeof createSupabaseAdminClient>, {
+type SupabaseAdminClient = NonNullable<ReturnType<typeof createSupabaseAdminClient>>;
+
+export const supabaseAdmin = new Proxy({} as SupabaseAdminClient, {
   get(_, prop) {
     const client = createSupabaseAdminClient();
     if (!client) return undefined; // Cegah akses jika null
-    return Reflect.get(client, prop);
+    return Reflect.get(client as object, prop);
   },
 });

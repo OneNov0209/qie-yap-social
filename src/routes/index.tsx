@@ -34,7 +34,7 @@ function FeedPage() {
   const [tab, setTab] = useState<Tab>("latest");
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [loading, setLoading] = useState(true);
-  const { user, hydrated } = useAuth();
+  const { user } = useAuth();
 
   const load = useCallback(async () => {
     if (!user) {
@@ -53,8 +53,8 @@ function FeedPage() {
 
   useEffect(() => { 
     // ✅ PERBAIKAN: Pastikan user sudah ada sebelum load
-    if (hydrated && user) load(); 
-  }, [hydrated, user, load]);
+    if (user) load(); 
+  }, [user, load]);
 
   useEffect(() => {
     const ch = supabase

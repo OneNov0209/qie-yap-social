@@ -83,7 +83,7 @@ export function PostCard({ post }: { post: FeedPost }) {
 
   const handleTip = async () => {
     if (!user) return toast.error("Connect your wallet to tip");
-    if (!contractAddress || contractAddress === "") return toast.error("Contract not deployed yet");
+    if (!contractAddress) return toast.error("Contract not deployed yet");
     if (isProcessing) return;
     
     try {
@@ -113,7 +113,7 @@ export function PostCard({ post }: { post: FeedPost }) {
 
   const handleBoost = async () => {
     if (!user) return toast.error("Connect your wallet to boost");
-    if (!contractAddress || contractAddress === "") return toast.error("Contract not deployed yet");
+    if (!contractAddress) return toast.error("Contract not deployed yet");
     if (isProcessing) return;
 
     try {
@@ -142,7 +142,7 @@ export function PostCard({ post }: { post: FeedPost }) {
 
   const handleSuperYap = async () => {
     if (!user) return toast.error("Connect your wallet to create Super Yap");
-    if (!contractAddress || contractAddress === "") return toast.error("Contract not deployed yet");
+    if (!contractAddress) return toast.error("Contract not deployed yet");
     if (isProcessing) return;
 
     try {

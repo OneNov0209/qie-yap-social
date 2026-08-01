@@ -9,14 +9,44 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SearchRouteImport } from './routes/search'
 import { Route as LeaderboardRouteImport } from './routes/leaderboard'
+import { Route as ExplorerRouteImport } from './routes/explorer'
+import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as BookmarksRouteImport } from './routes/bookmarks'
+import { Route as AddQieNetworkRouteImport } from './routes/add-qie-network'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as YapIdRouteImport } from './routes/yap.$id'
 import { Route as ProfileAddressRouteImport } from './routes/profile.$address'
 
+const SearchRoute = SearchRouteImport.update({
+  id: '/search',
+  path: '/search',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LeaderboardRoute = LeaderboardRouteImport.update({
   id: '/leaderboard',
   path: '/leaderboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ExplorerRoute = ExplorerRouteImport.update({
+  id: '/explorer',
+  path: '/explorer',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BookmarksRoute = BookmarksRouteImport.update({
+  id: '/bookmarks',
+  path: '/bookmarks',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AddQieNetworkRoute = AddQieNetworkRouteImport.update({
+  id: '/add-qie-network',
+  path: '/add-qie-network',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -37,45 +67,128 @@ const ProfileAddressRoute = ProfileAddressRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/add-qie-network': typeof AddQieNetworkRoute
+  '/bookmarks': typeof BookmarksRoute
+  '/dashboard': typeof DashboardRoute
+  '/explorer': typeof ExplorerRoute
   '/leaderboard': typeof LeaderboardRoute
+  '/search': typeof SearchRoute
   '/profile/$address': typeof ProfileAddressRoute
   '/yap/$id': typeof YapIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/add-qie-network': typeof AddQieNetworkRoute
+  '/bookmarks': typeof BookmarksRoute
+  '/dashboard': typeof DashboardRoute
+  '/explorer': typeof ExplorerRoute
   '/leaderboard': typeof LeaderboardRoute
+  '/search': typeof SearchRoute
   '/profile/$address': typeof ProfileAddressRoute
   '/yap/$id': typeof YapIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/add-qie-network': typeof AddQieNetworkRoute
+  '/bookmarks': typeof BookmarksRoute
+  '/dashboard': typeof DashboardRoute
+  '/explorer': typeof ExplorerRoute
   '/leaderboard': typeof LeaderboardRoute
+  '/search': typeof SearchRoute
   '/profile/$address': typeof ProfileAddressRoute
   '/yap/$id': typeof YapIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/leaderboard' | '/profile/$address' | '/yap/$id'
+  fullPaths:
+    | '/'
+    | '/add-qie-network'
+    | '/bookmarks'
+    | '/dashboard'
+    | '/explorer'
+    | '/leaderboard'
+    | '/search'
+    | '/profile/$address'
+    | '/yap/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/leaderboard' | '/profile/$address' | '/yap/$id'
-  id: '__root__' | '/' | '/leaderboard' | '/profile/$address' | '/yap/$id'
+  to:
+    | '/'
+    | '/add-qie-network'
+    | '/bookmarks'
+    | '/dashboard'
+    | '/explorer'
+    | '/leaderboard'
+    | '/search'
+    | '/profile/$address'
+    | '/yap/$id'
+  id:
+    | '__root__'
+    | '/'
+    | '/add-qie-network'
+    | '/bookmarks'
+    | '/dashboard'
+    | '/explorer'
+    | '/leaderboard'
+    | '/search'
+    | '/profile/$address'
+    | '/yap/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AddQieNetworkRoute: typeof AddQieNetworkRoute
+  BookmarksRoute: typeof BookmarksRoute
+  DashboardRoute: typeof DashboardRoute
+  ExplorerRoute: typeof ExplorerRoute
   LeaderboardRoute: typeof LeaderboardRoute
+  SearchRoute: typeof SearchRoute
   ProfileAddressRoute: typeof ProfileAddressRoute
   YapIdRoute: typeof YapIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/search': {
+      id: '/search'
+      path: '/search'
+      fullPath: '/search'
+      preLoaderRoute: typeof SearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/leaderboard': {
       id: '/leaderboard'
       path: '/leaderboard'
       fullPath: '/leaderboard'
       preLoaderRoute: typeof LeaderboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/explorer': {
+      id: '/explorer'
+      path: '/explorer'
+      fullPath: '/explorer'
+      preLoaderRoute: typeof ExplorerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/bookmarks': {
+      id: '/bookmarks'
+      path: '/bookmarks'
+      fullPath: '/bookmarks'
+      preLoaderRoute: typeof BookmarksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/add-qie-network': {
+      id: '/add-qie-network'
+      path: '/add-qie-network'
+      fullPath: '/add-qie-network'
+      preLoaderRoute: typeof AddQieNetworkRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -104,7 +217,12 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AddQieNetworkRoute: AddQieNetworkRoute,
+  BookmarksRoute: BookmarksRoute,
+  DashboardRoute: DashboardRoute,
+  ExplorerRoute: ExplorerRoute,
   LeaderboardRoute: LeaderboardRoute,
+  SearchRoute: SearchRoute,
   ProfileAddressRoute: ProfileAddressRoute,
   YapIdRoute: YapIdRoute,
 }
