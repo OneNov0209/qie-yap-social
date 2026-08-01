@@ -3,10 +3,10 @@ import { Bell } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Avatar } from "./avatar-img";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-store";
-import { relativeTime } from "@/lib/posts";
+import { relativeTime, API_BASE } from "@/lib/posts";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface NotificationRow {
   id: string;
@@ -14,7 +14,12 @@ interface NotificationRow {
   amount: number | null;
   read: boolean;
   created_at: string;
-  from: { display_name: string; avatar_seed: string; address: string } | null;
+  from: { 
+    id: string;
+    display_name: string; 
+    avatar_seed: string; 
+    address: string;
+  } | null;
   post: { content: string } | null;
 }
 
@@ -30,34 +35,53 @@ function label(n: NotificationRow): string {
 export function NotificationsPopover() {
   const { user } = useAuth();
   const [items, setItems] = useState<NotificationRow[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  // ✅ Load notifikasi dari VPS
+  const loadNotifications = async () => {
+    if (!user) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/notifications?user_id=${user.id}&limit=20`);
+      if (res.ok) {
+        const data = await res.json();
+        setItems(data);
+      }
+    } catch (err) {
+      console.error("Failed to load notifications:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (!user) return;
-    let active = true;
-    const load = async () => {
-      const { data } = await supabase
-        .from("notifications")
-        .select("id, type, amount, read, created_at, from:profiles!notifications_from_user_id_fkey(display_name, avatar_seed, address), post:posts!notifications_post_id_fkey(content)")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(20);
-      if (active) setItems((data ?? []) as unknown as NotificationRow[]);
-    };
-    load();
-    const ch = supabase
-      .channel(`notif-${user.id}`)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` }, load)
-      .subscribe();
-    return () => { active = false; supabase.removeChannel(ch); };
+    loadNotifications();
+    // Polling setiap 10 detik (untuk real-time ringan)
+    const interval = setInterval(loadNotifications, 10000);
+    return () => clearInterval(interval);
   }, [user]);
 
   const unread = items.filter((n) => !n.read).length;
 
   const markAll = async () => {
-    if (!user) return;
-    setItems((xs) => xs.map((n) => ({ ...n, read: true })));
-    await supabase.from("notifications").update({ read: true }).eq("user_id", user.id).eq("read", false);
+    if (!user || unread === 0) return;
+    try {
+      const res = await fetch(`${API_BASE}/notifications/mark-read`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: user.id }),
+      });
+      if (res.ok) {
+        setItems((prev) => prev.map((n) => ({ ...n, read: true })));
+        toast.success("All notifications marked as read");
+      }
+    } catch (err) {
+      console.error("Failed to mark read:", err);
+    }
   };
+
+  if (!user) return null;
 
   return (
     <Popover>
@@ -82,11 +106,16 @@ export function NotificationsPopover() {
             size="sm"
             className="h-auto px-2 py-1 text-xs text-brand hover:text-brand"
             onClick={markAll}
+            disabled={unread === 0}
           >
             Mark all read
           </Button>
         </div>
-        {items.length === 0 ? (
+        {loading ? (
+          <div className="px-4 py-8 text-center text-sm text-muted-foreground animate-pulse">
+            Loading...
+          </div>
+        ) : items.length === 0 ? (
           <p className="px-4 py-8 text-center text-sm text-muted-foreground">No notifications yet.</p>
         ) : (
           <ul className="max-h-96 divide-y divide-border overflow-auto">
