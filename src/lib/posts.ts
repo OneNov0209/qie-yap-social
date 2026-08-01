@@ -158,20 +158,42 @@ export async function fetchFeed(tab: string, userId: string | null): Promise<Fee
   console.log("🔍 Fetching feed from:", url);
   const res = await fetch(url);
   if (!res.ok) return [];
-  
   const posts = await res.json();
-  console.log("📦 Raw posts from backend:", posts.length);
-  if (posts.length > 0) {
-    console.log("📦 Sample post author:", posts[0].author);
-  }
-  
   return posts.map(mapPost);
 }
 
+// ✅ PERBAIKAN: relativeTime yang lebih kuat menangani format tanggal
 export function relativeTime(dateString: string): string {
-  const date = new Date(dateString + 'Z');
+  if (!dateString) return "Just now";
+  
+  // Coba parsing dengan berbagai format
+  let date: Date;
+  try {
+    // Jika ada karakter 'Z' di akhir, biarkan
+    if (dateString.endsWith('Z')) {
+      date = new Date(dateString);
+    } else {
+      // Jika tidak ada Z, tambahkan Z (asumsi UTC)
+      date = new Date(dateString + 'Z');
+    }
+    
+    // Jika hasil parsing invalid, coba parse langsung
+    if (isNaN(date.getTime())) {
+      date = new Date(dateString);
+    }
+  } catch {
+    return "Invalid Date";
+  }
+
+  // Jika masih invalid, return fallback
+  if (isNaN(date.getTime())) {
+    return "Just now";
+  }
+
   const now = new Date();
   const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+  
+  if (seconds < 0) return "Just now"; // Data di masa depan
   if (seconds < 60) return "just now";
   const minutes = Math.floor(seconds / 60);
   if (minutes < 60) return `${minutes}m ago`;
@@ -182,7 +204,6 @@ export function relativeTime(dateString: string): string {
   return date.toLocaleDateString();
 }
 
-// ✅ TAMBAHAN: Export shortAddr
 export function shortAddr(addr: string): string {
   if (!addr || addr.length < 10) return addr;
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
