@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Bell } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Avatar } from "./avatar-img";
@@ -57,7 +58,6 @@ export function NotificationsPopover() {
   useEffect(() => {
     if (!user) return;
     loadNotifications();
-    // Polling setiap 10 detik (untuk real-time ringan)
     const interval = setInterval(loadNotifications, 10000);
     return () => clearInterval(interval);
   }, [user]);
@@ -119,28 +119,39 @@ export function NotificationsPopover() {
           <p className="px-4 py-8 text-center text-sm text-muted-foreground">No notifications yet.</p>
         ) : (
           <ul className="max-h-96 divide-y divide-border overflow-auto">
-            {items.map((n) => (
-              <li
-                key={n.id}
-                className={cn(
-                  "flex gap-3 px-4 py-3 transition-colors hover:bg-muted/40",
-                  !n.read && "bg-brand-soft/40",
-                )}
-              >
-                <Avatar seed={n.from?.avatar_seed ?? n.from?.address ?? "x"} size={36} />
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm leading-snug">
-                    <span className="font-semibold">{n.from?.display_name ?? "Someone"}</span>{" "}
-                    <span className="text-muted-foreground">{label(n)}</span>
-                  </p>
-                  {n.post?.content && (
-                    <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">"{n.post.content}"</p>
-                  )}
-                  <span className="text-[11px] text-muted-foreground">{relativeTime(n.created_at)}</span>
-                </div>
-                {!n.read && <span className="mt-1.5 size-2 shrink-0 rounded-full bg-brand" />}
-              </li>
-            ))}
+            {items.map((n) => {
+              // Tentukan link tujuan berdasarkan tipe notifikasi
+              let linkTo = "#";
+              if (n.type === "follow") {
+                // Jika follow, arahkan ke profil pengirim
+                linkTo = n.from ? `/profile/${n.from.address}` : "#";
+              } else if (n.type === "like" || n.type === "reply" || n.type === "tip") {
+                // Jika like/reply/tip, arahkan ke postingan (dengan ID notifikasi sebagai fallback)
+                linkTo = `/yap/${n.id}`;
+              }
+
+              return (
+                <li key={n.id} className={cn("flex gap-3 px-4 py-3 transition-colors hover:bg-muted/40", !n.read && "bg-brand-soft/40")}>
+                  {/* ✅ Bungkus seluruh konten dengan Link agar bisa diklik */}
+                  <Link to={linkTo} className="flex gap-3 w-full min-w-0">
+                    <Avatar seed={n.from?.avatar_seed ?? n.from?.address ?? "x"} size={36} />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm leading-snug">
+                        <span className="font-semibold">{n.from?.display_name ?? "Someone"}</span>{" "}
+                        <span className="text-muted-foreground">{label(n)}</span>
+                      </p>
+                      {n.post?.content && (
+                        <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">"{n.post.content}"</p>
+                      )}
+                      <span className="text-[11px] text-muted-foreground">
+                        {relativeTime(n.created_at)}
+                      </span>
+                    </div>
+                    {!n.read && <span className="mt-1.5 size-2 shrink-0 rounded-full bg-brand" />}
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
         )}
       </PopoverContent>
