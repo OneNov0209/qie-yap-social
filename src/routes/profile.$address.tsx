@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/lib/auth-store";
-import { API_BASE, mapPost, shortAddr, type FeedPost, type FeedProfile } from "@/lib/posts";
+import { supabase } from "@/integrations/supabase/client";
+import { shortAddr, type FeedPost, type FeedProfile } from "@/lib/posts";
 import { badgeFor, getQieBalance, getStakedQie } from "@/lib/qie-chain";
 import { BADGE_META } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
@@ -37,13 +38,13 @@ export const Route = createFileRoute("/profile/$address")({
 
 function ProfilePage() {
   const { address } = Route.useParams();
-  const { user, setUser } = useAuth();
+  const { user } = useAuth();
   const [profile, setProfile] = useState<FeedProfile | null>(null);
   const [yaps, setYaps] = useState<FeedPost[]>([]);
   const [counts, setCounts] = useState({ followers: 0, following: 0, yaps: 0, balance: 0, staked: 0 });
   const [following, setFollowing] = useState(false);
   const [loading, setLoading] = useState(true);
-
+  
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editName, setEditName] = useState("");
   const [editBio, setEditBio] = useState("");
@@ -62,62 +63,50 @@ function ProfilePage() {
 
   useEffect(() => {
     let active = true;
-
     const load = async () => {
       setLoading(true);
-      try {
-        const res = await fetch(
-          `${API_BASE}/profiles/${encodeURIComponent(address)}${user?.id ? `?viewer_id=${encodeURIComponent(user.id)}` : ""}`
-        );
-        if (!active) return;
-        if (!res.ok) { setProfile(null); setLoading(false); return; }
+      const { data: p } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("address", address)
+        .maybeSingle();
 
-        const p = await res.json().catch(() => null);
-        if (!active) return;
-        if (!p) { setProfile(null); setLoading(false); return; }
+      if (!active) return;
+      if (!p) { setProfile(null); setLoading(false); return; }
 
-        const [balance, staked, postsRes] = await Promise.all([
-          getQieBalance((p.address ?? address) as `0x${string}`).catch(() => 0),
-          getStakedQie(p.address ?? address).then((s) => s ?? 0).catch(() => 0),
-          fetch(`${API_BASE}/posts?author_id=${encodeURIComponent(p.id)}${user?.id ? `&user_id=${encodeURIComponent(user.id)}` : ""}`)
-            .then((r) => (r.ok ? r.json() : []))
-            .catch(() => []),
-        ]);
-        if (!active) return;
+      const [balance, staked, followers, followingCount] = await Promise.all([
+        getQieBalance(p.address as `0x${string}`).catch(() => 0),
+        getStakedQie(p.address).then((s) => s ?? 0),
+        // ✅ AMBIL DATA POSTINGAN DARI VPS (PAKAI fetchFeed)
+        fetchFeed("latest", user?.id || null).then((posts) => 
+          posts.filter((post) => post.author.address === address)
+        ),
+        supabase.from("follows").select("follower_id", { count: "exact", head: true }).eq("following_id", p.id),
+        supabase.from("follows").select("following_id", { count: "exact", head: true }).eq("follower_id", p.id),
+      ]);
 
-        const badge = badgeFor(staked || balance);
-        const fp: FeedProfile = {
-          id: p.id,
-          address: p.address ?? address,
-          username: p.username ?? undefined,
-          displayName: p.display_name ?? p.displayName ?? shortAddr(p.address ?? address),
-          bio: p.bio ?? "",
-          avatarSeed: p.avatar_seed ?? p.avatarSeed ?? p.address ?? address,
-          isValidator: Boolean(p.is_validator ?? p.isValidator),
-          badge,
-        };
-        setProfile(fp);
+      if (!active) return;
+      const badge = badgeFor(staked || balance);
+      const fp: FeedProfile = {
+        id: p.id, address: p.address, username: p.username, displayName: p.display_name,
+        bio: p.bio ?? "", avatarSeed: p.avatar_seed ?? p.address, isValidator: !!p.is_validator, badge,
+      };
+      setProfile(fp);
+      setYaps(posts);
+      setCounts({
+        followers: followers.count ?? 0,
+        following: followingCount.count ?? 0,
+        yaps: posts.length,
+        balance, staked,
+      });
 
-        const postList = Array.isArray(postsRes) ? postsRes : (postsRes?.posts ?? []);
-        const mapped: FeedPost[] = postList.map((raw: any) => ({ ...mapPost(raw), author: fp }));
-        setYaps(mapped);
-
-        setCounts({
-          followers: Number(p.followers ?? p.follower_count ?? 0),
-          following: Number(p.following ?? p.following_count ?? 0),
-          yaps: Number(p.yap_count ?? mapped.length),
-          balance,
-          staked,
-        });
-        setFollowing(Boolean(p.is_following ?? p.isFollowing));
-      } catch (err) {
-        console.error("Profile error:", err);
-        if (active) setProfile(null);
-      } finally {
-        if (active) setLoading(false);
+      if (user) {
+        const { data: f } = await supabase.from("follows").select("follower_id")
+          .eq("follower_id", user.id).eq("following_id", p.id).maybeSingle();
+        if (active) setFollowing(!!f);
       }
+      setLoading(false);
     };
-
     load();
     return () => { active = false; };
   }, [address, user]);
@@ -127,19 +116,12 @@ function ProfilePage() {
     if (isOwn) return;
     const wasFollowing = following;
     setFollowing(!wasFollowing);
-    setCounts((c) => ({ ...c, followers: c.followers + (wasFollowing ? -1 : 1) }));
-    try {
-      const res = await fetch(`${API_BASE}/follows`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ follower_id: user.id, following_id: profile.id }),
-      });
-      if (!res.ok) throw new Error("Follow request failed");
-      toast(wasFollowing ? `Unfollowed ${profile.displayName}` : `Now following ${profile.displayName}`);
-    } catch (err) {
-      setFollowing(wasFollowing);
-      setCounts((c) => ({ ...c, followers: c.followers + (wasFollowing ? 1 : -1) }));
-      toast.error("Couldn't update follow");
+    if (wasFollowing) {
+      await supabase.from("follows").delete().eq("follower_id", user.id).eq("following_id", profile.id);
+      toast(`Unfollowed @${profile.username}`);
+    } else {
+      await supabase.from("follows").insert({ follower_id: user.id, following_id: profile.id });
+      toast.success(`Now following @${profile.username}`);
     }
   };
 
@@ -152,39 +134,23 @@ function ProfilePage() {
 
     setIsSaving(true);
     try {
-      const payload = {
-        id: profile.id,
-        address: profile.address,
-        display_name: editName.trim(),
-        bio: editBio.trim(),
-        avatar_seed: editAvatarSeed.trim() || profile.address,
-      };
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          display_name: editName.trim(),
+          bio: editBio.trim(),
+          avatar_seed: editAvatarSeed.trim() || profile.address,
+        })
+        .eq("id", profile.id);
 
-      const res = await fetch(`${API_BASE}/profiles/${encodeURIComponent(profile.id)}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        const text = await res.text().catch(() => "");
-        throw new Error(text || `Update failed (${res.status})`);
-      }
+      if (error) throw error;
 
       setProfile((prev) => prev ? {
         ...prev,
-        displayName: payload.display_name,
-        bio: payload.bio,
-        avatarSeed: payload.avatar_seed,
-      } : prev);
-
-      if (isOwn) {
-        setUser({
-          displayName: payload.display_name,
-          bio: payload.bio,
-          avatarSeed: payload.avatar_seed,
-        });
-      }
+        displayName: editName.trim(),
+        bio: editBio.trim(),
+        avatarSeed: editAvatarSeed.trim() || profile.address,
+      } : null);
 
       toast.success("Profile updated successfully!");
       setIsEditModalOpen(false);
