@@ -30,15 +30,15 @@ function YapDetailPage() {
     setLoading(true);
     setError(false);
     try {
+      // 1. Coba cari di feed lokal dulu
       const allPosts = await fetchFeed("latest", user?.id || null);
       const found = allPosts.find((p) => p.id === id);
 
       if (found) {
         setPost(found);
       } else {
-        const res = await fetch(
-          `${API_BASE}/posts/${encodeURIComponent(id)}${user?.id ? `?user_id=${encodeURIComponent(user.id)}` : ""}`
-        );
+        // 2. Jika tidak ketemu, ambil dari API (⚠️ PERBAIKAN DI SINI: hapus ?user_id=)
+        const res = await fetch(`${API_BASE}/posts/${encodeURIComponent(id)}`);
         if (!res.ok) {
           setError(true);
           setLoading(false);
@@ -53,6 +53,7 @@ function YapDetailPage() {
         setPost(mapPost(data));
       }
 
+      // 3. Ambil replies
       const repliesData = await fetchReplies(id, user?.id || null);
       setReplies(repliesData);
     } catch (err) {
