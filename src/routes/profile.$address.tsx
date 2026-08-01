@@ -38,7 +38,7 @@ export const Route = createFileRoute("/profile/$address")({
 
 function ProfilePage() {
   const { address } = Route.useParams();
-  const { user, setUser } = useAuth();
+  const { user, updateProfile } = useAuth();
   const [profile, setProfile] = useState<FeedProfile | null>(null);
   const [yaps, setYaps] = useState<FeedPost[]>([]);
   const [counts, setCounts] = useState({ followers: 0, following: 0, yaps: 0, balance: 0, staked: 0 });
@@ -61,13 +61,10 @@ function ProfilePage() {
     }
   }, [isEditModalOpen, profile]);
 
-  // 🔥 PERBAIKAN: Load ulang data profil setiap kali halaman dibuka
   useEffect(() => {
     let active = true;
     const load = async () => {
       setLoading(true);
-      
-      // Ambil data profil dari database (fresh data)
       const { data: p } = await supabase
         .from("profiles")
         .select("*")
@@ -94,7 +91,6 @@ function ProfilePage() {
         id: p.id, address: p.address, username: p.username, displayName: p.display_name,
         bio: p.bio ?? "", avatarSeed: p.avatar_seed ?? p.address, isValidator: !!p.is_validator, badge,
       };
-      
       setProfile(fp);
       setYaps(yapsData);
       setCounts({
@@ -149,7 +145,7 @@ function ProfilePage() {
 
       if (error) throw error;
 
-      // 🔥 PERBAIKAN: Update state lokal agar UI langsung berubah
+      // ✅ UPDATE LOCAL STATE
       const updatedProfile = {
         ...profile,
         displayName: editName.trim(),
@@ -158,15 +154,12 @@ function ProfilePage() {
       };
       setProfile(updatedProfile);
 
-      // 🔥 PERBAIKAN: Update global state user (agar header juga berubah)
-      if (user) {
-        setUser({
-          ...user,
-          displayName: editName.trim(),
-          bio: editBio.trim(),
-          avatarSeed: editAvatarSeed.trim() || profile.address,
-        });
-      }
+      // ✅ UPDATE GLOBAL STATE & LOCALSTORAGE
+      updateProfile({
+        displayName: editName.trim(),
+        bio: editBio.trim(),
+        avatarSeed: editAvatarSeed.trim() || profile.address,
+      });
 
       toast.success("Profile updated successfully!");
       setIsEditModalOpen(false);
