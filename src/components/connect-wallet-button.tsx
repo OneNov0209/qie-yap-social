@@ -1,54 +1,59 @@
-import { useState } from "react";
 import { useAuth } from "@/lib/auth-store";
-import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { useState } from "react";
 
 export function ConnectWalletButton() {
-  const { user, connecting, connect, disconnect } = useAuth();
-  const [isHovering, setIsHovering] = useState(false);
+  const { user, connect, connecting, disconnect } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Jika sedang connect, tampilkan loading
-  if (connecting) {
-    return (
-      <button
-        disabled
-        className="rounded-full bg-muted px-4 py-2 text-sm font-medium text-muted-foreground animate-pulse"
-      >
-        Connecting...
-      </button>
-    );
-  }
+  const handleConnect = async () => {
+    if (connecting || isLoading) return;
+    setIsLoading(true);
+    try {
+      await connect();
+    } catch (error: any) {
+      console.error("Connect error:", error);
+      if (error.message?.includes("QIE Wallet")) {
+        toast.error("QIE Wallet tidak terdeteksi. Silakan install ekstensi QIE Wallet.");
+      } else {
+        toast.error(error.message || "Gagal menghubungkan wallet");
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-  // Jika user sudah login (connected)
   if (user) {
-    // Gunakan safe fallback jika balance belum ada (undefined/null)
-    const displayBalance = user.balance !== undefined && user.balance !== null 
-      ? user.balance.toFixed(4) 
-      : "0.0000";
-
     return (
-      <button
-        onMouseEnter={() => setIsHovering(true)}
-        onMouseLeave={() => setIsHovering(false)}
-        onClick={disconnect}
-        className={cn(
-          "rounded-full px-4 py-2 text-sm font-medium transition-all",
-          isHovering
-            ? "bg-destructive text-destructive-foreground"
-            : "bg-brand text-primary-foreground"
-        )}
-      >
-        {isHovering ? "Disconnect" : `${displayBalance} QIE`}
-      </button>
+      <div className="flex items-center gap-3">
+        <span className="hidden sm:inline text-xs text-muted-foreground">
+          {user.displayName || user.address.slice(0, 8)}
+        </span>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => disconnect()}
+          className="rounded-full border-destructive/30 text-destructive hover:bg-destructive/10"
+        >
+          Disconnect
+        </Button>
+      </div>
     );
   }
 
-  // Jika belum login (default)
   return (
-    <button
-      onClick={connect}
-      className="rounded-full bg-brand px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-brand/90"
+    <Button
+      onClick={handleConnect}
+      disabled={connecting || isLoading}
+      className="rounded-full bg-[#4B6BFB] hover:bg-[#3A5ADE] text-white px-4 py-2 flex items-center gap-2 font-semibold shadow-lg shadow-brand/20 transition-all"
     >
-      Connect Wallet
-    </button>
+      <img 
+        src="https://raw.githubusercontent.com/OneNov0209/logo/refs/heads/main/Qie-wallet.png" 
+        alt="QIE Wallet" 
+        className="w-5 h-5 rounded-full"
+      />
+      {connecting || isLoading ? "Connecting..." : "Connect QIE Wallet"}
+    </Button>
   );
 }
