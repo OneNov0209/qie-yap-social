@@ -42,10 +42,13 @@ export const useAuth = create<AuthState>()(
           const address = (accounts as string[])[0];
           if (!address) throw new Error('No account');
 
+          // ✅ Pastikan address disimpan sebelum fetch
+          const walletAddress = address;
+
           const res = await fetch(`${API_BASE}/profiles`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ address }),
+            body: JSON.stringify({ address: walletAddress }),
           });
 
           if (!res.ok) {
@@ -54,23 +57,22 @@ export const useAuth = create<AuthState>()(
           }
 
           const profile = await res.json();
-          const balance = await getQieBalance(address as `0x${string}`).catch(() => 0);
+          const balance = await getQieBalance(walletAddress as `0x${string}`).catch(() => 0);
 
-          
           const displayName = 
             profile.display_name || 
             profile.displayName || 
-            `${address.slice(0, 6)}…${address.slice(-4)}`;
+            `${walletAddress.slice(0, 6)}…${walletAddress.slice(-4)}`;
 
           const avatarSeed = 
             profile.avatar_seed || 
             profile.avatarSeed || 
-            address;
+            walletAddress;
 
           set({
             user: {
               id: profile.id,
-              address: profile.address ?? address,
+              address: walletAddress,
               username: profile.username,
               displayName: displayName,
               bio: profile.bio ?? '',
