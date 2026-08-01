@@ -1,12 +1,12 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { getQieBalance } from '@/lib/qie-chain';
+import { API_BASE } from '@/lib/posts';
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://api.yap.onenov.xyz/api";
-
-interface User {
+export interface User {
   id: string;
   address: string;
+  username?: string;
   displayName: string;
   bio: string;
   avatarSeed: string;
@@ -19,31 +19,39 @@ interface AuthState {
   user: User | null;
   connecting: boolean;
   connect: () => Promise<void>;
-  disconnect: () => Promise<void>;
+  disconnect: () => void;
+  setUser: (patch: Partial<User>) => void;
 }
 
 export const useAuth = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       user: null,
       connecting: false,
 
       connect: async () => {
-        if (!window.ethereum) throw new Error("No wallet detected");
+        if (typeof window === 'undefined' || !window.ethereum) {
+          throw new Error('No wallet detected');
+        }
         set({ connecting: true });
 
         try {
-          const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+          const accounts = await window.ethereum.request({
+            method: 'eth_requestAccounts',
+          });
           const address = (accounts as string[])[0];
-          if (!address) throw new Error("No account");
+          if (!address) throw new Error('No account');
 
           const res = await fetch(`${API_BASE}/profiles`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ address }),
           });
 
-          if (!res.ok) throw new Error("Failed to register/login");
+          if (!res.ok) {
+            const text = await res.text().catch(() => '');
+            throw new Error(`Failed to register/login: ${res.status} ${text}`);
+          }
 
           const profile = await res.json();
           const balance = await getQieBalance(address as `0x${string}`).catch(() => 0);
@@ -51,30 +59,38 @@ export const useAuth = create<AuthState>()(
           set({
             user: {
               id: profile.id,
-              address: profile.address,
-              displayName: profile.display_name,
-              bio: profile.bio || '',
-              avatarSeed: profile.avatar_seed,
+              address: profile.address ?? address,
+              username: profile.username,
+              displayName:
+                profile.display_name ??
+                profile.displayName ??
+                `${address.slice(0, 6)}…${address.slice(-4)}`,
+              bio: profile.bio ?? '',
+              avatarSeed: profile.avatar_seed ?? profile.avatarSeed ?? address,
               badge: 'shrimp',
-              isValidator: profile.is_validator || false,
+              isValidator: Boolean(profile.is_validator ?? profile.isValidator),
               balance,
             },
             connecting: false,
           });
-
         } catch (error) {
-          console.error("Connect error:", error);
+          console.error('Connect error:', error);
           set({ connecting: false });
           throw error;
         }
       },
 
-      disconnect: () => {
-        set({ user: null });
+      disconnect: () => set({ user: null }),
+
+      setUser: (patch) => {
+        const current = get().user;
+        if (!current) return;
+        set({ user: { ...current, ...patch } });
       },
     }),
     {
       name: 'qie-auth-storage',
+      partialize: (state) => ({ user: state.user }),
     }
   )
 );
