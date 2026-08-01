@@ -1,11 +1,12 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Bell, Home, Trophy, User, Wallet, Search, Activity, PlusCircle } from "lucide-react";
+import { Home, Trophy, User, Wallet, Search, Activity, PlusCircle } from "lucide-react";
 import { ConnectWalletButton } from "./connect-wallet-button";
 import { ThemeToggle } from "./theme-toggle";
 import { useAuth } from "@/lib/auth-store";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { NotificationsPopover } from "./notifications-popover";
+import { API_BASE } from "@/lib/posts";
 
 const LOGO = "https://raw.githubusercontent.com/OneNov0209/logo/refs/heads/main/qie-logo.png";
 
@@ -15,31 +16,26 @@ export function Header() {
   const [unreadCount, setUnreadCount] = useState(0);
   const profilePath = user?.address ?? "0x0000000000000000000000000000000000000000";
 
+  // ✅ Load unread count dari VPS (bukan Supabase)
   useEffect(() => {
     if (!user) return;
 
     const loadUnread = async () => {
-      const { count } = await supabase
-        .from("notifications")
-        .select("id", { count: "exact", head: true })
-        .eq("user_id", user.id)
-        .eq("read", false);
-      setUnreadCount(count || 0);
+      try {
+        // Karena kita belum punya tabel 'notifications' di VPS, 
+        // kita hitung manual dari follows + likes + replies + tips
+        // Untuk sementara, kita set 0 agar tidak error.
+        // Jika Anda sudah punya endpoint /api/notifications/unread-count, ganti di sini.
+        setUnreadCount(0);
+      } catch (err) {
+        console.error("Failed to load unread count:", err);
+      }
     };
     loadUnread();
 
-    const channel = supabase
-      .channel("notifications-realtime")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` },
-        () => setUnreadCount((prev) => prev + 1)
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    // Polling setiap 30 detik untuk update notifikasi
+    const interval = setInterval(loadUnread, 30000);
+    return () => clearInterval(interval);
   }, [user]);
 
   const navItems: Array<{ to: string; label: string; icon: typeof Home; active: boolean }> = [
@@ -79,18 +75,7 @@ export function Header() {
           </nav>
 
           <div className="flex items-center gap-2">
-            {user && (
-              <div className="relative">
-                <div className="p-2 hover:bg-muted rounded-full cursor-pointer transition-colors">
-                  <Bell className="size-5" />
-                  {unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-brand text-[10px] font-bold text-white">
-                      {unreadCount > 9 ? "9+" : unreadCount}
-                    </span>
-                  )}
-                </div>
-              </div>
-            )}
+            {user && <NotificationsPopover />}
             <ThemeToggle />
             <ConnectWalletButton />
           </div>
@@ -98,7 +83,7 @@ export function Header() {
       </header>
 
       <nav className="fixed bottom-0 inset-x-0 z-40 grid grid-cols-4 border-t border-border bg-background/95 backdrop-blur-md md:hidden">
-        {navItems.map((it) => (
+        {navItems.slice(0, 4).map((it) => (
           <Link
             key={it.label}
             to={it.to}
@@ -112,8 +97,7 @@ export function Header() {
           </Link>
         ))}
         <div className="flex flex-col items-center gap-0.5 py-2 text-[10px] font-medium text-muted-foreground">
-          <Bell className="size-5" />
-          Alerts
+          <NotificationsPopover />
         </div>
       </nav>
     </>
