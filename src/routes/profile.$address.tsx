@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/lib/auth-store";
 import { supabase } from "@/integrations/supabase/client";
-import { shortAddr, type FeedPost, type FeedProfile } from "@/lib/posts";
+import { shortAddr, type FeedPost, type FeedProfile, fetchFeed } from "@/lib/posts";
 import { badgeFor, getQieBalance, getStakedQie } from "@/lib/qie-chain";
 import { BADGE_META } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
