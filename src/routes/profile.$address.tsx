@@ -10,13 +10,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/lib/auth-store";
 import { supabase } from "@/integrations/supabase/client";
-import { shortAddr, type FeedPost, type FeedProfile } from "@/lib/posts";
+import { shortAddr, type FeedPost, type FeedProfile, fetchFeed } from "@/lib/posts";
 import { badgeFor, getQieBalance, getStakedQie } from "@/lib/qie-chain";
 import { BADGE_META } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-
-const API_BASE = import.meta.env.VITE_API_BASE || "https://api.yap.onenov.xyz/api";
 
 export const Route = createFileRoute("/profile/$address")({
   head: ({ params }) => ({
@@ -79,12 +77,10 @@ function ProfilePage() {
       const [balance, staked, followers, followingCount] = await Promise.all([
         getQieBalance(p.address as `0x${string}`).catch(() => 0),
         getStakedQie(p.address).then((s) => s ?? 0),
-        // ✅ FETCH FEED LANGSUNG DARI API VPS (TANPA IMPORT DARI POSTS.TS)
-        fetch(`${API_BASE}/feed?limit=20&user_id=${user?.id || ""}`).then(async (res) => {
-          if (!res.ok) return [];
-          const data = await res.json();
-          return data.filter((post: any) => post.author?.address === address || post.author_id === address);
-        }),
+        // ✅ AMBIL POSTINGAN MENGGUNAKAN fetchFeed
+        fetchFeed("latest", user?.id || null).then((posts) => 
+          posts.filter((post) => post.author.address === address)
+        ),
         supabase.from("follows").select("follower_id", { count: "exact", head: true }).eq("following_id", p.id),
         supabase.from("follows").select("following_id", { count: "exact", head: true }).eq("follower_id", p.id),
       ]);
@@ -96,11 +92,11 @@ function ProfilePage() {
         bio: p.bio ?? "", avatarSeed: p.avatar_seed ?? p.address, isValidator: !!p.is_validator, badge,
       };
       setProfile(fp);
-      setYaps(posts);
+      setYaps(yapsData);
       setCounts({
         followers: followers.count ?? 0,
         following: followingCount.count ?? 0,
-        yaps: posts.length,
+        yaps: yapsData.length,
         balance, staked,
       });
 
