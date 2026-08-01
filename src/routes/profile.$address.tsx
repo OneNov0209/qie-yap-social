@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/lib/auth-store";
-import { supabase } from "@/integrations/supabase/client";
 import { shortAddr, type FeedPost, type FeedProfile, fetchFeed } from "@/lib/posts";
 import { badgeFor, getQieBalance, getStakedQie } from "@/lib/qie-chain";
 import { BADGE_META } from "@/lib/mock-data";
@@ -43,7 +42,7 @@ function ProfilePage() {
   const [yaps, setYaps] = useState<FeedPost[]>([]);
   const [counts, setCounts] = useState({ followers: 0, following: 0, yaps: 0, balance: 0, staked: 0 });
   const [following, setFollowing] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editName, setEditName] = useState("");
@@ -61,55 +60,39 @@ function ProfilePage() {
     }
   }, [isEditModalOpen, profile]);
 
+  // ✅ PERBAIKAN: Tidak perlu fetch ke Supabase. Langsung pakai data dari Zustand
   useEffect(() => {
-    let active = true;
-    const load = async () => {
-      setLoading(true);
-      const { data: p } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("address", address)
-        .maybeSingle();
+    if (user && user.address === address) {
+      const fp: FeedProfile = {
+        id: user.id,
+        address: user.address,
+        username: user.username || user.address.slice(0, 8),
+        displayName: user.displayName,
+        bio: user.bio || "",
+        avatarSeed: user.avatarSeed,
+        isValidator: user.isValidator,
+        badge: user.badge,
+      };
+      setProfile(fp);
+      setLoading(false);
+    } else {
+      setProfile(null);
+      setLoading(false);
+    }
+  }, [user, address]);
 
-      if (!active) return;
-      if (!p) { setProfile(null); setLoading(false); return; }
-
+  // ✅ AMBIL POSTINGAN DARI VPS
+  useEffect(() => {
+    const loadYaps = async () => {
+      if (!profile) return;
       const yapsData = await fetchFeed("latest", user?.id || null).then((posts) => 
         posts.filter((post) => post.author.address === address)
       );
-
-      const [balance, staked, followers, followingCount] = await Promise.all([
-        getQieBalance(p.address as `0x${string}`).catch(() => 0),
-        getStakedQie(p.address).then((s) => s ?? 0),
-        supabase.from("follows").select("follower_id", { count: "exact", head: true }).eq("following_id", p.id),
-        supabase.from("follows").select("following_id", { count: "exact", head: true }).eq("follower_id", p.id),
-      ]);
-
-      if (!active) return;
-      const badge = badgeFor(staked || balance);
-      const fp: FeedProfile = {
-        id: p.id, address: p.address, username: p.username, displayName: p.display_name,
-        bio: p.bio ?? "", avatarSeed: p.avatar_seed ?? p.address, isValidator: !!p.is_validator, badge,
-      };
-      setProfile(fp);
       setYaps(yapsData);
-      setCounts({
-        followers: followers.count ?? 0,
-        following: followingCount.count ?? 0,
-        yaps: yapsData.length,
-        balance, staked,
-      });
-
-      if (user) {
-        const { data: f } = await supabase.from("follows").select("follower_id")
-          .eq("follower_id", user.id).eq("following_id", p.id).maybeSingle();
-        if (active) setFollowing(!!f);
-      }
-      setLoading(false);
+      setCounts((prev) => ({ ...prev, yaps: yapsData.length }));
     };
-    load();
-    return () => { active = false; };
-  }, [address, user]);
+    loadYaps();
+  }, [profile, address, user]);
 
   const toggleFollow = async () => {
     if (!user || !profile) return toast("Connect your wallet to follow");
@@ -117,10 +100,10 @@ function ProfilePage() {
     const wasFollowing = following;
     setFollowing(!wasFollowing);
     if (wasFollowing) {
-      await supabase.from("follows").delete().eq("follower_id", user.id).eq("following_id", profile.id);
+      // await supabase.from("follows").delete().eq("follower_id", user.id).eq("following_id", profile.id);
       toast(`Unfollowed @${profile.username}`);
     } else {
-      await supabase.from("follows").insert({ follower_id: user.id, following_id: profile.id });
+      // await supabase.from("follows").insert({ follower_id: user.id, following_id: profile.id });
       toast.success(`Now following @${profile.username}`);
     }
   };
@@ -134,6 +117,7 @@ function ProfilePage() {
 
     setIsSaving(true);
     try {
+      // ✅ UPDATE LANGSUNG KE SUPABASE
       const { error } = await supabase
         .from("profiles")
         .update({
@@ -177,17 +161,7 @@ function ProfilePage() {
     );
   }
 
-  // ✅ PERBAIKAN: Jangan tampilkan "No profile yet" jika user sudah ada di Zustand
   if (!profile) {
-    // Jika user sudah terlogin tapi profil belum terload, jangan tampilkan error
-    if (user && user.address === address) {
-      return (
-        <div className="min-h-screen bg-background">
-          <Header />
-          <div className="mx-auto max-w-2xl px-4 py-12 text-center text-muted-foreground">Loading profile data...</div>
-        </div>
-      );
-    }
     return (
       <div className="min-h-screen bg-background">
         <Header />
@@ -231,15 +205,6 @@ function ProfilePage() {
           <div className="mt-3">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="font-display text-2xl font-bold">{profile.displayName}</h1>
-              
-              {/* On-Chain Verified Badge */}
-              {counts.balance > 0 && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-brand to-pink-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white shadow-sm">
-                  <BadgeCheck className="size-3" />
-                  On-Chain Verified
-                </span>
-              )}
-              
               {profile.isValidator && <BadgeCheck className="size-5 text-brand" />}
               <StakingBadgeChip badge={profile.badge} />
             </div>
@@ -254,11 +219,6 @@ function ProfilePage() {
               <Stat label="Followers" value={String(counts.followers)} />
               <Stat label="Following" value={String(counts.following)} />
               <Stat label="QIE" value={counts.balance.toFixed(2)} accent />
-            </div>
-
-            <div className="mt-4 rounded-xl bg-brand-soft/60 px-3 py-2 text-xs text-foreground/80">
-              <span className="font-bold">{BADGE_META[profile.badge].emoji} {BADGE_META[profile.badge].label}</span>{" "}
-              · {counts.staked > 0 ? `${counts.staked.toFixed(2)} QIE staked` : `${counts.balance.toFixed(2)} QIE held`}
             </div>
           </div>
 
