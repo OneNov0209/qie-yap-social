@@ -32,7 +32,7 @@ export const useAuth = create<AuthState>()(
 
       connect: async () => {
         if (typeof window === 'undefined' || !window.ethereum) {
-          throw new Error('No wallet detected');
+          throw new Error('QIE Wallet tidak terdeteksi. Harap install ekstensi QIE Wallet.');
         }
         set({ connecting: true });
 
@@ -40,7 +40,7 @@ export const useAuth = create<AuthState>()(
           // 1. Ambil alamat wallet
           const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
           const address = (accounts as string[])[0];
-          if (!address) throw new Error('No account');
+          if (!address) throw new Error('Tidak ada akun yang ditemukan di QIE Wallet.');
 
           // 2. Kirim ke backend untuk register/login
           const res = await fetch(`${API_BASE}/profiles`, {
@@ -51,18 +51,16 @@ export const useAuth = create<AuthState>()(
 
           if (!res.ok) {
             const text = await res.text();
-            throw new Error(`Failed to register/login: ${res.status} ${text}`);
+            throw new Error(`Gagal register/login: ${res.status} ${text}`);
           }
 
           // 3. Ambil data profil dari backend
           const profile = await res.json();
           const balance = await getQieBalance(address as `0x${string}`).catch(() => 0);
 
-          // ✅ PERBAIKAN: Pastikan username dan displayName terbentuk dengan benar
           const displayName = profile.display_name || `${address.slice(0, 6)}…${address.slice(-4)}`;
           const username = profile.username || address.slice(0, 8);
 
-          // 4. Pastikan data user terbentuk dengan benar
           const userData: User = {
             id: profile.id,
             address: profile.address ?? address,
