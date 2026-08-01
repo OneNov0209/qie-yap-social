@@ -16,8 +16,46 @@ export const QIE_CHAIN = defineChain({
   blockExplorers: { default: { name: "QIE Explorer", url: "https://qie.explorer.onenov.xyz" } },
 });
 
-const OFFICIAL_API = "https://mainnet.qie.digital/api/v2";
-const PRIVATE_API = "https://api.qie.onenov.xyz";
+// ✅ Tambahkan: Cek koneksi wallet
+export async function checkWalletConnection(): Promise<boolean> {
+  if (typeof window === "undefined" || !window.ethereum) {
+    console.error("No wallet detected");
+    return false;
+  }
+  try {
+    const accounts = await window.ethereum.request({ method: "eth_accounts" });
+    return accounts && accounts.length > 0;
+  } catch {
+    return false;
+  }
+}
+
+// ✅ Tambahkan: Switch network ke QIE
+export async function switchToQieNetwork(): Promise<void> {
+  if (typeof window === "undefined" || !window.ethereum) return;
+  try {
+    await window.ethereum.request({
+      method: "wallet_switchEthereumChain",
+      params: [{ chainId: "0x7C6" }], // 1990 dalam hex
+    });
+  } catch (error: any) {
+    if (error.code === 4902) {
+      // Network belum ada, tambahkan
+      await window.ethereum.request({
+        method: "wallet_addEthereumChain",
+        params: [{
+          chainId: "0x7C6",
+          chainName: "QIE Mainnet",
+          nativeCurrency: { name: "QIE", symbol: "QIE", decimals: 18 },
+          rpcUrls: ["https://rpc-evm.qie.onenov.xyz"],
+          blockExplorerUrls: ["https://qie.explorer.onenov.xyz"],
+        }],
+      });
+    } else {
+      throw error;
+    }
+  }
+}
 
 export const qiePublicClient = createPublicClient({
   chain: QIE_CHAIN,
@@ -110,9 +148,14 @@ export async function getWalletClient() {
   if (typeof window === "undefined" || !window.ethereum) {
     throw new Error("No EVM wallet detected. Install MetaMask or the QIE wallet extension.");
   }
+  
+  // ✅ Pastikan network QIE
+  await switchToQieNetwork();
+  
   const accounts = await window.ethereum.request({ method: "eth_requestAccounts" }) as string[];
   const address = accounts[0];
   if (!address) throw new Error("No account returned by wallet");
+  
   const walletClient = createWalletClient({
     chain: QIE_CHAIN,
     transport: custom(window.ethereum),
@@ -126,30 +169,46 @@ export async function sendTip(
   amountInQie: string,
   message: string
 ) {
+  console.log("📤 Sending tip to:", recipient, "amount:", amountInQie);
   const { walletClient, address } = await getWalletClient();
-  const hash = await walletClient.writeContract({
-    address: contractAddress,
-    abi: QIE_YAP_ABI,
-    functionName: "tip",
-    args: [recipient, message],
-    value: parseEther(amountInQie),
-    account: address,
-  });
-  return hash;
+  
+  try {
+    const hash = await walletClient.writeContract({
+      address: contractAddress,
+      abi: QIE_YAP_ABI,
+      functionName: "tip",
+      args: [recipient, message],
+      value: parseEther(amountInQie),
+      account: address,
+    });
+    console.log("✅ Tip sent:", hash);
+    return hash;
+  } catch (error: any) {
+    console.error("❌ Tip error:", error);
+    throw new Error(error.message || "Tip failed");
+  }
 }
 
 export async function createSuperYap(
   contractAddress: `0x${string}`
 ) {
+  console.log("📤 Creating SuperYap");
   const { walletClient, address } = await getWalletClient();
-  const hash = await walletClient.writeContract({
-    address: contractAddress,
-    abi: QIE_YAP_ABI,
-    functionName: "createSuperYap",
-    value: parseEther("0.01"),
-    account: address,
-  });
-  return hash;
+  
+  try {
+    const hash = await walletClient.writeContract({
+      address: contractAddress,
+      abi: QIE_YAP_ABI,
+      functionName: "createSuperYap",
+      value: parseEther("0.01"),
+      account: address,
+    });
+    console.log("✅ SuperYap created:", hash);
+    return hash;
+  } catch (error: any) {
+    console.error("❌ SuperYap error:", error);
+    throw new Error(error.message || "SuperYap failed");
+  }
 }
 
 export async function boostPost(
@@ -157,15 +216,23 @@ export async function boostPost(
   postId: bigint,
   durationHours: bigint
 ) {
+  console.log("📤 Boosting post:", postId, "duration:", durationHours);
   const { walletClient, address } = await getWalletClient();
   const cost = 0.005 * Number(durationHours);
-  const hash = await walletClient.writeContract({
-    address: contractAddress,
-    abi: QIE_YAP_ABI,
-    functionName: "boost",
-    args: [postId, durationHours],
-    value: parseEther(cost.toString()),
-    account: address,
-  });
-  return hash;
+  
+  try {
+    const hash = await walletClient.writeContract({
+      address: contractAddress,
+      abi: QIE_YAP_ABI,
+      functionName: "boost",
+      args: [postId, durationHours],
+      value: parseEther(cost.toString()),
+      account: address,
+    });
+    console.log("✅ Boost sent:", hash);
+    return hash;
+  } catch (error: any) {
+    console.error("❌ Boost error:", error);
+    throw new Error(error.message || "Boost failed");
+  }
 }
