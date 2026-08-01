@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth-store";
 import { toggleLike, toggleRepost, toggleBookmark, type FeedPost, relativeTime, shortAddr } from "@/lib/posts";
-import { QIE_CHAIN, sendTip, boostPost, createSuperYap } from "@/lib/qie-chain";
+import { sendTip, boostPost, createSuperYap } from "@/lib/qie-chain";
 
 function compact(n: number) {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
