@@ -58,12 +58,16 @@ export const useAuth = create<AuthState>()(
           const profile = await res.json();
           const balance = await getQieBalance(address as `0x${string}`).catch(() => 0);
 
+          // ✅ PERBAIKAN: Pastikan username dan displayName terbentuk dengan benar
+          const displayName = profile.display_name || `${address.slice(0, 6)}…${address.slice(-4)}`;
+          const username = profile.username || address.slice(0, 8);
+
           // 4. Pastikan data user terbentuk dengan benar
           const userData: User = {
             id: profile.id,
             address: profile.address ?? address,
-            username: profile.username,
-            displayName: profile.display_name ?? `${address.slice(0, 6)}…${address.slice(-4)}`,
+            username: username,
+            displayName: displayName,
             bio: profile.bio ?? '',
             avatarSeed: profile.avatar_seed ?? address,
             badge: 'shrimp',
