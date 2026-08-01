@@ -25,35 +25,46 @@ export interface FeedPost {
   };
 }
 
-// ✅ TAMBAHAN: Fungsi mapPost agar bookmarks.tsx bisa mengimport
+// ✅ PERBAIKAN: mapPost membaca author dengan benar dan fallback ke kolom lama
 export function mapPost(item: any): FeedPost {
+  // Ambil author dari item.author (dari backend) atau dari flat fields
   const authorData = item.author || {};
+  
+  // Jika authorData kosong, coba ambil dari flat fields (untuk kompatibilitas)
   const address = authorData.address || item.author_address || item.author_id || "unknown";
   const displayName = authorData.display_name || authorData.displayName || item.author_display_name || item.author_name || "Anonymous";
   const avatarSeed = authorData.avatar_seed || authorData.avatarSeed || item.author_avatar_seed || "default";
-  const isValidator = authorData.is_validator || authorData.isValidator || item.author_is_validator || false;
+  const isValidator = Boolean(authorData.is_validator || authorData.isValidator || item.author_is_validator || false);
+
+  // Tentukan badge berdasarkan address (sementara)
+  let badge: "shrimp" | "fish" | "dolphin" | "shark" | "whale" = "shrimp";
+  const addrHash = address.length > 10 ? parseInt(address.slice(2, 6), 16) : 0;
+  if (addrHash > 0xFFFF) badge = "whale";
+  else if (addrHash > 0x0FFF) badge = "shark";
+  else if (addrHash > 0x0FF) badge = "dolphin";
+  else if (addrHash > 0x0F) badge = "fish";
 
   return {
     id: item.id,
     content: item.content,
     mediaUrl: item.media_url || item.mediaUrl || null,
-    isSuperYap: item.is_super_yap || item.isSuperYap || false,
-    isBoosted: item.is_boosted || item.isBoosted || false,
+    isSuperYap: Boolean(item.is_super_yap || item.isSuperYap || false),
+    isBoosted: Boolean(item.is_boosted || item.isBoosted || false),
     createdAt: item.created_at || item.createdAt || new Date().toISOString(),
     txHash: item.tx_hash || item.txHash || null,
-    onChain: item.on_chain || item.onChain || false,
-    tipTotal: item.tip_total || item.tipTotal || 0,
-    likes: item.likes || 0,
-    liked: item.liked || false,
-    replies: item.replies || item.reply_count || 0,
-    reposts: item.reposts || 0,
-    reposted: item.reposted || false,
-    bookmarked: item.bookmarked || false,
+    onChain: Boolean(item.on_chain || item.onChain || false),
+    tipTotal: Number(item.tip_total || item.tipTotal || 0),
+    likes: Number(item.likes || 0),
+    liked: Boolean(item.liked || false),
+    replies: Number(item.replies || item.reply_count || 0),
+    reposts: Number(item.reposts || 0),
+    reposted: Boolean(item.reposted || false),
+    bookmarked: Boolean(item.bookmarked || false),
     author: {
       address,
       displayName,
       avatarSeed,
-      badge: "shrimp",
+      badge,
       isValidator,
     },
   };
@@ -143,15 +154,24 @@ export async function fetchReplies(parentId: string, userId: string | null): Pro
   const url = `${API_BASE}/replies?parent_id=${parentId}${userId ? `&user_id=${userId}` : ""}`;
   const res = await fetch(url);
   if (!res.ok) return [];
-  return res.json();
+  const data = await res.json();
+  return data.map(mapPost);
 }
 
+// ✅ PERBAIKAN: fetchFeed sekarang benar-benar menggunakan user_id
 export async function fetchFeed(tab: string, userId: string | null): Promise<FeedPost[]> {
-  const url = `${API_BASE}/feed?tab=${tab}&limit=10${userId ? `&user_id=${userId}` : ""}`;
+  // Kirim user_id ke backend untuk mendapatkan status like/repost/bookmark
+  const url = `${API_BASE}/feed?tab=${tab}&limit=50${userId ? `&user_id=${userId}` : ""}`;
+  console.log("🔍 Fetching feed from:", url);
   const res = await fetch(url);
   if (!res.ok) return [];
   
   const posts = await res.json();
+  console.log("📦 Raw posts from backend:", posts.length);
+  if (posts.length > 0) {
+    console.log("📦 Sample post author:", posts[0].author);
+  }
+  
   return posts.map(mapPost);
 }
 
