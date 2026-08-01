@@ -1,4 +1,4 @@
-export const API_BASE = import.meta.env.VITE_API_BASE || "https://api.yap.onenov.xyz/api";
+const API_BASE = import.meta.env.VITE_API_BASE || "https://api.yap.onenov.xyz/api";
 
 export interface FeedPost {
   id: string;
@@ -119,44 +119,40 @@ export async function fetchFeed(tab: string, userId: string | null): Promise<Fee
   
   const posts = await res.json();
 
-  return posts.map((p: any) => ({
-    ...p,
-    author: p.author || {
-      address: p.author_address || p.author_id || "unknown",
-      displayName: p.author_display_name || p.display_name || "Anonymous",
-      avatarSeed: p.author_avatar_seed || p.avatar_seed || "default",
-      badge: p.author_badge || "shrimp",
-      isValidator: p.author_is_validator || false,
-    },
-    createdAt: p.created_at || new Date().toISOString(),
-  }));
-}
+  // ✅ PERBAIKAN: Memetakan data author langsung dari backend
+  return posts.map((p: any) => {
+    // Ambil data author dari berbagai kemungkinan format backend
+    const authorData = p.author || {};
+    const address = authorData.address || p.author_address || p.author_id || "unknown";
+    const displayName = authorData.display_name || authorData.displayName || p.author_display_name || p.author_name || "Anonymous";
+    const avatarSeed = authorData.avatar_seed || authorData.avatarSeed || p.author_avatar_seed || "default";
+    const isValidator = authorData.is_validator || authorData.isValidator || p.author_is_validator || false;
 
-export function mapPost(item: any): FeedPost {
-  return {
-    id: item.id,
-    content: item.content,
-    mediaUrl: item.media_url || item.mediaUrl,
-    isSuperYap: item.is_super_yap || false,
-    isBoosted: item.is_boosted || false,
-    createdAt: item.created_at || item.createdAt || new Date().toISOString(),
-    txHash: item.tx_hash || item.txHash,
-    onChain: item.on_chain || item.onChain,
-    tipTotal: item.tip_total || item.tipTotal || 0,
-    likes: item.likes || 0,
-    liked: item.liked || false,
-    replies: item.replies || 0,
-    reposts: item.reposts || 0,
-    reposted: item.reposted || false,
-    bookmarked: item.bookmarked || false,
-    author: item.author || {
-      address: item.author_address || item.author_id || "unknown",
-      displayName: item.author_display_name || item.display_name || "Anonymous",
-      avatarSeed: item.author_avatar_seed || item.avatar_seed || "default",
-      badge: item.author_badge || "shrimp",
-      isValidator: item.author_is_validator || false,
-    },
-  };
+    return {
+      id: p.id,
+      content: p.content,
+      mediaUrl: p.media_url || p.mediaUrl || null,
+      isSuperYap: p.is_super_yap || p.isSuperYap || false,
+      isBoosted: p.is_boosted || p.isBoosted || false,
+      createdAt: p.created_at || p.createdAt || new Date().toISOString(),
+      txHash: p.tx_hash || p.txHash || null,
+      onChain: p.on_chain || p.onChain || false,
+      tipTotal: p.tip_total || p.tipTotal || 0,
+      likes: p.likes || 0,
+      liked: p.liked || false,
+      replies: p.replies || p.reply_count || 0,
+      reposts: p.reposts || 0,
+      reposted: p.reposted || false,
+      bookmarked: p.bookmarked || false,
+      author: {
+        address,
+        displayName,
+        avatarSeed,
+        badge: "shrimp",
+        isValidator,
+      },
+    };
+  });
 }
 
 export function relativeTime(dateString: string): string {
