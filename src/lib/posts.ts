@@ -119,7 +119,6 @@ export async function fetchFeed(tab: string, userId: string | null): Promise<Fee
   
   const posts = await res.json();
 
-  // ✅ PERBAIKAN: Pastikan author selalu terisi dari backend
   return posts.map((p: any) => ({
     ...p,
     author: p.author || {
