@@ -39,14 +39,10 @@ function FeedPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      // ✅ PERBAIKAN: Kirim user.id atau null
       const userId = user?.id || null;
       console.log("🔍 Loading feed for user:", userId);
       const data = await fetchFeed(tab, userId);
       console.log("📊 Posts loaded:", data.length);
-      if (data.length > 0) {
-        console.log("📊 Sample author:", data[0].author);
-      }
       setPosts(data);
     } catch (err) {
       console.error("❌ Error loading feed:", err);
@@ -77,16 +73,17 @@ function FeedPage() {
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-12">
       <Header />
-      <main className="mx-auto max-w-2xl px-4 py-6">
+      {/* ✅ PERBAIKAN LAYOUT: Ubah max-w-2xl menjadi max-w-4xl dan tambahkan padding yang lebih luas */}
+      <main className="mx-auto max-w-4xl px-6 py-6 md:px-8 lg:px-10">
         <Composer onPosted={load} />
 
-        <div className="mb-4 flex items-center gap-1 overflow-x-auto border-b border-border">
+        <div className="mb-6 flex items-center gap-1 overflow-x-auto border-b border-border">
           {TABS.map((t) => (
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
               className={cn(
-                "flex items-center gap-1.5 whitespace-nowrap border-b-2 px-4 py-3 text-sm font-semibold transition-colors",
+                "flex items-center gap-1.5 whitespace-nowrap border-b-2 px-5 py-3 text-sm font-semibold transition-colors",
                 tab === t.id
                   ? t.id === "super"
                     ? "border-gold text-gold"
@@ -102,9 +99,9 @@ function FeedPage() {
 
         {/* LOADING SKELETON */}
         {loading ? (
-          <div className="space-y-4">
+          <div className="space-y-5">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="yap-card p-5 animate-pulse border border-border/50 bg-card/50">
+              <div key={i} className="rounded-2xl border border-border/50 bg-card/50 p-6 animate-pulse">
                 <div className="flex gap-4">
                   <div className="size-12 rounded-full bg-muted" />
                   <div className="flex-1 space-y-3">
@@ -114,7 +111,8 @@ function FeedPage() {
                     </div>
                     <div className="h-4 w-full rounded bg-muted" />
                     <div className="h-4 w-3/4 rounded bg-muted" />
-                    <div className="mt-4 flex gap-4">
+                    <div className="mt-4 flex gap-6 pt-3 border-t border-border/30">
+                      <div className="h-4 w-12 rounded bg-muted" />
                       <div className="h-4 w-12 rounded bg-muted" />
                       <div className="h-4 w-12 rounded bg-muted" />
                     </div>
@@ -124,17 +122,17 @@ function FeedPage() {
             ))}
           </div>
         ) : posts.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border bg-card p-12 text-center">
-            <div className="mx-auto mb-3 grid size-12 place-items-center rounded-full bg-brand-soft text-2xl">🚀</div>
-            <h3 className="font-display text-lg font-semibold">No yaps here yet</h3>
-            <p className="mt-1 text-sm text-muted-foreground">
+          <div className="rounded-2xl border border-dashed border-border bg-card p-16 text-center">
+            <div className="mx-auto mb-4 grid size-16 place-items-center rounded-full bg-brand-soft text-4xl">🚀</div>
+            <h3 className="font-display text-xl font-semibold">No yaps here yet</h3>
+            <p className="mt-2 text-sm text-muted-foreground">
               {tab === "following"
                 ? user ? "Follow some yappers to see their posts here." : "Connect your wallet to see who you follow."
                 : "Be the first to yap!"}
             </p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-5">
             {posts.map((p) => <PostCard key={p.id} post={p} />)}
           </div>
         )}
