@@ -10,7 +10,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/lib/auth-store";
 import { shortAddr, type FeedPost, fetchFeed } from "@/lib/posts";
-import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -45,6 +44,8 @@ interface FeedProfile {
   badge: 'shrimp' | 'fish' | 'dolphin' | 'shark' | 'whale';
 }
 
+const API_BASE = import.meta.env.VITE_API_BASE || "https://api.yap.onenov.xyz/api";
+
 function ProfilePage() {
   const { address } = Route.useParams();
   const { user, updateProfile } = useAuth();
@@ -52,7 +53,7 @@ function ProfilePage() {
   const [yaps, setYaps] = useState<FeedPost[]>([]);
   const [counts, setCounts] = useState({ followers: 0, following: 0, yaps: 0, balance: 0, staked: 0 });
   const [following, setFollowing] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editName, setEditName] = useState("");
@@ -70,47 +71,62 @@ function ProfilePage() {
     }
   }, [isEditModalOpen, profile]);
 
-  // ✅ PERBAIKAN: Load profile dari Supabase langsung jika bukan user sendiri
+  // ✅ PERBAIKAN: Load profile dari VPS API (bukan Supabase)
   useEffect(() => {
     const loadProfile = async () => {
       setLoading(true);
-      if (user && user.address === address) {
-        const fp: FeedProfile = {
-          id: user.id,
-          address: user.address,
-          username: user.username || user.address.slice(0, 8),
-          displayName: user.displayName,
-          bio: user.bio || "",
-          avatarSeed: user.avatarSeed,
-          isValidator: user.isValidator,
-          badge: user.badge,
-        };
-        setProfile(fp);
-        setLoading(false);
-      } else {
-        // Ambil dari Supabase langsung
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('address', address)
-          .single();
-        
-        if (error) {
-          console.warn("Profile not found:", error);
-          setProfile(null);
-        } else if (data) {
+      try {
+        if (user && user.address === address) {
+          // Gunakan data dari auth store
           const fp: FeedProfile = {
-            id: data.id,
-            address: data.address,
-            username: data.username || data.address.slice(0, 8),
-            displayName: data.display_name || `${address.slice(0, 6)}…${address.slice(-4)}`,
-            bio: data.bio || "",
-            avatarSeed: data.avatar_seed || address,
-            isValidator: Boolean(data.is_validator),
-            badge: 'shrimp', // default
+            id: user.id,
+            address: user.address,
+            username: user.username || user.address.slice(0, 8),
+            displayName: user.displayName,
+            bio: user.bio || "",
+            avatarSeed: user.avatarSeed,
+            isValidator: user.isValidator,
+            badge: user.badge,
           };
           setProfile(fp);
+          setLoading(false);
+          return;
         }
+
+        // Ambil dari VPS API
+        console.log("🔍 Fetching profile from VPS:", `${API_BASE}/profiles/${address}`);
+        const res = await fetch(`${API_BASE}/profiles/${address}`);
+        
+        if (res.status === 404) {
+          console.log("Profile not found in VPS");
+          setProfile(null);
+          setLoading(false);
+          return;
+        }
+
+        if (!res.ok) {
+          throw new Error(`API error: ${res.status}`);
+        }
+
+        const data = await res.json();
+        console.log("📦 Profile data from VPS:", data);
+
+        // Data dari VPS menggunakan snake_case, mapping ke camelCase
+        const fp: FeedProfile = {
+          id: data.id,
+          address: data.address,
+          username: data.username || data.address.slice(0, 8),
+          displayName: data.display_name || `${address.slice(0, 6)}…${address.slice(-4)}`,
+          bio: data.bio || "",
+          avatarSeed: data.avatar_seed || address,
+          isValidator: Boolean(data.is_validator),
+          badge: 'shrimp', // default
+        };
+        setProfile(fp);
+      } catch (err) {
+        console.error("Error loading profile:", err);
+        setProfile(null);
+      } finally {
         setLoading(false);
       }
     };
@@ -122,7 +138,7 @@ function ProfilePage() {
     const loadYaps = async () => {
       if (!profile) return;
       const yapsData = await fetchFeed("latest", user?.id || null).then((posts) => 
-        posts.filter((post) => post.author.address === address)
+        posts.filter((post) => post.author.address.toLowerCase() === address.toLowerCase())
       );
       setYaps(yapsData);
       setCounts((prev) => ({ ...prev, yaps: yapsData.length }));
@@ -130,20 +146,20 @@ function ProfilePage() {
     loadYaps();
   }, [profile, address, user]);
 
+  // ✅ FOLLOW/UNFOLLOW (akan diimplementasikan nanti)
   const toggleFollow = async () => {
     if (!user || !profile) return toast("Connect your wallet to follow");
     if (isOwn) return;
     const wasFollowing = following;
     setFollowing(!wasFollowing);
     if (wasFollowing) {
-      // await supabase.from("follows").delete().eq("follower_id", user.id).eq("following_id", profile.id);
       toast(`Unfollowed @${profile.username}`);
     } else {
-      // await supabase.from("follows").insert({ follower_id: user.id, following_id: profile.id });
       toast.success(`Now following @${profile.username}`);
     }
   };
 
+  // ✅ UPDATE PROFILE KE VPS API
   const handleSaveProfile = async () => {
     if (!user || !profile) return;
     if (!editName.trim()) {
@@ -153,35 +169,45 @@ function ProfilePage() {
 
     setIsSaving(true);
     try {
-      // ✅ UPDATE LANGSUNG KE SUPABASE
-      const { error } = await supabase
-        .from("profiles")
-        .update({
+      // UPDATE ke VPS API
+      const res = await fetch(`${API_BASE}/profiles/${profile.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           display_name: editName.trim(),
           bio: editBio.trim(),
           avatar_seed: editAvatarSeed.trim() || profile.address,
-        })
-        .eq("id", profile.id);
+        }),
+      });
 
-      if (error) throw error;
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Failed to update profile: ${res.status} ${text}`);
+      }
 
+      const updatedData = await res.json();
+      
       const updatedProfile = {
         ...profile,
-        displayName: editName.trim(),
-        bio: editBio.trim(),
-        avatarSeed: editAvatarSeed.trim() || profile.address,
+        displayName: updatedData.display_name || editName.trim(),
+        bio: updatedData.bio || editBio.trim(),
+        avatarSeed: updatedData.avatar_seed || editAvatarSeed.trim() || profile.address,
       };
       setProfile(updatedProfile);
 
-      updateProfile({
-        displayName: editName.trim(),
-        bio: editBio.trim(),
-        avatarSeed: editAvatarSeed.trim() || profile.address,
-      });
+      // Update auth store jika ini user sendiri
+      if (isOwn) {
+        updateProfile({
+          displayName: editName.trim(),
+          bio: editBio.trim(),
+          avatarSeed: editAvatarSeed.trim() || profile.address,
+        });
+      }
 
       toast.success("Profile updated successfully!");
       setIsEditModalOpen(false);
     } catch (error: any) {
+      console.error("Update error:", error);
       toast.error(error.message || "Failed to update profile");
     } finally {
       setIsSaving(false);
@@ -202,9 +228,9 @@ function ProfilePage() {
       <div className="min-h-screen bg-background">
         <Header />
         <div className="mx-auto max-w-2xl px-4 py-20 text-center">
-          <h1 className="font-display text-2xl font-bold">No profile yet</h1>
+          <h1 className="font-display text-2xl font-bold">Profile not found</h1>
           <p className="mt-2 text-muted-foreground">
-            <span className="font-mono">{shortAddr(address)}</span> hasn't signed in to QIE Yap.
+            <span className="font-mono">{shortAddr(address)}</span> hasn't signed in to QIE Yap yet.
           </p>
           <Link to="/" className="mt-6 inline-block text-brand hover:underline">← Back to feed</Link>
         </div>
