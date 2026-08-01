@@ -177,7 +177,17 @@ function ProfilePage() {
     );
   }
 
+  // ✅ PERBAIKAN: Jangan tampilkan "No profile yet" jika user sudah ada di Zustand
   if (!profile) {
+    // Jika user sudah terlogin tapi profil belum terload, jangan tampilkan error
+    if (user && user.address === address) {
+      return (
+        <div className="min-h-screen bg-background">
+          <Header />
+          <div className="mx-auto max-w-2xl px-4 py-12 text-center text-muted-foreground">Loading profile data...</div>
+        </div>
+      );
+    }
     return (
       <div className="min-h-screen bg-background">
         <Header />
