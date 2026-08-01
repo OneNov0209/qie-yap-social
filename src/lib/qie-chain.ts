@@ -16,7 +16,6 @@ export const QIE_CHAIN = defineChain({
   blockExplorers: { default: { name: "QIE Explorer", url: "https://qie.explorer.onenov.xyz" } },
 });
 
-// ✅ DUA API (Official + Pribadi)
 const OFFICIAL_API = "https://mainnet.qie.digital/api/v2";
 const PRIVATE_API = "https://api.qie.onenov.xyz";
 
@@ -39,10 +38,8 @@ export function badgeFor(qie: number): StakingBadge {
   return "shrimp";
 }
 
-// ✅ FUNGSI STAKING DENGAN FAILOVER (Coba Official, Gagal -> Pribadi)
 export async function getStakedQie(address: string): Promise<number | null> {
   try {
-    // 1. Coba Official API dulu
     const officialRes = await fetch(`${OFFICIAL_API}/addresses/${address}/coin-balance-history?limit=1`);
     if (officialRes.ok) {
       const data = await officialRes.json();
@@ -51,7 +48,6 @@ export async function getStakedQie(address: string): Promise<number | null> {
       }
     }
 
-    // 2. Jika Official gagal, coba API Pribadi
     const privateRes = await fetch(`${PRIVATE_API}/cosmos/staking/v1beta1/delegations/${address}`);
     if (privateRes.ok) {
       const data = await privateRes.json();
