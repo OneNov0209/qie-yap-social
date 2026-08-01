@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_BASE || "https://api.yap.onenov.xyz/api";
+export const API_BASE = import.meta.env.VITE_API_BASE || "https://api.yap.onenov.xyz/api";
 
 export interface FeedPost {
   id: string;
