@@ -2,11 +2,10 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Header } from "@/components/header";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-store";
-import { getQieBalance, QIE_YAP_ABI, getWalletClient } from "@/lib/qie-chain";
-import { ArrowLeft, Coins, TrendingUp, Users, Wallet, History, Percent } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { getQieBalance, QIE_YAP_ABI, getWalletClient, checkWalletConnection } from "@/lib/qie-chain";
+import { API_BASE, fetchFeed } from "@/lib/posts";
+import { ArrowLeft, Coins, TrendingUp, Users, Wallet, History, Percent, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 // ✅ BACA ALAMAT DEVELOPER DARI .ENV
@@ -22,6 +21,15 @@ export const Route = createFileRoute("/dashboard")({
   component: DashboardPage,
 });
 
+interface TipRecord {
+  id: string;
+  amount: number;
+  from_user_id: string;
+  to_user_id: string;
+  tx_hash: string | null;
+  created_at: string;
+}
+
 function DashboardPage() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -31,7 +39,7 @@ function DashboardPage() {
     totalFollowers: 0,
     walletBalance: 0,
     platformFeeEarned: 0,
-    tipsReceivedList: [] as any[],
+    tipsReceivedList: [] as TipRecord[],
   });
   const [withdrawing, setWithdrawing] = useState(false);
 
@@ -47,35 +55,50 @@ function DashboardPage() {
     if (!user) return;
     setLoading(true);
     try {
-      const { data: tipsReceived } = await supabase
-        .from("tips")
-        .select("amount, from_user_id, created_at, tx_hash")
-        .eq("to_user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(50);
+      // 1. Ambil data tips yang diterima user dari VPS
+      let tipsData: TipRecord[] = [];
+      try {
+        const tipsRes = await fetch(`${API_BASE}/tips?to_user_id=${user.id}&limit=50`);
+        if (tipsRes.ok) {
+          tipsData = await tipsRes.json();
+        }
+      } catch (err) {
+        console.warn("Failed to fetch tips from VPS, using fallback...");
+      }
 
-      const tipsData = tipsReceived || [];
-      const totalAmount = tipsData.reduce((sum: number, t: any) => sum + Number(t.amount), 0);
-
-      // ✅ Hanya Dev yang bisa melihat fee
+      const totalAmount = tipsData.reduce((sum, t) => sum + Number(t.amount), 0);
       const feeEarned = isDev ? totalAmount * 0.02 : 0;
 
-      const [yaps, followers, balance] = await Promise.all([
-        supabase.from("posts").select("id", { count: "exact", head: true }).eq("author_id", user.id),
-        supabase.from("follows").select("follower_id", { count: "exact", head: true }).eq("following_id", user.id),
-        getQieBalance(user.address as `0x${string}`).catch(() => 0),
-      ]);
+      // 2. Ambil jumlah Yaps user (dari feed yang difilter)
+      const allPosts = await fetchFeed("latest", user.id);
+      const userYaps = allPosts.filter((p) => p.author.address === user.address);
+
+      // 3. Balance on-chain
+      const balance = await getQieBalance(user.address as `0x${string}`).catch(() => 0);
+
+      // 4. Hitung followers (dari VPS - endpoint follows)
+      let followersCount = 0;
+      try {
+        const followsRes = await fetch(`${API_BASE}/follows?following_id=${user.id}&count=true`);
+        if (followsRes.ok) {
+          const data = await followsRes.json();
+          followersCount = data.count || 0;
+        }
+      } catch (err) {
+        console.warn("Failed to fetch followers count");
+      }
 
       setStats({
         totalTipsReceived: totalAmount,
-        totalYaps: yaps.count || 0,
-        totalFollowers: followers.count || 0,
+        totalYaps: userYaps.length,
+        totalFollowers: followersCount,
         walletBalance: balance,
         platformFeeEarned: feeEarned,
         tipsReceivedList: tipsData.slice(0, 10),
       });
     } catch (err) {
       console.error("Dashboard error:", err);
+      toast.error("Failed to load dashboard data");
     } finally {
       setLoading(false);
     }
@@ -86,21 +109,32 @@ function DashboardPage() {
     if (stats.totalTipsReceived === 0) return toast.error("No tips to withdraw");
     if (withdrawing) return;
 
+    // ✅ Cek koneksi wallet
+    const isConnected = await checkWalletConnection();
+    if (!isConnected) {
+      toast.error("Please connect your QIE Wallet first");
+      return;
+    }
+
     setWithdrawing(true);
     try {
       const contractAddress = import.meta.env.VITE_QIE_YAP_CONTRACT as `0x${string}`;
       const { walletClient } = await getWalletClient();
       
+      toast.loading("Waiting for wallet confirmation...");
       const hash = await walletClient.writeContract({
         address: contractAddress,
         abi: QIE_YAP_ABI,
         functionName: "withdrawTips",
         account: user.address as `0x${string}`,
       });
+      toast.dismiss();
       
       toast.success(`Withdraw successful! Tx: ${hash.slice(0, 10)}...`);
       await loadDashboard();
     } catch (err: any) {
+      toast.dismiss();
+      console.error("Withdraw error:", err);
       toast.error(err.message || "Withdraw failed");
     } finally {
       setWithdrawing(false);
@@ -115,7 +149,7 @@ function DashboardPage() {
           <Wallet className="mx-auto size-12 text-muted-foreground" />
           <h2 className="mt-4 text-xl font-semibold">Connect your wallet</h2>
           <p className="mt-2 text-muted-foreground">
-            Please connect your wallet to view your dashboard.
+            Please connect your QIE Wallet to view your dashboard.
           </p>
         </div>
       </div>
@@ -135,7 +169,7 @@ function DashboardPage() {
 
         {loading ? (
           <div className="space-y-4">
-            {[1, 2, 3].map((i) => (
+            {[1, 2, 3, 4].map((i) => (
               <div key={i} className="animate-pulse rounded-xl border border-border/50 bg-card/50 p-6">
                 <div className="h-8 w-32 rounded bg-muted" />
                 <div className="mt-2 h-4 w-full rounded bg-muted" />
@@ -153,7 +187,7 @@ function DashboardPage() {
               {isDev && (
                 <StatCard 
                   icon={<Percent className="size-6 text-gold" />}
-                  label="Platform Fee Earned (2%)"
+                  label="Platform Fee (2%)"
                   value={`${stats.platformFeeEarned.toFixed(4)} QIE`}
                 />
               )}
@@ -171,6 +205,7 @@ function DashboardPage() {
               />
             </div>
 
+            {/* Withdraw Section */}
             <div className="mb-6 rounded-xl border border-border bg-card/50 p-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -182,11 +217,19 @@ function DashboardPage() {
                   disabled={withdrawing || stats.totalTipsReceived === 0}
                   className="bg-brand hover:bg-brand/90"
                 >
-                  {withdrawing ? "Processing..." : "Withdraw All"}
+                  {withdrawing ? (
+                    <>
+                      <Loader2 className="size-4 animate-spin mr-2" />
+                      Processing...
+                    </>
+                  ) : (
+                    "Withdraw All"
+                  )}
                 </Button>
               </div>
             </div>
 
+            {/* Recent Tips History */}
             <div className="rounded-xl border border-border bg-card/50 p-4">
               <div className="flex items-center gap-2 mb-4">
                 <History className="size-5 text-muted-foreground" />
@@ -198,11 +241,11 @@ function DashboardPage() {
                 </p>
               ) : (
                 <div className="space-y-3">
-                  {stats.tipsReceivedList.map((tip: any, index: number) => (
+                  {stats.tipsReceivedList.map((tip: TipRecord, index: number) => (
                     <div key={index} className="flex items-center justify-between border-b border-border/30 pb-2 last:border-0">
                       <div>
                         <p className="text-sm font-medium">
-                          From: {tip.from_user_id ? tip.from_user_id.slice(0, 8) + '...' : 'Anonymous'}
+                          From: {tip.from_user_id ? `${tip.from_user_id.slice(0, 8)}...` : 'Anonymous'}
                         </p>
                         <p className="text-xs text-muted-foreground">
                           {new Date(tip.created_at).toLocaleDateString()} · {tip.tx_hash?.slice(0, 10)}...
