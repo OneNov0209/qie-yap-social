@@ -10,7 +10,6 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/lib/auth-store";
 import { fetchFeed, shortAddr, type FeedPost, API_BASE } from "@/lib/posts";
 import { Search, User, FileText, Loader2, X } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/search")({
