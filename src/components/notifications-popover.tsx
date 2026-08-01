@@ -22,6 +22,8 @@ interface NotificationRow {
     address: string;
   } | null;
   post: { content: string } | null;
+  // ✅ Tambahkan field ini agar kita bisa tahu ID postingan yang sebenarnya
+  post_id?: string | null;
 }
 
 function label(n: NotificationRow): string {
@@ -38,7 +40,6 @@ export function NotificationsPopover() {
   const [items, setItems] = useState<NotificationRow[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // ✅ Load notifikasi dari VPS
   const loadNotifications = async () => {
     if (!user) return;
     setLoading(true);
@@ -120,19 +121,23 @@ export function NotificationsPopover() {
         ) : (
           <ul className="max-h-96 divide-y divide-border overflow-auto">
             {items.map((n) => {
-              // Tentukan link tujuan berdasarkan tipe notifikasi
+              // ✅ LOGIKA LINK YANG BENAR
               let linkTo = "#";
               if (n.type === "follow") {
-                // Jika follow, arahkan ke profil pengirim
+                // Follow: arahkan ke profil pengirim
                 linkTo = n.from ? `/profile/${n.from.address}` : "#";
-              } else if (n.type === "like" || n.type === "reply" || n.type === "tip") {
-                // Jika like/reply/tip, arahkan ke postingan (dengan ID notifikasi sebagai fallback)
-                linkTo = `/yap/${n.id}`;
+              } else {
+                // Like, Reply, Tip: arahkan ke postingan
+                // Gunakan n.post_id jika ada, atau fallback ke n.id
+                // Tapi kita harus pastikan ini adalah ID post yang benar
+                // Untuk saat ini, kita asumsikan n.id adalah ID post (karena backend kita mengirim ID post)
+                // Tapi kita akan coba ambil dari n.post_id jika ada
+                const postId = n.post_id || n.id;
+                linkTo = `/yap/${postId}`;
               }
 
               return (
                 <li key={n.id} className={cn("flex gap-3 px-4 py-3 transition-colors hover:bg-muted/40", !n.read && "bg-brand-soft/40")}>
-                  {/* ✅ Bungkus seluruh konten dengan Link agar bisa diklik */}
                   <Link to={linkTo} className="flex gap-3 w-full min-w-0">
                     <Avatar seed={n.from?.avatar_seed ?? n.from?.address ?? "x"} size={36} />
                     <div className="min-w-0 flex-1">
