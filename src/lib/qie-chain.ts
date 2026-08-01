@@ -16,46 +16,8 @@ export const QIE_CHAIN = defineChain({
   blockExplorers: { default: { name: "QIE Explorer", url: "https://qie.explorer.onenov.xyz" } },
 });
 
-// ✅ Tambahkan: Cek koneksi wallet
-export async function checkWalletConnection(): Promise<boolean> {
-  if (typeof window === "undefined" || !window.ethereum) {
-    console.error("No wallet detected");
-    return false;
-  }
-  try {
-    const accounts = await window.ethereum.request({ method: "eth_accounts" });
-    return accounts && accounts.length > 0;
-  } catch {
-    return false;
-  }
-}
-
-// ✅ Tambahkan: Switch network ke QIE
-export async function switchToQieNetwork(): Promise<void> {
-  if (typeof window === "undefined" || !window.ethereum) return;
-  try {
-    await window.ethereum.request({
-      method: "wallet_switchEthereumChain",
-      params: [{ chainId: "0x7C6" }], // 1990 dalam hex
-    });
-  } catch (error: any) {
-    if (error.code === 4902) {
-      // Network belum ada, tambahkan
-      await window.ethereum.request({
-        method: "wallet_addEthereumChain",
-        params: [{
-          chainId: "0x7C6",
-          chainName: "QIE Mainnet",
-          nativeCurrency: { name: "QIE", symbol: "QIE", decimals: 18 },
-          rpcUrls: ["https://rpc-evm.qie.onenov.xyz"],
-          blockExplorerUrls: ["https://qie.explorer.onenov.xyz"],
-        }],
-      });
-    } else {
-      throw error;
-    }
-  }
-}
+const OFFICIAL_API = "https://mainnet.qie.digital/api/v2";
+const PRIVATE_API = "https://api.qie.onenov.xyz";
 
 export const qiePublicClient = createPublicClient({
   chain: QIE_CHAIN,
@@ -144,12 +106,53 @@ export async function getQieYapContract(contractAddress: `0x${string}`) {
   });
 }
 
+// ✅ Fungsi cek koneksi wallet
+export async function checkWalletConnection(): Promise<boolean> {
+  if (typeof window === "undefined" || !window.ethereum) {
+    console.error("No wallet detected");
+    return false;
+  }
+  try {
+    const accounts = await window.ethereum.request({ method: "eth_accounts" });
+    return accounts && accounts.length > 0;
+  } catch {
+    return false;
+  }
+}
+
+// ✅ Fungsi switch network ke QIE
+export async function switchToQieNetwork(): Promise<void> {
+  if (typeof window === "undefined" || !window.ethereum) return;
+  try {
+    await window.ethereum.request({
+      method: "wallet_switchEthereumChain",
+      params: [{ chainId: "0x7C6" }], // 1990 dalam hex
+    });
+  } catch (error: any) {
+    if (error.code === 4902) {
+      // Network belum ada, tambahkan
+      await window.ethereum.request({
+        method: "wallet_addEthereumChain",
+        params: [{
+          chainId: "0x7C6",
+          chainName: "QIE Mainnet",
+          nativeCurrency: { name: "QIE", symbol: "QIE", decimals: 18 },
+          rpcUrls: ["https://rpc-evm.qie.onenov.xyz"],
+          blockExplorerUrls: ["https://qie.explorer.onenov.xyz"],
+        }],
+      });
+    } else {
+      throw error;
+    }
+  }
+}
+
+// ✅ Fungsi get wallet client dengan switch network otomatis
 export async function getWalletClient() {
   if (typeof window === "undefined" || !window.ethereum) {
     throw new Error("No EVM wallet detected. Install MetaMask or the QIE wallet extension.");
   }
   
-  // ✅ Pastikan network QIE
   await switchToQieNetwork();
   
   const accounts = await window.ethereum.request({ method: "eth_requestAccounts" }) as string[];
@@ -163,6 +166,7 @@ export async function getWalletClient() {
   return { walletClient, address: address as `0x${string}` };
 }
 
+// ✅ Fungsi Tip dengan error handling
 export async function sendTip(
   contractAddress: `0x${string}`,
   recipient: `0x${string}`,
@@ -189,6 +193,7 @@ export async function sendTip(
   }
 }
 
+// ✅ Fungsi SuperYap dengan error handling
 export async function createSuperYap(
   contractAddress: `0x${string}`
 ) {
@@ -211,6 +216,7 @@ export async function createSuperYap(
   }
 }
 
+// ✅ Fungsi Boost dengan error handling
 export async function boostPost(
   contractAddress: `0x${string}`,
   postId: bigint,
