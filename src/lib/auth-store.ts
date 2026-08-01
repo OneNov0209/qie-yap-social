@@ -2,7 +2,6 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { getQieBalance } from '@/lib/qie-chain';
 
-// Gunakan API_BASE dari environment variable
 const API_BASE = import.meta.env.VITE_API_BASE || "https://api.yap.onenov.xyz/api";
 
 export interface User {
@@ -38,12 +37,12 @@ export const useAuth = create<AuthState>()(
         set({ connecting: true });
 
         try {
-          const accounts = await window.ethereum.request({
-            method: 'eth_requestAccounts',
-          });
+          // 1. Ambil alamat wallet
+          const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
           const address = (accounts as string[])[0];
           if (!address) throw new Error('No account');
 
+          // 2. Kirim ke backend untuk register/login
           const res = await fetch(`${API_BASE}/profiles`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -51,27 +50,29 @@ export const useAuth = create<AuthState>()(
           });
 
           if (!res.ok) {
-            const text = await res.text().catch(() => '');
+            const text = await res.text();
             throw new Error(`Failed to register/login: ${res.status} ${text}`);
           }
 
+          // 3. Ambil data profil dari backend
           const profile = await res.json();
           const balance = await getQieBalance(address as `0x${string}`).catch(() => 0);
 
-          set({
-            user: {
-              id: profile.id,
-              address: profile.address ?? address,
-              username: profile.username,
-              displayName: profile.display_name ?? profile.displayName ?? `${address.slice(0, 6)}…${address.slice(-4)}`,
-              bio: profile.bio ?? '',
-              avatarSeed: profile.avatar_seed ?? profile.avatarSeed ?? address,
-              badge: 'shrimp',
-              isValidator: Boolean(profile.is_validator ?? profile.isValidator),
-              balance,
-            },
-            connecting: false,
-          });
+          // 4. Pastikan data user terbentuk dengan benar
+          const userData: User = {
+            id: profile.id,
+            address: profile.address ?? address,
+            username: profile.username,
+            displayName: profile.display_name ?? `${address.slice(0, 6)}…${address.slice(-4)}`,
+            bio: profile.bio ?? '',
+            avatarSeed: profile.avatar_seed ?? address,
+            badge: 'shrimp',
+            isValidator: Boolean(profile.is_validator),
+            balance,
+          };
+
+          console.log("✅ User data saved:", userData);
+          set({ user: userData, connecting: false });
         } catch (error) {
           console.error('Connect error:', error);
           set({ connecting: false });
