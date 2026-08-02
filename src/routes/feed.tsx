@@ -42,7 +42,7 @@ function FeedPage() {
       const userId = user?.id || null;
       console.log("🔍 Loading feed for user:", userId);
       const data = await fetchFeed(tab, userId);
-      console.log("📊 Posts loaded:", data.length);
+      console.log(`📊 ${tab} posts loaded:`, data.length);
       setPosts(data);
     } catch (err) {
       console.error("❌ Error loading feed:", err);
@@ -55,6 +55,7 @@ function FeedPage() {
     load();
   }, [load]);
 
+  // Real-time update (tidak perlu Supabase, tapi tetap aman jika ada)
   useEffect(() => {
     const ch = supabase
       .channel("feed")
@@ -73,7 +74,6 @@ function FeedPage() {
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-12">
       <Header />
-      {/* ✅ PERBAIKAN LAYOUT: Ubah max-w-2xl menjadi max-w-4xl dan tambahkan padding yang lebih luas */}
       <main className="mx-auto max-w-4xl px-6 py-6 md:px-8 lg:px-10">
         <Composer onPosted={load} />
 
@@ -97,7 +97,6 @@ function FeedPage() {
           ))}
         </div>
 
-        {/* LOADING SKELETON */}
         {loading ? (
           <div className="space-y-5">
             {[1, 2, 3].map((i) => (
