@@ -902,6 +902,36 @@ app.get('/api/stats', async (req, res) => {
 });
 
 // ============================================
+// 14. CHART DATA (7 DAYS HISTORY)
+// ============================================
+app.get('/api/stats/chart', async (req, res) => {
+  const { days = 7 } = req.query;
+  try {
+    const result = await pool.query(`
+      WITH days AS (
+        SELECT generate_series(
+          CURRENT_DATE - ($1 || ' days')::INTERVAL,
+          CURRENT_DATE,
+          '1 day'::INTERVAL
+        ) AS day
+      )
+      SELECT 
+        TO_CHAR(days.day, 'DD MMM') as date,
+        COALESCE(COUNT(t.id), 0) as tx
+      FROM days
+      LEFT JOIN tips t ON DATE(t.created_at) = days.day
+      GROUP BY days.day
+      ORDER BY days.day ASC
+    `, [days]);
+
+    res.json(result.rows);
+  } catch (err) {
+    console.error("❌ Chart error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================
 // START SERVER
 // ============================================
 const PORT = 3000;
