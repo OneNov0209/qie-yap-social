@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Header } from "@/components/header";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth-store";
-import { getQieBalance, QIE_YAP_ABI, getWalletClient, checkWalletConnection } from "@/lib/qie-chain";
+import { getQieBalance } from "@/lib/qie-chain";
 import { API_BASE, fetchFeed } from "@/lib/posts";
 import { ArrowLeft, Coins, TrendingUp, Users, Wallet, History, Percent, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -41,7 +41,6 @@ function DashboardPage() {
     platformFeeEarned: 0,
     tipsReceivedList: [] as TipRecord[],
   });
-  const [withdrawing, setWithdrawing] = useState(false);
 
   // ✅ Cek apakah user yang login adalah Developer (dari .env)
   const isDev = user?.address?.toLowerCase() === DEV_WALLET.toLowerCase();
@@ -55,7 +54,7 @@ function DashboardPage() {
     if (!user) return;
     setLoading(true);
     try {
-      // ✅ 1. Ambil data tips yang diterima user dari endpoint baru
+      // ✅ 1. Ambil data tips yang diterima user dari endpoint
       let tipsData: TipRecord[] = [];
       try {
         const tipsRes = await fetch(`${API_BASE}/tips/user/${user.id}?limit=50`);
@@ -105,42 +104,6 @@ function DashboardPage() {
       toast.error("Failed to load dashboard data");
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleWithdraw = async () => {
-    if (!user) return toast.error("Please connect your wallet");
-    if (stats.totalTipsReceived === 0) return toast.error("No tips to withdraw");
-    if (withdrawing) return;
-
-    const isConnected = await checkWalletConnection();
-    if (!isConnected) {
-      toast.error("Please connect your QIE Wallet first");
-      return;
-    }
-
-    setWithdrawing(true);
-    try {
-      const contractAddress = import.meta.env.VITE_QIE_YAP_CONTRACT as `0x${string}`;
-      const { walletClient } = await getWalletClient();
-      
-      toast.loading("Waiting for wallet confirmation...");
-      const hash = await walletClient.writeContract({
-        address: contractAddress,
-        abi: QIE_YAP_ABI,
-        functionName: "withdrawTips",
-        account: user.address as `0x${string}`,
-      });
-      toast.dismiss();
-      
-      toast.success(`Withdraw successful! Tx: ${hash.slice(0, 10)}...`);
-      await loadDashboard();
-    } catch (err: any) {
-      toast.dismiss();
-      console.error("Withdraw error:", err);
-      toast.error(err.message || "Withdraw failed");
-    } finally {
-      setWithdrawing(false);
     }
   };
 
@@ -208,27 +171,16 @@ function DashboardPage() {
               />
             </div>
 
-            {/* Withdraw Section */}
+            {/* ✅ TOMBOL WITHDRAW DIHAPUS KARENA TIPS LANGSUNG MASUK WALLET */}
             <div className="mb-6 rounded-xl border border-border bg-card/50 p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-semibold">Withdrawable Tips</p>
+                  <p className="text-sm font-semibold">Total Tips Received</p>
                   <p className="text-xl font-bold text-brand">{stats.totalTipsReceived.toFixed(4)} QIE</p>
                 </div>
-                <Button
-                  onClick={handleWithdraw}
-                  disabled={withdrawing || stats.totalTipsReceived === 0}
-                  className="bg-brand hover:bg-brand/90"
-                >
-                  {withdrawing ? (
-                    <>
-                      <Loader2 className="size-4 animate-spin mr-2" />
-                      Processing...
-                    </>
-                  ) : (
-                    "Withdraw All"
-                  )}
-                </Button>
+                <div className="text-xs text-muted-foreground">
+                  ✅ Tips are automatically credited to your wallet
+                </div>
               </div>
             </div>
 
