@@ -53,22 +53,74 @@
 
 :root {
   --radius: 0.75rem;
+
+  --background: oklch(0.985 0.003 280);
+  --foreground: oklch(0.21 0.03 265);
+
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.21 0.03 265);
+
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.21 0.03 265);
+
+  --primary: oklch(0.66 0.27 340);
+  --primary-foreground: oklch(1 0 0);
+
+  --secondary: oklch(0.96 0.01 280);
+  --secondary-foreground: oklch(0.21 0.03 265);
+
+  --muted: oklch(0.96 0.01 280);
+  --muted-foreground: oklch(0.55 0.02 270);
+
+  --accent: oklch(0.97 0.03 340);
+  --accent-foreground: oklch(0.66 0.27 340);
+
+  --destructive: oklch(0.6 0.24 27);
+  --destructive-foreground: oklch(1 0 0);
+
+  --border: oklch(0.92 0.01 280);
+  --input: oklch(0.92 0.01 280);
+  --ring: oklch(0.66 0.27 340);
+
+  /* Brand */
+  --brand: oklch(0.66 0.27 340);           
+  --brand-soft: oklch(0.97 0.04 340);
+  --gold: oklch(0.78 0.16 75);             
+  --gold-soft: oklch(0.97 0.05 90);
+
+  /* Badge tints */
+  --shrimp: oklch(0.85 0.07 30);
+  --fish: oklch(0.82 0.09 200);
+  --dolphin: oklch(0.78 0.11 230);
+  --shark: oklch(0.55 0.05 250);
+  --whale: oklch(0.45 0.12 280);
+}
+
+.dark {
   --background: oklch(0.16 0.01 280);
   --foreground: oklch(0.98 0.003 280);
+
   --card: oklch(0.21 0.02 280);
   --card-foreground: oklch(0.98 0.003 280);
+
   --popover: oklch(0.21 0.02 280);
   --popover-foreground: oklch(0.98 0.003 280);
+
   --primary: oklch(0.7 0.27 340);
   --primary-foreground: oklch(0.16 0.01 280);
+
   --secondary: oklch(0.26 0.02 280);
   --secondary-foreground: oklch(0.98 0.003 280);
+
   --muted: oklch(0.26 0.02 280);
   --muted-foreground: oklch(0.7 0.02 280);
+
   --accent: oklch(0.3 0.08 340);
   --accent-foreground: oklch(0.98 0.003 280);
+
   --destructive: oklch(0.7 0.19 22);
   --destructive-foreground: oklch(0.98 0.003 280);
+
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.7 0.27 340);
@@ -77,12 +129,6 @@
   --brand-soft: oklch(0.3 0.1 340);
   --gold: oklch(0.82 0.16 80);
   --gold-soft: oklch(0.3 0.07 80);
-
-  --shrimp: oklch(0.85 0.07 30);
-  --fish: oklch(0.82 0.09 200);
-  --dolphin: oklch(0.78 0.11 230);
-  --shark: oklch(0.55 0.05 250);
-  --whale: oklch(0.45 0.12 280);
 }
 
 @layer base {
@@ -103,14 +149,14 @@
 body {
   /* Lapisan background gelap + gradasi brand */
   background: 
-    radial-gradient(circle at 80% 20%, rgba(255, 10, 108, 0.1), transparent 50%),
-    radial-gradient(circle at 10% 80%, rgba(0, 64, 255, 0.1), transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(255, 10, 108, 0.08), transparent 50%),
+    radial-gradient(circle at 10% 80%, rgba(0, 64, 255, 0.08), transparent 50%),
     var(--color-background);
   
-  /* Tambahkan titik-titik emas menggunakan small dots + medium dots */
+  /* Tambahkan titik-titik emas */
   background-image: 
-    radial-gradient(rgba(255, 215, 0, 0.5) 1px, transparent 1px),
-    radial-gradient(rgba(255, 215, 0, 0.2) 2px, transparent 2px);
+    radial-gradient(rgba(255, 215, 0, 0.4) 1px, transparent 1px),
+    radial-gradient(rgba(255, 215, 0, 0.15) 2px, transparent 2px);
   
   background-size: 
     500px 500px,
@@ -120,18 +166,20 @@ body {
     0 0,
     50px 70px;
   
-  /* Biarkan titik tetap di tempat saat scroll */
   background-attachment: fixed;
-  
-  /* Tambah z-index ke belakang */
-  position: relative;
-  z-index: 0;
 }
 
-/* Pastikan semua kartu berada di atas background */
-.yap-card, header, .btn-futuristic, main, article {
-  position: relative;
-  z-index: 1;
+/* Light Mode adjustment for golden dots */
+:root body {
+  background-image: 
+    radial-gradient(rgba(180, 150, 0, 0.15) 1px, transparent 1px),
+    radial-gradient(rgba(180, 150, 0, 0.05) 2px, transparent 2px);
+}
+
+.dark body {
+  background-image: 
+    radial-gradient(rgba(255, 215, 0, 0.4) 1px, transparent 1px),
+    radial-gradient(rgba(255, 215, 0, 0.15) 2px, transparent 2px);
 }
 
 /* ============================================ */
