@@ -859,6 +859,49 @@ app.get('/api/leaderboard', async (req, res) => {
 });
 
 // ============================================
+// 13. LANDING PAGE STATISTICS
+// ============================================
+app.get('/api/stats', async (req, res) => {
+  try {
+    // 1. Total Yaps (posts tanpa reply)
+    const yapsRes = await pool.query('SELECT COUNT(*) FROM posts WHERE reply_to IS NULL');
+    const totalYaps = parseInt(yapsRes.rows[0].count);
+
+    // 2. Total QIE Tipped
+    const tipsRes = await pool.query('SELECT COALESCE(SUM(amount), 0) as total FROM tips');
+    const totalQie = parseFloat(tipsRes.rows[0].total);
+
+    // 3. Active Users (user yang punya setidaknya 1 post atau 1 tip)
+    const usersRes = await pool.query(`
+      SELECT COUNT(DISTINCT id) FROM profiles 
+      WHERE id IN (SELECT author_id FROM posts) 
+         OR id IN (SELECT from_user_id FROM tips)
+         OR id IN (SELECT to_user_id FROM tips)
+    `);
+    const activeUsers = parseInt(usersRes.rows[0].count);
+
+    // 4. Total On-Chain Tx (tips + posts dengan tx_hash)
+    const txRes = await pool.query(`
+      SELECT 
+        (SELECT COUNT(*) FROM tips WHERE tx_hash IS NOT NULL) +
+        (SELECT COUNT(*) FROM posts WHERE tx_hash IS NOT NULL)
+      as total
+    `);
+    const totalTx = parseInt(txRes.rows[0].total);
+
+    res.json({
+      totalYaps,
+      totalQie: totalQie.toFixed(0),
+      activeUsers,
+      totalTx
+    });
+  } catch (err) {
+    console.error("❌ Stats error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================
 // START SERVER
 // ============================================
 const PORT = 3000;
