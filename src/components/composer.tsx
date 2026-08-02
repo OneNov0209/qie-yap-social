@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from "react";
-import { Sparkles, Rocket, Link2, X } from "lucide-react";
+import { Sparkles, Rocket, Link2, X, Image as ImageIcon, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Avatar } from "./avatar-img";
 import { useAuth } from "@/lib/auth-store";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { createPost, API_BASE } from "@/lib/posts";
+import { createPost, API_BASE, uploadToIPFS } from "@/lib/posts";
 import { submitYapOnChain, YAP_CONTRACT, hashContent } from "@/lib/yap-onchain";
 
 const MAX = 280;
@@ -24,15 +24,42 @@ export function Composer({ onPosted, replyToId, onCancelReply }: ComposerProps) 
   const [boostHours, setBoostHours] = useState<0 | 1 | 6 | 24>(0);
   const [onChain, setOnChain] = useState<boolean>(!!YAP_CONTRACT);
   const [submitting, setSubmitting] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [mediaUrl, setMediaUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const ref = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (replyToId) ref.current?.focus();
   }, [replyToId]);
 
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("File too large (max 5MB)");
+      return;
+    }
+    setUploading(true);
+    try {
+      const url = await uploadToIPFS(file);
+      if (url) {
+        setMediaUrl(url);
+        toast.success("Image uploaded successfully!");
+      } else {
+        toast.error("Upload failed");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const submit = async () => {
     if (!user) return toast("Connect your wallet to yap");
-    if (!text.trim()) return;
+    if (!text.trim() && !mediaUrl) return toast("Write something or upload an image");
     setSubmitting(true);
     try {
       let txHash: string | null = null;
@@ -51,10 +78,11 @@ export function Composer({ onPosted, replyToId, onCancelReply }: ComposerProps) 
         cHash = hashContent(text.trim());
       }
       
-      // ✅ 1. Simpan post ke tabel posts
+      // Simpan post dengan media_url
       const newPost = await createPost(
         {
           content: text.trim(),
+          mediaUrl: mediaUrl || undefined,
           isSuperYap: superYap,
           isBoosted: boostHours > 0,
           boostHours,
@@ -66,7 +94,6 @@ export function Composer({ onPosted, replyToId, onCancelReply }: ComposerProps) 
         user.id
       );
 
-      // ✅ 2. Jika ini reply/comment, simpan juga ke tabel comments (agar muncul di Admin Panel)
       if (replyToId && newPost) {
         try {
           await fetch(`${API_BASE}/comments`, {
@@ -79,8 +106,7 @@ export function Composer({ onPosted, replyToId, onCancelReply }: ComposerProps) 
             }),
           });
         } catch (err) {
-          console.warn("Comment save to comments table failed:", err);
-          // Tidak perlu toast error, karena post utama sudah tersimpan
+          console.warn("Comment save failed:", err);
         }
       }
 
@@ -88,10 +114,13 @@ export function Composer({ onPosted, replyToId, onCancelReply }: ComposerProps) 
       if (txHash) desc.push("On-chain ✓");
       if (superYap) desc.push("Super Yap");
       if (boostHours) desc.push(`Boost ${boostHours}h`);
+      if (mediaUrl) desc.push("📷 Image");
       toast.success("Yap posted!", { description: desc.join(" · ") || "Visible to the QIE feed" });
       setText("");
+      setMediaUrl(null);
       setSuperYap(false);
       setBoostHours(0);
+      if (fileInputRef.current) fileInputRef.current.value = "";
       onCancelReply?.();
       onPosted?.();
     } catch (e) {
@@ -104,7 +133,7 @@ export function Composer({ onPosted, replyToId, onCancelReply }: ComposerProps) 
   const remaining = MAX - text.length;
 
   return (
-    <div className="mb-6 yap-card p-4 border-l-4 border-brand/50">
+    <div className="mb-6 yap-card p-4 border-l-4 border-brand-start/50">
       {replyToId && (
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs text-muted-foreground">Replying to a Yap</span>
@@ -121,13 +150,47 @@ export function Composer({ onPosted, replyToId, onCancelReply }: ComposerProps) 
             value={text}
             onChange={(e) => setText(e.target.value.slice(0, MAX))}
             placeholder={user ? "What's happening on QIE?" : "Connect your wallet to start yapping..."}
-            disabled={!user || submitting}
+            disabled={!user || submitting || uploading}
             className="w-full resize-none border-none bg-transparent p-0 text-lg outline-none placeholder:text-muted-foreground disabled:opacity-70"
             rows={3}
           />
 
+          {/* Preview Image */}
+          {mediaUrl && (
+            <div className="relative mt-2 w-full max-w-sm rounded-xl overflow-hidden border border-border/50">
+              <img src={mediaUrl} alt="Uploaded" className="w-full h-auto object-cover max-h-64" />
+              <button
+                onClick={() => setMediaUrl(null)}
+                className="absolute top-2 right-2 p-1 bg-black/50 rounded-full text-white hover:bg-black/70 transition-colors"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+          )}
+
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-4">
             <div className="flex flex-wrap items-center gap-3">
+              {/* Tombol Upload Gambar */}
+              <input
+                type="file"
+                ref={fileInputRef}
+                accept="image/*"
+                onChange={handleFileChange}
+                className="hidden"
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={submitting || uploading}
+                className="flex items-center gap-1.5 rounded-full border border-border/40 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors disabled:opacity-50"
+              >
+                {uploading ? (
+                  <Loader2 className="size-3.5 animate-spin" />
+                ) : (
+                  <ImageIcon className="size-3.5" />
+                )}
+                {uploading ? "Uploading..." : "Image"}
+              </button>
+
               <label className="inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-1.5 text-xs">
                 <Sparkles className={cn("size-3.5", superYap ? "text-gold" : "text-muted-foreground")} />
                 <span className={cn("font-bold uppercase tracking-wider", superYap ? "text-gold" : "text-muted-foreground")}>
@@ -179,7 +242,7 @@ export function Composer({ onPosted, replyToId, onCancelReply }: ComposerProps) 
               )}
               <button
                 onClick={submit}
-                disabled={!text.trim() || remaining < 0 || submitting || !user}
+                disabled={(!text.trim() && !mediaUrl) || remaining < 0 || submitting || !user}
                 className="btn-futuristic"
               >
                 {submitting ? "Yapping…" : "Yap"}
