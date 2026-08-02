@@ -54,7 +54,7 @@ function ScrollReveal({ children, delay = 0 }: { children: React.ReactNode; dela
 function LandingPage() {
   return (
     // Tambahkan class landing-page agar Sidebar & Mobile Nav tidak terlihat
-    <div className="min-h-screen bg-background overflow-x-hidden landing-page">
+    <div className="min-h-screen bg-background overflow-x-hidden">
       <Header />
 
       {/* === HERO SECTION === */}
