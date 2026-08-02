@@ -147,40 +147,40 @@ export function PostCard({ post }: { post: FeedPost }) {
   };
 
   const handleBoost = async () => {
-    if (!user) return toast.error("Connect your wallet to boost");
-    if (!contractAddress) return toast.error("Contract not deployed yet");
-    if (isProcessing) return;
+  if (!user) return toast.error("Connect your wallet to boost");
+  if (!contractAddress) return toast.error("Contract not deployed yet");
+  if (isProcessing) return;
 
-    const isConnected = await checkWalletConnection();
-    if (!isConnected) {
-      toast.error("Please connect your QIE Wallet first");
-      return;
-    }
+  const isConnected = await checkWalletConnection();
+  if (!isConnected) {
+    toast.error("Please connect your QIE Wallet first");
+    return;
+  }
 
-    const hours = window.prompt("Boost duration (1-72 hours):", "24");
-    if (!hours || isNaN(parseInt(hours)) || parseInt(hours) < 1 || parseInt(hours) > 72) {
-      toast.error("Duration must be 1-72 hours");
-      return;
-    }
+  const hours = window.prompt("Boost duration (1-72 hours):", "24");
+  if (!hours || isNaN(parseInt(hours)) || parseInt(hours) < 1 || parseInt(hours) > 72) {
+    toast.error("Duration must be 1-72 hours");
+    return;
+  }
 
-    setIsProcessing(true);
-    try {
-      toast.loading("Waiting for wallet confirmation...");
-      const hash = await boostPost(
-        contractAddress,
-        BigInt(post.id || "0"),
-        BigInt(hours)
-      );
-      toast.dismiss();
-      toast.success(`Post boosted for ${hours}h! Tx: ${hash.slice(0, 10)}...`);
-    } catch (error: any) {
-      toast.dismiss();
-      console.error("❌ Boost error:", error);
-      toast.error(error.message || "Boost failed");
-    } finally {
-      setIsProcessing(false);
-    }
-  };
+  setIsProcessing(true);
+  try {
+    toast.loading("Waiting for wallet confirmation...");
+    const hash = await boostPost(
+      contractAddress,
+      BigInt(0), // ✅ Ganti post.id dengan 0
+      BigInt(hours)
+    );
+    toast.dismiss();
+    toast.success(`Post boosted for ${hours}h! Tx: ${hash.slice(0, 10)}...`);
+  } catch (error: any) {
+    toast.dismiss();
+    console.error("❌ Boost error:", error);
+    toast.error(error.message || "Boost failed");
+  } finally {
+    setIsProcessing(false);
+  }
+};
 
   const handleSuperYap = async () => {
     if (!user) return toast.error("Connect your wallet to create Super Yap");
