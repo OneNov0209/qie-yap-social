@@ -25,7 +25,7 @@ export function Sidebar() {
   }, []);
 
   const navItems = [
-    { to: "/", label: "Feed", icon: Home },
+    { to: "/feed", label: "Feed", icon: Home },
     { to: "/search", label: "Search", icon: Search },
     { to: "/explorer", label: "Explorer", icon: Activity },
     { to: "/dashboard", label: "Dashboard", icon: Wallet },
