@@ -212,7 +212,7 @@ app.get('/api/profiles', async (req, res) => {
 });
 
 // ============================================
-// 3. POSTS (YANG BENAR DENGAN LINK PREVIEW & BOOST)
+// 3. POSTS
 // ============================================
 app.post('/api/posts', async (req, res) => {
   const { 
@@ -491,25 +491,37 @@ app.get('/api/follows', async (req, res) => {
 // ============================================
 app.post('/api/tips', async (req, res) => {
   const { post_id, from_user_id, to_user_id, amount, tx_hash } = req.body;
-  console.log("📥 [TIP] Received:", { post_id, from_user_id, to_user_id, amount, tx_hash });
+  
+  console.log("📥 [TIP] RAW BODY:", req.body);
+  console.log("📥 [TIP] post_id:", post_id);
+  console.log("📥 [TIP] from_user_id:", from_user_id);
+  console.log("📥 [TIP] to_user_id:", to_user_id);
+  console.log("📥 [TIP] amount:", amount);
+  console.log("📥 [TIP] tx_hash:", tx_hash);
+
   if (!post_id || !from_user_id || !to_user_id || amount === undefined || amount === null) {
-    console.error("❌ [TIP] Missing fields");
+    console.error("❌ [TIP] Missing fields", { post_id, from_user_id, to_user_id, amount });
     return res.status(400).json({ error: 'Missing required fields' });
   }
+
   try {
     const numericAmount = parseFloat(amount);
     if (isNaN(numericAmount) || numericAmount <= 0) {
       return res.status(400).json({ error: 'Amount must be a positive number' });
     }
+
     const result = await pool.query(
       `INSERT INTO tips (post_id, from_user_id, to_user_id, amount, tx_hash)
        VALUES ($1, $2, $3, $4, $5) RETURNING *`,
       [post_id, from_user_id, to_user_id, numericAmount, tx_hash || null]
     );
+    
     console.log("✅ [TIP] Saved to DB:", result.rows[0]);
     res.json(result.rows[0]);
   } catch (err) {
-    console.error("❌ [TIP] Error:", err);
+    console.error("❌ [TIP] DB Error DETAIL:", err);
+    console.error("❌ [TIP] Error message:", err.message);
+    console.error("❌ [TIP] Error code:", err.code);
     res.status(500).json({ error: err.message });
   }
 });
@@ -800,7 +812,7 @@ app.get('/api/link-preview', async (req, res) => {
 });
 
 // ============================================
-// 12. LEADERBOARD (FIXED VERSION)
+// 12. LEADERBOARD
 // ============================================
 app.get('/api/leaderboard', async (req, res) => {
   const { timeframe = 'all', limit = 50 } = req.query;
@@ -829,7 +841,6 @@ app.get('/api/leaderboard', async (req, res) => {
       LIMIT $1
     `, [limit]);
 
-    // Mapping badge berdasarkan total tips (JavaScript murni, tanpa TypeScript)
     const rows = result.rows.map(function(row) {
       let badge = 'shrimp';
       if (row.total_tips_received >= 100000) badge = 'whale';
@@ -859,7 +870,7 @@ app.get('/api/leaderboard', async (req, res) => {
 });
 
 // ============================================
-// 13. LANDING PAGE STATISTICS
+// 13. LANDING PAGE STATISTICS (FIXED)
 // ============================================
 app.get('/api/stats', async (req, res) => {
   try {
@@ -867,11 +878,11 @@ app.get('/api/stats', async (req, res) => {
     const yapsRes = await pool.query('SELECT COUNT(*) FROM posts WHERE reply_to IS NULL');
     const totalYaps = parseInt(yapsRes.rows[0].count);
 
-    // 2. Total QIE Tipped
-    const tipsRes = await pool.query('SELECT COALESCE(SUM(amount), 0) as total FROM tips');
+    // 2. Total QIE Tipped (PAKSA KONVERSI KE FLOAT)
+    const tipsRes = await pool.query('SELECT COALESCE(SUM(amount::numeric), 0) as total FROM tips');
     const totalQie = parseFloat(tipsRes.rows[0].total);
 
-    // 3. Active Users (user yang punya setidaknya 1 post atau 1 tip)
+    // 3. Active Users
     const usersRes = await pool.query(`
       SELECT COUNT(DISTINCT id) FROM profiles 
       WHERE id IN (SELECT author_id FROM posts) 
@@ -880,7 +891,7 @@ app.get('/api/stats', async (req, res) => {
     `);
     const activeUsers = parseInt(usersRes.rows[0].count);
 
-    // 4. Total On-Chain Tx (tips + posts dengan tx_hash)
+    // 4. Total On-Chain Tx
     const txRes = await pool.query(`
       SELECT 
         (SELECT COUNT(*) FROM tips WHERE tx_hash IS NOT NULL) +
@@ -891,7 +902,7 @@ app.get('/api/stats', async (req, res) => {
 
     res.json({
       totalYaps,
-      totalQie: totalQie.toFixed(0),
+      totalQie: totalQie.toFixed(4),
       activeUsers,
       totalTx
     });
@@ -902,7 +913,7 @@ app.get('/api/stats', async (req, res) => {
 });
 
 // ============================================
-// 14. CHART DATA (7 DAYS HISTORY)
+// 14. CHART DATA
 // ============================================
 app.get('/api/stats/chart', async (req, res) => {
   const { days = 7 } = req.query;
@@ -916,7 +927,7 @@ app.get('/api/stats/chart', async (req, res) => {
         ) AS day
       )
       SELECT 
-        TO_CHAR(days.day, 'DD MMM') as date,
+        TO_CHAR(days.day, 'DD/MM') as date,
         COALESCE(COUNT(t.id), 0) as tx
       FROM days
       LEFT JOIN tips t ON DATE(t.created_at) = days.day
@@ -932,10 +943,13 @@ app.get('/api/stats/chart', async (req, res) => {
 });
 
 // ============================================
-// START SERVER
+// START SERVER (JANGAN LUPA process.stdin.resume())
 // ============================================
 const PORT = 3000;
 app.listen(PORT, () => {
   console.log(`✅ QIE Yap Backend running on port ${PORT}`);
 });
+
+// ✅ KUNCI AGAR NODE.JS TIDAK MATI SAAT DIJALANKAN LEWAT SYSTEMD
+process.stdin.resume();
 EOF
