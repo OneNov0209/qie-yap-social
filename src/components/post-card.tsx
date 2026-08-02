@@ -103,6 +103,7 @@ export function PostCard({ post }: { post: FeedPost }) {
     }
   };
 
+  // ✅ PERBAIKAN HANDLE TIP (Mengirim UUID valid ke backend)
   const handleTip = async () => {
     if (!user) return toast.error("Connect your wallet to tip");
     if (!contractAddress) return toast.error("Contract not deployed yet");
@@ -120,96 +121,91 @@ export function PostCard({ post }: { post: FeedPost }) {
       return;
     }
     
+    // Validasi UUID
+    if (!post.id || !user.id) {
+      toast.error("Invalid post or user ID");
+      return;
+    }
+
     setIsProcessing(true);
     try {
       toast.loading("Waiting for wallet confirmation...");
+      
+      // 1. Lakukan transaksi on-chain
       const hash = await sendTip(
         contractAddress,
         String(post.author.address) as `0x${string}`,
         amount,
         `Tip for post ${post.id}`
       );
+      
+      // 2. Kirim request ke backend dengan UUID yang valid
+      const backendRes = await fetch(`${API_BASE}/tips`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          post_id: post.id,
+          from_user_id: user.id,
+          to_user_id: post.author.id || user.id, // Jika author.id tidak ada, fallback ke user.id
+          amount: parseFloat(amount),
+          tx_hash: hash
+        })
+      });
+
+      if (!backendRes.ok) {
+        const errText = await backendRes.text();
+        throw new Error(`Backend save failed: ${backendRes.status} - ${errText}`);
+      }
+
       toast.dismiss();
       toast.success(`Tip sent! Tx: ${hash.slice(0, 10)}...`);
     } catch (error: any) {
       toast.dismiss();
       console.error("❌ Tip error:", error);
-      if (error.message?.includes("insufficient funds")) {
-        toast.error("Insufficient QIE balance");
-      } else if (error.message?.includes("user rejected")) {
-        toast.error("Transaction rejected by user");
-      } else {
-        toast.error(error.message || "Tip failed");
-      }
+      toast.error(error.message || "Tip failed");
     } finally {
       setIsProcessing(false);
     }
   };
 
   const handleBoost = async () => {
-  if (!user) return toast.error("Connect your wallet to boost");
-  if (!contractAddress) return toast.error("Contract not deployed yet");
-  if (isProcessing) return;
+    if (!user) return toast.error("Connect your wallet to boost");
+    if (!contractAddress) return toast.error("Contract not deployed yet");
+    if (isProcessing) return;
 
-  const isConnected = await checkWalletConnection();
-  if (!isConnected) {
-    toast.error("Please connect your QIE Wallet first");
-    return;
-  }
-
-  const hours = window.prompt("Boost duration (1-72 hours):", "24");
-  if (!hours || isNaN(parseInt(hours)) || parseInt(hours) < 1 || parseInt(hours) > 72) {
-    toast.error("Duration must be 1-72 hours");
-    return;
-  }
-
-  setIsProcessing(true);
-  try {
-    toast.loading("Waiting for wallet confirmation...");
-    const hash = await boostPost(
-      contractAddress,
-      BigInt(0),
-      BigInt(hours)
-    );
-    toast.dismiss();
-
-    const updateRes = await fetch(`${API_BASE}/posts`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        author_id: post.author.id || user.id, 
-        content: post.content,
-        media_url: post.mediaUrl || null,
-        link_preview: post.linkPreview || null,
-        is_super_yap: post.isSuperYap || false,
-        is_boosted: true,
-        boost_expires_at: new Date(Date.now() + parseInt(hours) * 60 * 60 * 1000).toISOString(),
-        tx_hash: hash,
-        content_hash: post.txHash || null,
-        on_chain: post.onChain || false,
-        reply_to: null,
-        original_post_id: post.id 
-      })
-    });
-
-    if (!updateRes.ok) {
-      const errText = await updateRes.text();
-      throw new Error(`Backend update failed: ${updateRes.status} - ${errText}`);
+    const isConnected = await checkWalletConnection();
+    if (!isConnected) {
+      toast.error("Please connect your QIE Wallet first");
+      return;
     }
 
-    toast.success(`Post boosted for ${hours}h! Tx: ${hash.slice(0, 10)}...`);
-    
-    // 3. Refresh halaman agar badge & border muncul
-    window.location.reload();
-  } catch (error: any) {
-    toast.dismiss();
-    console.error("❌ Boost error:", error);
-    toast.error(error.message || "Boost failed");
-  } finally {
-    setIsProcessing(false);
-  }
-};
-  
+    const hours = window.prompt("Boost duration (1-72 hours):", "24");
+    if (!hours || isNaN(parseInt(hours)) || parseInt(hours) < 1 || parseInt(hours) > 72) {
+      toast.error("Duration must be 1-72 hours");
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      toast.loading("Waiting for wallet confirmation...");
+      const hash = await boostPost(
+        contractAddress,
+        BigInt(0),
+        BigInt(hours)
+      );
+      toast.dismiss();
+      toast.success(`Post boosted for ${hours}h! Tx: ${hash.slice(0, 10)}...`);
+      
+      window.location.reload();
+    } catch (error: any) {
+      toast.dismiss();
+      console.error("❌ Boost error:", error);
+      toast.error(error.message || "Boost failed");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const handleSuperYap = async () => {
     if (!user) return toast.error("Connect your wallet to create Super Yap");
     if (!contractAddress) return toast.error("Contract not deployed yet");
