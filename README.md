@@ -272,8 +272,11 @@ To redeploy manually:
 🔐 Security Notes
 
 · Never commit .env or VITE_PINATA_JWT to GitHub.
+
 · All sensitive keys are stored only in Vercel Environment Variables.
+
 · The backend uses parameterized SQL queries to prevent injection attacks.
+
 · Only post owners can delete their own posts (server-side validation).
 
 ---
