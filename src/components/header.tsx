@@ -12,10 +12,12 @@ export function Header() {
   const { user } = useAuth();
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-md">
+    <header className="sticky top-0 z-40 border-b border-transparent bg-background/60 backdrop-blur-xl shadow-sm shadow-brand-start/5">
+      {/* Garis Glow di bawah header */}
+      <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-brand-start to-transparent opacity-30" />
+      
       <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3">
         
-        {/* Logo - Tetap ada di kiri */}
         <Link to="/" className="flex items-center gap-2.5">
           <img src={LOGO} alt="QIE" className="size-9 rounded-xl shadow-sm shadow-brand/30" />
           <span className="font-display text-xl font-bold tracking-tight">
@@ -23,7 +25,6 @@ export function Header() {
           </span>
         </Link>
 
-        {/* Hanya elemen kanan (Notif, Theme, Connect) */}
         <div className="flex items-center gap-2">
           {user && <NotificationsPopover />}
           <ThemeToggle />
@@ -34,9 +35,6 @@ export function Header() {
   );
 }
 
-// ============================================
-// BOTTOM NAVIGATION KHUSUS MOBILE
-// ============================================
 export function MobileBottomNav() {
   const { user } = useAuth();
   const path = useRouterState({ select: (s) => s.location.pathname });
@@ -51,7 +49,7 @@ export function MobileBottomNav() {
   ];
 
   return (
-    <nav className="fixed bottom-0 inset-x-0 z-50 flex justify-around items-center h-16 border-t border-border bg-background/95 backdrop-blur-md lg:hidden">
+    <nav className="fixed bottom-0 inset-x-0 z-50 flex justify-around items-center h-16 border-t border-white/5 bg-background/80 backdrop-blur-xl lg:hidden">
       {items.map((it) => (
         <Link
           key={it.label}
@@ -59,7 +57,7 @@ export function MobileBottomNav() {
           className={cn(
             "flex flex-col items-center gap-0.5 py-1 text-[10px] font-medium transition-colors",
             path === it.to || (it.to !== "/" && path.startsWith(it.to))
-              ? "text-brand-start"
+              ? "text-brand-start drop-shadow-[0_0_8px_rgba(255,10,108,0.3)]"
               : "text-muted-foreground hover:text-foreground"
           )}
         >
