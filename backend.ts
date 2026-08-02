@@ -800,6 +800,65 @@ app.get('/api/link-preview', async (req, res) => {
 });
 
 // ============================================
+// 12. LEADERBOARD (FIXED VERSION)
+// ============================================
+app.get('/api/leaderboard', async (req, res) => {
+  const { timeframe = 'all', limit = 50 } = req.query;
+  
+  let dateFilter = '';
+  if (timeframe === 'week') {
+    dateFilter = `AND t.created_at >= NOW() - INTERVAL '7 days'`;
+  }
+
+  try {
+    const result = await pool.query(`
+      SELECT 
+        p.id,
+        p.address,
+        p.display_name,
+        p.username,
+        p.avatar_seed,
+        p.is_validator,
+        COALESCE(SUM(t.amount), 0) as total_tips_received,
+        (SELECT COUNT(*) FROM posts WHERE author_id = p.id AND reply_to IS NULL) as yap_count,
+        (SELECT COUNT(*) FROM follows WHERE following_id = p.id) as follower_count
+      FROM profiles p
+      LEFT JOIN tips t ON t.to_user_id = p.id ${dateFilter}
+      GROUP BY p.id
+      ORDER BY total_tips_received DESC
+      LIMIT $1
+    `, [limit]);
+
+    // Mapping badge berdasarkan total tips (JavaScript murni, tanpa TypeScript)
+    const rows = result.rows.map(function(row) {
+      let badge = 'shrimp';
+      if (row.total_tips_received >= 100000) badge = 'whale';
+      else if (row.total_tips_received >= 10000) badge = 'shark';
+      else if (row.total_tips_received >= 1000) badge = 'dolphin';
+      else if (row.total_tips_received >= 100) badge = 'fish';
+
+      return {
+        id: row.id,
+        address: row.address,
+        displayName: row.display_name || row.address.slice(0, 8),
+        username: row.username || row.address.slice(0, 8),
+        avatarSeed: row.avatar_seed || row.address,
+        badge: badge,
+        isValidator: Boolean(row.is_validator),
+        totalTipsReceived: parseFloat(row.total_tips_received),
+        yapCount: parseInt(row.yap_count),
+        followerCount: parseInt(row.follower_count),
+      };
+    });
+
+    res.json(rows);
+  } catch (err) {
+    console.error("❌ Leaderboard error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================
 // START SERVER
 // ============================================
 const PORT = 3000;
