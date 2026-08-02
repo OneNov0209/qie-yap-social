@@ -77,6 +77,13 @@ export async function createPost(
   postData: {
     content: string;
     mediaUrl?: string;
+    linkPreview?: {
+      title: string;
+      description: string;
+      image: string | null;
+      siteName: string;
+      url: string;
+    } | null;
     isSuperYap?: boolean;
     isBoosted?: boolean;
     boostHours?: number;
@@ -92,6 +99,7 @@ export async function createPost(
     author_id: authorId,
     content: postData.content,
     media_url: postData.mediaUrl,
+    link_preview: postData.linkPreview,
     is_super_yap: postData.isSuperYap,
     is_boosted: postData.isBoosted,
     tx_hash: postData.txHash,
