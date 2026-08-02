@@ -107,6 +107,7 @@ function LeaderboardPage() {
         });
 
         let leaderboard = Object.values(userStats) as LeaderboardEntry[];
+        // ✅ Tampilkan semua user tanpa filter
         leaderboard.sort((a, b) => b.totalTipsReceived - a.totalTipsReceived);
         setUsers(leaderboard.slice(0, 50));
         setLoading(false);
