@@ -103,48 +103,56 @@ export function PostCard({ post }: { post: FeedPost }) {
     }
   };
 
+  // ✅ HANDLE TIP (PASTIKAN TO_USER_ID ADALAH AUTHOR POST)
   const handleTip = async () => {
-  if (!user) return toast.error("Connect your wallet to tip");
-  if (!contractAddress) return toast.error("Contract not deployed yet");
-  if (isProcessing) return;
+    if (!user) return toast.error("Connect your wallet to tip");
+    if (!contractAddress) return toast.error("Contract not deployed yet");
+    if (isProcessing) return;
 
-  const isConnected = await checkWalletConnection();
-  if (!isConnected) {
-    toast.error("Please connect your QIE Wallet first");
-    return;
-  }
-
-  const amount = window.prompt("Enter tip amount in QIE (e.g. 0.1):", "0.1");
-  if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
-    toast.error("Invalid amount");
-    return;
-  }
-
-  setIsProcessing(true);
-  try {
-    toast.loading("Waiting for wallet confirmation...");
-    const hash = await sendTip(
-      contractAddress,
-      String(post.author.address) as `0x${string}`,
-      amount,
-      `Tip for post ${post.id}`
-    );
-    toast.dismiss();
-    toast.success(`Tip sent! Tx: ${hash.slice(0, 10)}...`);
-  } catch (error: any) {
-    toast.dismiss();
-    console.error("❌ Tip error:", error);
-    if (error.message?.includes("insufficient funds")) {
-      toast.error("Insufficient QIE balance");
-    } else if (error.message?.includes("user rejected")) {
-      toast.error("Transaction rejected by user");
-    } else {
-      toast.error(error.message || "Tip failed");
+    const isConnected = await checkWalletConnection();
+    if (!isConnected) {
+      toast.error("Please connect your QIE Wallet first");
+      return;
     }
-  } finally {
-    setIsProcessing(false);
-  }
-};
+
+    const amount = window.prompt("Enter tip amount in QIE (e.g. 0.1):", "0.1");
+    if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
+      toast.error("Invalid amount");
+      return;
+    }
+
+    // ✅ Pastikan to_user_id adalah author address (bukan user.id)
+    const recipientAddress = post.author?.address;
+    if (!recipientAddress) {
+      toast.error("Invalid recipient address");
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      toast.loading("Waiting for wallet confirmation...");
+      const hash = await sendTip(
+        contractAddress,
+        String(recipientAddress) as `0x${string}`,
+        amount,
+        `Tip for post ${post.id}`
+      );
+      toast.dismiss();
+      toast.success(`Tip sent! Tx: ${hash.slice(0, 10)}...`);
+    } catch (error: any) {
+      toast.dismiss();
+      console.error("❌ Tip error:", error);
+      if (error.message?.includes("insufficient funds")) {
+        toast.error("Insufficient QIE balance");
+      } else if (error.message?.includes("user rejected")) {
+        toast.error("Transaction rejected by user");
+      } else {
+        toast.error(error.message || "Tip failed");
+      }
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   const handleBoost = async () => {
     if (!user) return toast.error("Connect your wallet to boost");
