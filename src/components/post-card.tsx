@@ -168,11 +168,13 @@ export function PostCard({ post }: { post: FeedPost }) {
     toast.loading("Waiting for wallet confirmation...");
     const hash = await boostPost(
       contractAddress,
-      BigInt(0), // ✅ Ganti post.id dengan 0
+      BigInt(0),
       BigInt(hours)
     );
     toast.dismiss();
     toast.success(`Post boosted for ${hours}h! Tx: ${hash.slice(0, 10)}...`);
+    
+    window.location.reload();
   } catch (error: any) {
     toast.dismiss();
     console.error("❌ Boost error:", error);
