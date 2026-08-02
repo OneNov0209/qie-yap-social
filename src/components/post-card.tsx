@@ -95,7 +95,6 @@ export function PostCard({ post }: { post: FeedPost }) {
       });
       if (!res.ok) throw new Error("Failed to delete post");
       toast.success("Yap deleted successfully!");
-      // Refresh halaman atau trigger reload
       window.location.reload();
     } catch (error: any) {
       toast.error(error.message || "Failed to delete post");
@@ -295,7 +294,6 @@ export function PostCard({ post }: { post: FeedPost }) {
 
       {/* === Content === */}
       <div className="ml-[60px] -mt-1">
-        {/* ✅ Ubah Link menjadi div biasa agar link di dalam teks bisa diklik */}
         <div className="block text-[15px] leading-relaxed text-foreground/90 whitespace-pre-wrap hover:text-foreground transition-colors">
           {post.content}
         </div>
@@ -308,6 +306,28 @@ export function PostCard({ post }: { post: FeedPost }) {
               alt="Post media" 
               className="w-full h-auto object-cover max-h-96 hover:scale-[1.01] transition-transform" 
             />
+          </div>
+        )}
+
+        {/* Link Preview Card */}
+        {post.linkPreview && (
+          <div className="mt-3 rounded-xl overflow-hidden border border-border/50 bg-card/80 hover:border-brand-start/50 transition-colors">
+            <a href={post.linkPreview.url} target="_blank" rel="noopener noreferrer" className="block">
+              <div className="flex flex-col sm:flex-row">
+                {post.linkPreview.image && (
+                  <div className="sm:w-1/3 h-32 sm:h-auto bg-muted">
+                    <img src={post.linkPreview.image} alt="Preview" className="w-full h-full object-cover" />
+                  </div>
+                )}
+                <div className="flex-1 p-3">
+                  <p className="text-xs font-bold text-brand-start mb-0.5">{post.linkPreview.siteName}</p>
+                  <p className="font-semibold text-sm line-clamp-2">{post.linkPreview.title}</p>
+                  {post.linkPreview.description && (
+                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{post.linkPreview.description}</p>
+                  )}
+                </div>
+              </div>
+            </a>
           </div>
         )}
       </div>
