@@ -4,14 +4,12 @@ import { useAuth } from "@/lib/auth-store";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
 
-const LOGO = "https://raw.githubusercontent.com/OneNov0209/logo/refs/heads/main/qie-logo.png";
-
 export function Sidebar() {
   const { user } = useAuth();
   const path = useRouterState({ select: (s) => s.location.pathname });
   const profilePath = user?.address ?? "0x0000000000000000000000000000000000000000";
   
-  // Sidebar default tertutup di mobile, terbuka di desktop
+  // Sidebar default terbuka di desktop, tertutup di mobile
   const [isOpen, setIsOpen] = useState(true);
 
   // Saat layar < 1024px (mobile/tablet), paksa sidebar tertutup
@@ -57,15 +55,8 @@ export function Sidebar() {
           isOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
-        {/* Header Sidebar */}
-        <div className="flex h-16 items-center justify-between border-b border-border/20 px-6">
-          <div className="flex items-center gap-3">
-            <img src={LOGO} alt="QIE" className="size-8 rounded-xl shadow-sm shadow-brand/30" />
-            <span className="font-display text-xl font-bold tracking-tight">
-              QIE <span className="text-brand-start">Yap</span>
-            </span>
-          </div>
-          
+        {/* Header Sidebar - Hanya Tombol Close (Logo dihapus) */}
+        <div className="flex h-16 items-center justify-end border-b border-border/20 px-6">
           {/* Tombol Close Sidebar (Hanya muncul di Desktop) */}
           <button
             onClick={() => setIsOpen(false)}
