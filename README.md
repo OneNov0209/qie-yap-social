@@ -244,12 +244,13 @@ Feature Description
 ⚙️ Environment Variables (Vercel)
 
 Key Value
+```
 VITE_API_BASE https://api.yap.onenov.xyz/api
 VITE_QIE_YAP_CONTRACT 0x2A433A09e0Ce2766affb89E774BbdC3c29044D0a
 VITE_DEV_WALLET 0x109b18b9cb9ec1C9CED114A13FfA86F8c13CFa7a
 VITE_PINATA_JWT (Your Pinata JWT for IPFS uploads)
 VITE_APP_URL https://qie.yap.onenov.xyz
-
+```
 ---
 
 🛠️ Local Development
