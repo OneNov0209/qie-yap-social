@@ -212,7 +212,7 @@ app.get('/api/profiles', async (req, res) => {
 });
 
 // ============================================
-// 3. POSTS
+// 3. POSTS (ENDPOINT FEED YANG BENAR - HANYA SATU)
 // ============================================
 app.post('/api/posts', async (req, res) => {
   const { 
@@ -299,30 +299,55 @@ app.get('/api/posts/:id', async (req, res) => {
   }
 });
 
+// ✅ ENDPOINT FEED YANG BENAR (HANYA SATU)
 app.get('/api/feed', async (req, res) => {
-  const { limit = 10 } = req.query;
+  const { limit = 10, user_id, tab = 'latest' } = req.query;
+
+  let orderBy = 'p.created_at DESC';
+  let whereClause = 'WHERE p.reply_to IS NULL';
+  let joinClause = '';
+  let params = [limit];
+
+  if (tab === 'super') {
+    whereClause += ' AND p.is_super_yap = true';
+  } else if (tab === 'following') {
+    if (!user_id) return res.json([]);
+    joinClause = `JOIN follows f ON f.following_id = p.author_id AND f.follower_id = $2`;
+    params.push(user_id);
+  } else if (tab === 'trending') {
+    orderBy = `
+      (SELECT COUNT(*) FROM likes WHERE post_id = p.id) +
+      (SELECT COUNT(*) FROM reposts WHERE post_id = p.id) +
+      (SELECT COUNT(*) FROM comments WHERE post_id = p.id)
+      DESC, p.created_at DESC
+    `;
+  }
+
+  const query = `
+    SELECT p.*,
+      (SELECT COUNT(*) FROM likes WHERE post_id = p.id) as likes,
+      (SELECT COUNT(*) FROM reposts WHERE post_id = p.id) as reposts,
+      (SELECT COUNT(*) FROM comments WHERE post_id = p.id) as replies,
+      (SELECT COALESCE(SUM(amount), 0) FROM tips WHERE post_id = p.id) as tip_total,
+      jsonb_build_object(
+        'address', pr.address,
+        'display_name', pr.display_name,
+        'avatar_seed', pr.avatar_seed,
+        'is_validator', pr.is_validator
+      ) as author
+    FROM posts p
+    LEFT JOIN profiles pr ON p.author_id = pr.id
+    ${joinClause}
+    ${whereClause}
+    ORDER BY ${orderBy}
+    LIMIT $1
+  `;
+
   try {
-    const posts = await pool.query(
-      `SELECT p.*,
-        (SELECT COUNT(*) FROM likes WHERE post_id = p.id) as likes,
-        (SELECT COUNT(*) FROM reposts WHERE post_id = p.id) as reposts,
-        (SELECT COUNT(*) FROM comments WHERE post_id = p.id) as replies,
-        (SELECT COALESCE(SUM(amount), 0) FROM tips WHERE post_id = p.id) as tip_total,
-        jsonb_build_object(
-          'address', pr.address,
-          'display_name', pr.display_name,
-          'avatar_seed', pr.avatar_seed,
-          'is_validator', pr.is_validator
-        ) as author
-       FROM posts p
-       LEFT JOIN profiles pr ON p.author_id = pr.id
-       WHERE p.reply_to IS NULL
-       ORDER BY p.created_at DESC
-       LIMIT $1`,
-      [limit]
-    );
+    const posts = await pool.query(query, params);
     res.json(posts.rows);
   } catch (err) {
+    console.error("❌ Feed error:", err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -874,15 +899,12 @@ app.get('/api/leaderboard', async (req, res) => {
 // ============================================
 app.get('/api/stats', async (req, res) => {
   try {
-    // 1. Total Yaps (posts tanpa reply)
     const yapsRes = await pool.query('SELECT COUNT(*) FROM posts WHERE reply_to IS NULL');
     const totalYaps = parseInt(yapsRes.rows[0].count);
 
-    // 2. Total QIE Tipped (PAKSA KONVERSI KE FLOAT)
     const tipsRes = await pool.query('SELECT COALESCE(SUM(amount::numeric), 0) as total FROM tips');
     const totalQie = parseFloat(tipsRes.rows[0].total);
 
-    // 3. Active Users
     const usersRes = await pool.query(`
       SELECT COUNT(DISTINCT id) FROM profiles 
       WHERE id IN (SELECT author_id FROM posts) 
@@ -891,7 +913,6 @@ app.get('/api/stats', async (req, res) => {
     `);
     const activeUsers = parseInt(usersRes.rows[0].count);
 
-    // 4. Total On-Chain Tx
     const txRes = await pool.query(`
       SELECT 
         (SELECT COUNT(*) FROM tips WHERE tx_hash IS NOT NULL) +
@@ -943,7 +964,7 @@ app.get('/api/stats/chart', async (req, res) => {
 });
 
 // ============================================
-// START SERVER (JANGAN LUPA process.stdin.resume())
+// START SERVER
 // ============================================
 const PORT = 3000;
 app.listen(PORT, () => {
