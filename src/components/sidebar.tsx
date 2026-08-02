@@ -1,8 +1,8 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Home, Search, Activity, Wallet, Trophy, User, TrendingUp, Coins, Sparkles, PlusCircle, X, Menu } from "lucide-react";
+import { Home, Search, Activity, Wallet, Trophy, User, Coins, PlusCircle, X, Menu } from "lucide-react";
 import { useAuth } from "@/lib/auth-store";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const LOGO = "https://raw.githubusercontent.com/OneNov0209/logo/refs/heads/main/qie-logo.png";
 
@@ -11,8 +11,22 @@ export function Sidebar() {
   const path = useRouterState({ select: (s) => s.location.pathname });
   const profilePath = user?.address ?? "0x0000000000000000000000000000000000000000";
   
-  // State untuk membuka/menutup sidebar
+  // Sidebar default tertutup di mobile, terbuka di desktop
   const [isOpen, setIsOpen] = useState(true);
+
+  // Saat layar < 1024px (mobile/tablet), paksa sidebar tertutup
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 1024) {
+        setIsOpen(false);
+      } else {
+        setIsOpen(true);
+      }
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const navItems = [
     { to: "/", label: "Feed", icon: Home },
@@ -26,7 +40,7 @@ export function Sidebar() {
 
   return (
     <>
-      {/* Tombol Open Sidebar (muncul saat sidebar tertutup) */}
+      {/* Tombol Open Sidebar (Hanya muncul di Desktop saat sidebar tertutup) */}
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
@@ -52,10 +66,10 @@ export function Sidebar() {
             </span>
           </div>
           
-          {/* Tombol Close Sidebar */}
+          {/* Tombol Close Sidebar (Hanya muncul di Desktop) */}
           <button
             onClick={() => setIsOpen(false)}
-            className="size-8 flex items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            className="hidden lg:flex size-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
           >
             <X className="size-5" />
           </button>
