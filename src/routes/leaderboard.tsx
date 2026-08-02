@@ -1,11 +1,11 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { Header } from "@/components/header";
 import { Avatar } from "@/components/avatar-img";
 import { StakingBadgeChip } from "@/components/staking-badge";
 import { shortAddr, API_BASE } from "@/lib/posts";
 import { cn } from "@/lib/utils";
-import { Crown, Medal, TrendingUp, TrendingDown, Minus, Loader2, Coins, MessageSquare, Users } from "lucide-react";
+import { Crown, Medal, TrendingUp, TrendingDown, Minus, Loader2, Coins, MessageSquare, Users, ArrowLeft } from "lucide-react";
 
 export const Route = createFileRoute("/leaderboard")({
   head: () => ({
@@ -143,12 +143,14 @@ function LeaderboardPage() {
       <Header />
       <div className="mx-auto max-w-4xl px-4 py-6">
         <div className="flex items-center justify-between mb-6">
-          <div>
-            <button onClick={() => router.history.back()} className="text-muted-foreground hover:text-foreground">
+          <div className="flex items-center gap-3">
+            <button onClick={() => router.history.back()} className="text-muted-foreground hover:text-foreground transition-colors">
               <ArrowLeft className="size-5" />
             </button>
-            <h1 className="font-display text-2xl font-bold">Leaderboard</h1>
-            <p className="text-sm text-muted-foreground">Top creators on QIE Mainnet</p>
+            <div>
+              <h1 className="font-display text-2xl font-bold">Leaderboard</h1>
+              <p className="text-sm text-muted-foreground">Top creators on QIE Mainnet</p>
+            </div>
           </div>
           <div className="flex gap-1 rounded-full bg-muted p-1">
             <button
