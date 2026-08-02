@@ -3,12 +3,13 @@ import { useEffect, useRef, useState } from "react";
 import { 
   Sparkles, MessageCircle, Heart, Coins, Zap, 
   TrendingUp, Shield, Globe, Wallet, ArrowRight, 
-  Users, Award, Star, Rocket, Loader2
+  Users, Loader2, BarChart2
 } from "lucide-react";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { API_BASE } from "@/lib/posts";
 import { cn } from "@/lib/utils";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -53,14 +54,15 @@ function ScrollReveal({ children, delay = 0 }: { children: React.ReactNode; dela
 }
 
 function LandingPage() {
-  // State untuk menyimpan data statistik
   const [stats, setStats] = useState({
     totalYaps: 0,
     totalQie: "0",
     activeUsers: 0,
     totalTx: 0
   });
+  const [chartData, setChartData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [chartLoading, setChartLoading] = useState(true);
 
   // Ambil data statistik dari backend
   useEffect(() => {
@@ -83,6 +85,24 @@ function LandingPage() {
       }
     };
     fetchStats();
+  }, []);
+
+  // Ambil data chart dari backend
+  useEffect(() => {
+    const fetchChart = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/stats/chart`);
+        if (res.ok) {
+          const data = await res.json();
+          setChartData(data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch chart data:", err);
+      } finally {
+        setChartLoading(false);
+      }
+    };
+    fetchChart();
   }, []);
 
   return (
@@ -131,7 +151,7 @@ function LandingPage() {
         </div>
       </section>
 
-      {/* === STATISTICS (DATA DARI BACKEND) === */}
+      {/* === STATISTICS === */}
       <section className="mx-auto max-w-6xl px-4 pb-20">
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
           {[
@@ -153,6 +173,71 @@ function LandingPage() {
             </ScrollReveal>
           ))}
         </div>
+      </section>
+
+      {/* === CHART SECTION === */}
+      <section className="mx-auto max-w-6xl px-4 pb-20">
+        <ScrollReveal>
+          <div className="mb-10 text-center">
+            <h2 className="font-display text-3xl font-bold flex items-center justify-center gap-2">
+              <BarChart2 className="size-8 text-brand" />
+              On-Chain Activity
+            </h2>
+            <p className="mt-2 text-muted-foreground">Daily activity over the last 7 days</p>
+          </div>
+
+          <div className="rounded-3xl border border-border/40 bg-card/50 p-6 backdrop-blur-sm shadow-lg shadow-brand-start/5">
+            {chartLoading ? (
+              <div className="flex h-64 items-center justify-center">
+                <Loader2 className="size-8 animate-spin text-brand" />
+              </div>
+            ) : chartData.length === 0 ? (
+              <div className="flex h-64 items-center justify-center text-muted-foreground">
+                No data available yet
+              </div>
+            ) : (
+              <div className="h-64 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={chartData}>
+                    <defs>
+                      <linearGradient id="colorGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#FF0A6C" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="#0040FF" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                    <XAxis 
+                      dataKey="date" 
+                      tick={{ fill: '#6b7280', fontSize: 11 }} 
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis 
+                      tick={{ fill: '#6b7280', fontSize: 11 }} 
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: 'rgba(0,0,0,0.8)', 
+                        border: '1px solid rgba(255,10,108,0.3)',
+                        borderRadius: '12px',
+                        color: '#fff'
+                      }}
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey="tx" 
+                      stroke="#FF0A6C" 
+                      strokeWidth={2}
+                      fill="url(#colorGradient)" 
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </div>
+        </ScrollReveal>
       </section>
 
       {/* === FEATURES === */}
