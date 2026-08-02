@@ -9,7 +9,7 @@ import { fetchFeed, type FeedPost } from "@/lib/posts";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 
-export const Route = createFileRoute("/")({
+export const Route = createFileRoute("/feed")({
   head: () => ({
     meta: [
       { title: "QIE Yap — Feed" },
