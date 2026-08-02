@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useState, useMemo } from "react";
 import { Header } from "@/components/header";
 import { Avatar } from "@/components/avatar-img";
@@ -32,6 +32,7 @@ interface LeaderboardEntry {
 }
 
 function LeaderboardPage() {
+  const router = useRouter();
   const [users, setUsers] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [timeframe, setTimeframe] = useState<"all" | "week">("all");
@@ -39,15 +40,12 @@ function LeaderboardPage() {
   const loadLeaderboard = async () => {
     setLoading(true);
     try {
-      // Panggil endpoint dengan parameter timeframe (backend harus disesuaikan nanti)
       const res = await fetch(`${API_BASE}/leaderboard?timeframe=${timeframe}&limit=50`);
       if (!res.ok) throw new Error("Failed to fetch leaderboard");
       
       const data = await res.json();
       
-      // Jika backend belum punya endpoint leaderboard, gunakan logika lokal (fallback)
       if (!data || data.length === 0) {
-        // Fallback ke logika lama
         let profiles: any[] = [];
         try {
           const profileRes = await fetch(`${API_BASE}/profiles?limit=100`);
@@ -109,7 +107,6 @@ function LeaderboardPage() {
         });
 
         let leaderboard = Object.values(userStats) as LeaderboardEntry[];
-        // ✅ Tampilkan semua user (jangan di-filter)
         leaderboard.sort((a, b) => b.totalTipsReceived - a.totalTipsReceived);
         setUsers(leaderboard.slice(0, 50));
         setLoading(false);
@@ -128,7 +125,6 @@ function LeaderboardPage() {
     loadLeaderboard();
   }, [timeframe]);
 
-  // Ikon berdasarkan peringkat
   const RankIcon = ({ index }: { index: number }) => {
     if (index === 0) return <Crown className="size-6 text-gold drop-shadow-md" />;
     if (index === 1) return <Medal className="size-6 text-muted-foreground" />;
@@ -136,7 +132,6 @@ function LeaderboardPage() {
     return <span className="text-sm font-bold text-muted-foreground/40">#{index + 1}</span>;
   };
 
-  // Indikator tren
   const Trend = ({ trend }: { trend?: "up" | "down" | "same" }) => {
     if (trend === "up") return <TrendingUp className="size-4 text-emerald-500" />;
     if (trend === "down") return <TrendingDown className="size-4 text-red-500" />;
@@ -149,6 +144,9 @@ function LeaderboardPage() {
       <div className="mx-auto max-w-4xl px-4 py-6">
         <div className="flex items-center justify-between mb-6">
           <div>
+            <button onClick={() => router.history.back()} className="text-muted-foreground hover:text-foreground">
+              <ArrowLeft className="size-5" />
+            </button>
             <h1 className="font-display text-2xl font-bold">Leaderboard</h1>
             <p className="text-sm text-muted-foreground">Top creators on QIE Mainnet</p>
           </div>
@@ -205,15 +203,12 @@ function LeaderboardPage() {
                 params={{ address: user.address }}
                 className="group flex items-center gap-4 rounded-2xl border border-border/50 bg-card/50 p-4 transition-all hover:bg-card/80 hover:scale-[1.005] hover:shadow-md"
               >
-                {/* Peringkat */}
                 <div className="flex w-10 justify-center">
                   <RankIcon index={index} />
                 </div>
 
-                {/* Avatar */}
                 <Avatar seed={user.avatarSeed} size={44} className="ring-2 ring-background" />
 
-                {/* Identitas */}
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-semibold truncate text-foreground group-hover:text-brand-start transition-colors">
@@ -240,7 +235,6 @@ function LeaderboardPage() {
                   </div>
                 </div>
 
-                {/* Tips Received */}
                 <div className="text-right">
                   <div className="flex items-center justify-end gap-1 text-sm font-bold text-brand">
                     <Coins className="size-4" />
