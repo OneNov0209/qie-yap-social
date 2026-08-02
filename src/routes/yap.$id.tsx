@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { ArrowLeft, MessageCircle } from "lucide-react";
 import { Header } from "@/components/header";
@@ -20,6 +20,7 @@ export const Route = createFileRoute("/yap/$id")({
 function YapDetailPage() {
   const { id } = Route.useParams();
   const { user } = useAuth();
+  const router = useRouter(); // ✅ Untuk navigasi mundur
   const [post, setPost] = useState<FeedPost | null>(null);
   const [replies, setReplies] = useState<FeedPost[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,7 +38,7 @@ function YapDetailPage() {
       if (found) {
         setPost(found);
       } else {
-        // 2. Jika tidak ketemu, ambil dari API (⚠️ PERBAIKAN DI SINI: hapus ?user_id=)
+        // 2. Jika tidak ketemu, ambil dari API
         const res = await fetch(`${API_BASE}/posts/${encodeURIComponent(id)}`);
         if (!res.ok) {
           setError(true);
@@ -77,13 +78,14 @@ function YapDetailPage() {
     <div className="min-h-screen bg-background pb-20 md:pb-12">
       <Header />
       <div className="mx-auto max-w-2xl px-4 py-6">
-        <Link 
-          to="/" 
+        {/* ✅ Gunakan router.history.back() untuk kembali ke halaman sebelumnya */}
+        <button
+          onClick={() => router.history.back()}
           className="mb-4 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="size-4" />
-          Back to feed
-        </Link>
+          Back
+        </button>
 
         {loading ? (
           <div className="yap-card p-5 animate-pulse border border-border/50 bg-card/50">
