@@ -1,12 +1,12 @@
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { Heart, MessageCircle, Pin, Sparkles, BadgeCheck, Flame, Zap, Link as LinkIcon, Repeat, Bookmark } from "lucide-react";
+import { Heart, MessageCircle, Pin, Sparkles, BadgeCheck, Flame, Zap, Link as LinkIcon, Repeat, Bookmark, Trash2, Loader2 } from "lucide-react";
 import { StakingBadgeChip } from "./staking-badge";
 import { Avatar } from "./avatar-img";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth-store";
-import { toggleLike, toggleRepost, toggleBookmark, type FeedPost, relativeTime, shortAddr } from "@/lib/posts";
+import { toggleLike, toggleRepost, toggleBookmark, type FeedPost, relativeTime, shortAddr, API_BASE } from "@/lib/posts";
 import { sendTip, boostPost, createSuperYap, checkWalletConnection } from "@/lib/qie-chain";
 
 function compact(n: number) {
@@ -22,9 +22,11 @@ export function PostCard({ post }: { post: FeedPost }) {
   const [reposts, setReposts] = useState(post?.reposts ?? 0);
   const [bookmarked, setBookmarked] = useState(post?.bookmarked ?? false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const { user } = useAuth();
 
   const contractAddress = import.meta.env.VITE_QIE_YAP_CONTRACT as `0x${string}`;
+  const isOwner = user?.address?.toLowerCase() === post.author?.address?.toLowerCase();
 
   const onToggleLike = async () => {
     if (!user) return toast("Connect your wallet to like yaps");
@@ -78,6 +80,27 @@ export function PostCard({ post }: { post: FeedPost }) {
       toast.error("Couldn't update bookmark");
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!isOwner) return;
+    if (!confirm("Are you sure you want to delete this Yap? This action cannot be undone.")) return;
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`${API_BASE}/posts/${post.id}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: user?.id }),
+      });
+      if (!res.ok) throw new Error("Failed to delete post");
+      toast.success("Yap deleted successfully!");
+      // Refresh halaman atau trigger reload
+      window.location.reload();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to delete post");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -249,6 +272,18 @@ export function PostCard({ post }: { post: FeedPost }) {
           </div>
         </div>
 
+        {/* Tombol Delete (Hanya untuk pemilik post) */}
+        {isOwner && (
+          <button
+            onClick={handleDelete}
+            disabled={isDeleting}
+            className="absolute top-4 right-4 p-1.5 rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors disabled:opacity-50"
+            title="Delete this Yap"
+          >
+            {isDeleting ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
+          </button>
+        )}
+
         {/* Badge Super Yap (Pojok Kanan Atas) */}
         {post.isSuperYap && (
           <span className="flex items-center gap-1.5 rounded-full bg-gold/90 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-white shadow-sm">
@@ -260,15 +295,12 @@ export function PostCard({ post }: { post: FeedPost }) {
 
       {/* === Content === */}
       <div className="ml-[60px] -mt-1">
-        <Link
-          to="/yap/$id"
-          params={{ id: post.id }}
-          className="block text-[15px] leading-relaxed text-foreground/90 whitespace-pre-wrap hover:text-foreground transition-colors"
-        >
+        {/* ✅ Ubah Link menjadi div biasa agar link di dalam teks bisa diklik */}
+        <div className="block text-[15px] leading-relaxed text-foreground/90 whitespace-pre-wrap hover:text-foreground transition-colors">
           {post.content}
-        </Link>
+        </div>
 
-        {/* ✅ Tampilkan Gambar jika ada */}
+        {/* Tampilkan Gambar jika ada */}
         {post.mediaUrl && (
           <div className="mt-3 w-full max-w-md rounded-xl overflow-hidden border border-border/50 shadow-sm">
             <img 
@@ -280,9 +312,8 @@ export function PostCard({ post }: { post: FeedPost }) {
         )}
       </div>
 
-      {/* === Action Bar (Gaya Facebook Desktop) === */}
+      {/* === Action Bar === */}
       <div className="ml-[60px] mt-2 flex items-center justify-between border-t border-border/40 pt-3">
-        {/* Left: Interaksi Sosial */}
         <div className="flex items-center gap-6">
           <button
             onClick={onToggleLike}
@@ -312,7 +343,6 @@ export function PostCard({ post }: { post: FeedPost }) {
           </button>
         </div>
 
-        {/* Right: Bookmark & Copy */}
         <div className="flex items-center gap-1">
           <button
             onClick={onToggleBookmark}
@@ -332,7 +362,7 @@ export function PostCard({ post }: { post: FeedPost }) {
         </div>
       </div>
 
-      {/* === Bottom: Premium Actions (Tip / SuperYap / Boost) === */}
+      {/* === Bottom: Premium Actions === */}
       <div className="ml-[60px] mt-1 flex flex-wrap items-center gap-2 border-t border-border/20 pt-3">
         <button
           onClick={handleTip}
@@ -342,7 +372,7 @@ export function PostCard({ post }: { post: FeedPost }) {
           💎 {post.tipTotal > 0 ? `${post.tipTotal} QIE` : "Tip"}
         </button>
 
-        {user?.address === post.author?.address && (
+        {isOwner && (
           <button
             onClick={handleSuperYap}
             disabled={isProcessing}
