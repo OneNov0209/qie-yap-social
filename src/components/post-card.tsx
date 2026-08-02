@@ -267,6 +267,17 @@ export function PostCard({ post }: { post: FeedPost }) {
         >
           {post.content}
         </Link>
+
+        {/* ✅ Tampilkan Gambar jika ada */}
+        {post.mediaUrl && (
+          <div className="mt-3 w-full max-w-md rounded-xl overflow-hidden border border-border/50 shadow-sm">
+            <img 
+              src={post.mediaUrl} 
+              alt="Post media" 
+              className="w-full h-auto object-cover max-h-96 hover:scale-[1.01] transition-transform" 
+            />
+          </div>
+        )}
       </div>
 
       {/* === Action Bar (Gaya Facebook Desktop) === */}
