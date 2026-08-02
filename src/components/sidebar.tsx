@@ -55,8 +55,13 @@ export function Sidebar() {
           isOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
-        {/* Header Sidebar - Hanya Tombol Close (Logo dihapus) */}
-        <div className="flex h-16 items-center justify-end border-b border-border/20 px-6">
+        {/* Header Sidebar - Judul + Tombol Close */}
+        <div className="flex h-16 items-center justify-between border-b border-border/20 px-6">
+          {/* ✅ Teks Bold "QIE YAP" di kiri */}
+          <span className="font-display text-xl font-bold tracking-tight text-foreground">
+            QIE YAP
+          </span>
+          
           {/* Tombol Close Sidebar (Hanya muncul di Desktop) */}
           <button
             onClick={() => setIsOpen(false)}
