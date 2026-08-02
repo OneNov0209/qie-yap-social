@@ -26,12 +26,51 @@ export function Composer({ onPosted, replyToId, onCancelReply }: ComposerProps) 
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [mediaUrl, setMediaUrl] = useState<string | null>(null);
+  
+  // Link Preview
+  const [linkPreview, setLinkPreview] = useState<{
+    title: string;
+    description: string;
+    image: string | null;
+    siteName: string;
+    url: string;
+  } | null>(null);
+  const [fetchingPreview, setFetchingPreview] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const ref = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (replyToId) ref.current?.focus();
   }, [replyToId]);
+
+  // Ekstrak URL pertama dari teks
+  const extractUrl = (text: string) => {
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const match = text.match(urlRegex);
+    return match ? match[0] : null;
+  };
+
+  // Deteksi link saat user mengetik
+  useEffect(() => {
+    const url = extractUrl(text);
+    if (url && !linkPreview) {
+      setFetchingPreview(true);
+      fetch(`${API_BASE}/link-preview?url=${encodeURIComponent(url)}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            setLinkPreview(data);
+          } else if (data.fallback) {
+            setLinkPreview(data.fallback);
+          }
+        })
+        .catch(() => setLinkPreview(null))
+        .finally(() => setFetchingPreview(false));
+    } else if (!url) {
+      setLinkPreview(null);
+    }
+  }, [text]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -78,7 +117,6 @@ export function Composer({ onPosted, replyToId, onCancelReply }: ComposerProps) 
         cHash = hashContent(text.trim());
       }
       
-      // Simpan post dengan media_url
       const newPost = await createPost(
         {
           content: text.trim(),
@@ -118,6 +156,7 @@ export function Composer({ onPosted, replyToId, onCancelReply }: ComposerProps) 
       toast.success("Yap posted!", { description: desc.join(" · ") || "Visible to the QIE feed" });
       setText("");
       setMediaUrl(null);
+      setLinkPreview(null);
       setSuperYap(false);
       setBoostHours(0);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -152,7 +191,7 @@ export function Composer({ onPosted, replyToId, onCancelReply }: ComposerProps) 
             placeholder={user ? "What's happening on QIE?" : "Connect your wallet to start yapping..."}
             disabled={!user || submitting || uploading}
             className="w-full resize-none border-none bg-transparent p-0 text-lg outline-none placeholder:text-muted-foreground disabled:opacity-70"
-            rows={3}
+            rows={4}
           />
 
           {/* Preview Image */}
@@ -168,9 +207,34 @@ export function Composer({ onPosted, replyToId, onCancelReply }: ComposerProps) 
             </div>
           )}
 
+          {/* Link Preview Box */}
+          {fetchingPreview && (
+            <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground animate-pulse">
+              <Loader2 className="size-4 animate-spin" />
+              Fetching link preview...
+            </div>
+          )}
+          {linkPreview && !fetchingPreview && (
+            <div className="mt-3 rounded-xl overflow-hidden border border-border/50 bg-card/80 cursor-pointer hover:border-brand-start/50 transition-colors">
+              <a href={linkPreview.url} target="_blank" rel="noopener noreferrer" className="flex flex-col sm:flex-row">
+                {linkPreview.image && (
+                  <div className="sm:w-1/3 h-32 sm:h-auto bg-muted">
+                    <img src={linkPreview.image} alt="Preview" className="w-full h-full object-cover" />
+                  </div>
+                )}
+                <div className="flex-1 p-3">
+                  <p className="text-xs font-bold text-brand-start mb-0.5">{linkPreview.siteName}</p>
+                  <p className="font-semibold text-sm line-clamp-2">{linkPreview.title}</p>
+                  {linkPreview.description && (
+                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{linkPreview.description}</p>
+                  )}
+                </div>
+              </a>
+            </div>
+          )}
+
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-4">
             <div className="flex flex-wrap items-center gap-3">
-              {/* Tombol Upload Gambar */}
               <input
                 type="file"
                 ref={fileInputRef}
