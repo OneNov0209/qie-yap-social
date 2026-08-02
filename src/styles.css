@@ -148,16 +148,35 @@
 }
 
 /* ============================================ */
-/* 🚀 TAMBAHAN STYLE FUTURISTIK (Glassmorphism)  */
+/* ✨ TITIK EMAS (GOLDEN PARTICLES BACKGROUND)  */
 /* ============================================ */
-
-/* Background Global dengan Glow + Gradasi Baru */
 body {
+  /* Lapisan background gelap + gradasi brand */
   background: 
     radial-gradient(circle at 80% 20%, rgba(255, 10, 108, 0.15), transparent 50%),
     radial-gradient(circle at 10% 80%, rgba(0, 64, 255, 0.15), transparent 50%),
     var(--color-background);
+  
+  /* Tambahkan titik-titik emas dengan radial-gradient kecil dan banyak */
+  background-image: 
+    radial-gradient(rgba(255, 215, 0, 0.4) 1px, transparent 1px),
+    radial-gradient(rgba(255, 215, 0, 0.2) 2px, transparent 2px),
+    radial-gradient(rgba(255, 215, 0, 0.6) 1px, transparent 1px);
+  
+  background-size: 
+    550px 550px,
+    350px 350px,
+    250px 250px;
+  
+  background-position:
+    0 0,
+    40px 60px,
+    130px 270px;
 }
+
+/* ============================================ */
+/* 🚀 TAMBAHAN STYLE FUTURISTIK (Glassmorphism)  */
+/* ============================================ */
 
 /* .yap-card - efek futuristik (Glassmorphism) dengan border glow gradasi */
 @utility yap-card {
