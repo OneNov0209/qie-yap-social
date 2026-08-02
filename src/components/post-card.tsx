@@ -172,8 +172,34 @@ export function PostCard({ post }: { post: FeedPost }) {
       BigInt(hours)
     );
     toast.dismiss();
+
+    const updateRes = await fetch(`${API_BASE}/posts`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        author_id: post.author.id || user.id, 
+        content: post.content,
+        media_url: post.mediaUrl || null,
+        link_preview: post.linkPreview || null,
+        is_super_yap: post.isSuperYap || false,
+        is_boosted: true,
+        boost_expires_at: new Date(Date.now() + parseInt(hours) * 60 * 60 * 1000).toISOString(),
+        tx_hash: hash,
+        content_hash: post.txHash || null,
+        on_chain: post.onChain || false,
+        reply_to: null,
+        original_post_id: post.id 
+      })
+    });
+
+    if (!updateRes.ok) {
+      const errText = await updateRes.text();
+      throw new Error(`Backend update failed: ${updateRes.status} - ${errText}`);
+    }
+
     toast.success(`Post boosted for ${hours}h! Tx: ${hash.slice(0, 10)}...`);
     
+    // 3. Refresh halaman agar badge & border muncul
     window.location.reload();
   } catch (error: any) {
     toast.dismiss();
@@ -183,7 +209,7 @@ export function PostCard({ post }: { post: FeedPost }) {
     setIsProcessing(false);
   }
 };
-
+  
   const handleSuperYap = async () => {
     if (!user) return toast.error("Connect your wallet to create Super Yap");
     if (!contractAddress) return toast.error("Contract not deployed yet");
