@@ -60,9 +60,27 @@ export function Composer({ onPosted, replyToId, onCancelReply }: ComposerProps) 
             setLinkPreview(data);
           } else if (data.fallback) {
             setLinkPreview(data.fallback);
+          } else {
+            // ✅ Fallback jika gagal ambil metadata
+            setLinkPreview({
+              title: new URL(url).hostname,
+              description: 'Preview not available',
+              image: null,
+              siteName: new URL(url).hostname,
+              url: url
+            });
           }
         })
-        .catch(() => setLinkPreview(null))
+        .catch(() => {
+          // ✅ Fallback jika fetch gagal total
+          setLinkPreview({
+            title: new URL(url).hostname,
+            description: 'Preview not available',
+            image: null,
+            siteName: new URL(url).hostname,
+            url: url
+          });
+        })
         .finally(() => setFetchingPreview(false));
     } else if (!url) {
       setLinkPreview(null);
@@ -118,7 +136,7 @@ export function Composer({ onPosted, replyToId, onCancelReply }: ComposerProps) 
         {
           content: text.trim(),
           mediaUrl: mediaUrl || undefined,
-          linkPreview: linkPreview || undefined, // ✅ Kirim link preview ke backend
+          linkPreview: linkPreview || undefined,
           isSuperYap: superYap,
           isBoosted: boostHours > 0,
           boostHours,
