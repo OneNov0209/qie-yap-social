@@ -3,13 +3,15 @@ import { useEffect, useRef, useState } from "react";
 import { 
   Sparkles, MessageCircle, Heart, Coins, Zap, 
   TrendingUp, Shield, Globe, Wallet, ArrowRight, 
-  Users, Rocket, Loader2, BarChart2
+  Users, Rocket, Loader2, BarChart2, HelpCircle, ChevronDown, ChevronUp,
+  CheckCircle, Send, Award, Star, Zap as ZapIcon
 } from "lucide-react";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { API_BASE } from "@/lib/posts";
 import { cn } from "@/lib/utils";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -53,6 +55,91 @@ function ScrollReveal({ children, delay = 0 }: { children: React.ReactNode; dela
   );
 }
 
+// Komponen FAQ Accordion
+function FAQItem({ question, answer, isOpen: defaultOpen = false }: { question: string; answer: string; isOpen?: boolean }) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+
+  return (
+    <div className="border-b border-border/40 last:border-0">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex w-full items-center justify-between py-4 text-left transition-colors hover:text-brand"
+      >
+        <span className="font-semibold text-base">{question}</span>
+        {isOpen ? <ChevronUp className="size-5 text-muted-foreground" /> : <ChevronDown className="size-5 text-muted-foreground" />}
+      </button>
+      <div
+        className={cn(
+          "overflow-hidden transition-all duration-300 ease-in-out",
+          isOpen ? "max-h-96 opacity-100 pb-4" : "max-h-0 opacity-0"
+        )}
+      >
+        <p className="text-sm text-muted-foreground leading-relaxed">{answer}</p>
+      </div>
+    </div>
+  );
+}
+
+// Komponen Timeline Card (Persis seperti gambar)
+function TimelineCard({ 
+  step, 
+  title, 
+  description, 
+  icon: Icon, 
+  type,
+  isLeft
+}: { 
+  step: number; 
+  title: string; 
+  description: string; 
+  icon: any;
+  type: 'sell' | 'buy';
+  isLeft: boolean;
+}) {
+  return (
+    <div className={cn(
+      "flex w-full items-center gap-6 md:w-[45%]",
+      isLeft ? "md:flex-row" : "md:flex-row-reverse"
+    )}>
+      {/* Kartu */}
+      <div className={cn(
+        "flex-1 rounded-2xl border border-border/40 bg-card/50 p-5 backdrop-blur-sm shadow-lg transition-all hover:border-brand-start/30",
+        type === 'sell' ? "hover:shadow-brand-start/10" : "hover:shadow-brand-end/10"
+      )}>
+        <div className="flex items-start gap-4">
+          <div className={cn(
+            "rounded-xl p-3",
+            type === 'sell' ? "bg-brand-soft" : "bg-blue-500/10"
+          )}>
+            <Icon className={cn("size-6", type === 'sell' ? "text-brand" : "text-blue-500")} />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className={cn(
+                "text-[10px] font-bold uppercase tracking-wider",
+                type === 'sell' ? "text-brand" : "text-blue-500"
+              )}>
+                {type === 'sell' ? 'SELL CONTRACT' : 'BUY CONTRACT'}
+              </span>
+              <span className="text-[10px] text-muted-foreground">— Step {step}</span>
+            </div>
+            <h4 className="mt-1 font-semibold">{title}</h4>
+            <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Titik Garis Waktu */}
+      <div className="relative flex size-10 shrink-0 items-center justify-center rounded-full border-2 border-border/40 bg-card text-muted-foreground">
+        <span className="text-xs font-bold">{step}</span>
+      </div>
+
+      {/* Spacer agar layout seimbang */}
+      <div className="hidden flex-1 md:block" />
+    </div>
+  );
+}
+
 function LandingPage() {
   const [stats, setStats] = useState({
     totalYaps: 0,
@@ -64,7 +151,6 @@ function LandingPage() {
   const [loading, setLoading] = useState(true);
   const [chartLoading, setChartLoading] = useState(true);
 
-  // Ambil data statistik dari backend
   useEffect(() => {
     const fetchStats = async () => {
       try {
@@ -87,7 +173,6 @@ function LandingPage() {
     fetchStats();
   }, []);
 
-  // Ambil data chart dari backend
   useEffect(() => {
     const fetchChart = async () => {
       try {
@@ -104,6 +189,38 @@ function LandingPage() {
     };
     fetchChart();
   }, []);
+
+  // Daftar FAQ
+  const faqs = [
+    {
+      question: "What is QIE Yap?",
+      answer: "QIE Yap is a hybrid on-chain social platform built on the QIE blockchain. It allows users to post 'Yaps', send on-chain Tips, create Super Yaps, and Boost posts."
+    },
+    {
+      question: "Does it cost anything to post a Yap?",
+      answer: "No! Posting a standard Yap is completely free. Only premium features like Tips, Super Yaps, and Boost require a small QIE transaction fee."
+    },
+    {
+      question: "How do I sign up / log in?",
+      answer: "You don't need an email or password. Simply click 'Connect QIE Wallet'. Your wallet address is your identity."
+    },
+    {
+      question: "How do Tips work on-chain?",
+      answer: "Click 'Tip', enter amount in QIE. The smart contract sends 98% directly to the creator's wallet."
+    },
+    {
+      question: "What is a Super Yap?",
+      answer: "A premium post with a unique gold border. Creates a Super Yap badge and burns 50% of the fee."
+    },
+    {
+      question: "What does Boost do?",
+      answer: "A promotional feature. For a small fee, your post gets a '⚡ Promoted' badge, making it stand out in the feed."
+    },
+    {
+      question: "Can I upload images?",
+      answer: "Yes! QIE Yap supports image uploads via IPFS (powered by Pinata)."
+    }
+  ];
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
@@ -173,6 +290,78 @@ function LandingPage() {
             </ScrollReveal>
           ))}
         </div>
+      </section>
+
+      {/* === HOW IT WORKS (TIMELINE) === */}
+      <section className="relative mx-auto max-w-5xl px-4 pb-20">
+        <ScrollReveal>
+          <div className="mb-10 text-center">
+            <h2 className="font-display text-3xl font-bold">How It Works</h2>
+            <p className="mt-2 text-muted-foreground">Two ways to interact — choose your role</p>
+            
+            {/* Tab Pilihan (Sell / Buy) */}
+            <div className="mt-4 inline-flex items-center gap-4 rounded-full bg-muted p-1">
+              <button className="rounded-full bg-brand px-4 py-1.5 text-xs font-semibold text-white">SEND TIP</button>
+              <button className="rounded-full px-4 py-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground">BOOST</button>
+            </div>
+          </div>
+
+          {/* Garis Waktu (Timeline) */}
+          <div className="relative flex flex-col items-center gap-12 md:gap-16">
+            {/* Garis Vertikal */}
+            <div className="absolute left-1/2 top-0 h-full w-[2px] -translate-x-1/2 bg-gradient-to-b from-brand-start via-brand-end to-transparent opacity-30" />
+
+            {/* Step 1 (Kiri) */}
+            <TimelineCard 
+              step={1} 
+              title="Creator Posts a Yap" 
+              description="User writes a post and selects 'Super Yap' or 'Boost' options."
+              icon={MessageCircle} 
+              type="sell" 
+              isLeft={true}
+            />
+
+            {/* Step 2 (Kanan) */}
+            <TimelineCard 
+              step={2} 
+              title="Supporter Sends Tip" 
+              description="Fans click 'Tip', enter amount in QIE, and confirm via wallet."
+              icon={Coins} 
+              type="buy" 
+              isLeft={false}
+            />
+
+            {/* Step 3 (Kiri) */}
+            <TimelineCard 
+              step={3} 
+              title="Smart Contract Processes" 
+              description="2% platform fee is deducted. 98% of QIE is sent instantly to creator's wallet."
+              icon={ZapIcon} 
+              type="sell" 
+              isLeft={true}
+            />
+
+            {/* Step 4 (Kanan) */}
+            <TimelineCard 
+              step={4} 
+              title="Boost or Super Yap Activated" 
+              description="If selected, the post gets a gold border or 'Promoted' badge instantly."
+              icon={Award} 
+              type="buy" 
+              isLeft={false}
+            />
+
+            {/* Step 5 (Kiri) */}
+            <TimelineCard 
+              step={5} 
+              title="On-Chain Verified" 
+              description="Transaction is recorded on QIE Explorer. Full transparency."
+              icon={CheckCircle} 
+              type="sell" 
+              isLeft={true}
+            />
+          </div>
+        </ScrollReveal>
       </section>
 
       {/* === CHART SECTION === */}
@@ -297,6 +486,25 @@ function LandingPage() {
             </ScrollReveal>
           ))}
         </div>
+      </section>
+
+      {/* === FAQ SECTION === */}
+      <section className="mx-auto max-w-4xl px-4 pb-20">
+        <ScrollReveal>
+          <div className="mb-10 text-center">
+            <h2 className="font-display text-3xl font-bold flex items-center justify-center gap-2">
+              <HelpCircle className="size-8 text-brand" />
+              FAQ
+            </h2>
+            <p className="mt-2 text-muted-foreground">Quick answers to common questions</p>
+          </div>
+
+          <div className="rounded-2xl border border-border/40 bg-card/50 p-6 backdrop-blur-sm divide-y divide-border/30">
+            {faqs.map((faq, index) => (
+              <FAQItem key={index} question={faq.question} answer={faq.answer} isOpen={index === 0} />
+            ))}
+          </div>
+        </ScrollReveal>
       </section>
 
       {/* === CTA SECTION === */}
