@@ -182,16 +182,12 @@ export function relativeTime(dateString: string): string {
   if (!dateString) return "Just now";
   let date: Date;
   try {
-    if (dateString.endsWith('Z')) {
-      date = new Date(dateString);
-    } else {
+    date = new Date(dateString);
+    if (isNaN(date.getTime())) {
       date = new Date(dateString + 'Z');
     }
-    if (isNaN(date.getTime())) {
-      date = new Date(dateString);
-    }
   } catch {
-    return "Invalid Date";
+    return "Just now";
   }
   if (isNaN(date.getTime())) {
     return "Just now";
