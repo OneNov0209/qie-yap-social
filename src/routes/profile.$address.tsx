@@ -249,7 +249,7 @@ function ProfilePage() {
               <Stat label="Yaps" value={String(counts.yaps)} />
               <Stat label="Followers" value={String(counts.followers)} />
               <Stat label="Following" value={String(counts.following)} />
-              <Stat label="QIE" value={counts.balance.toFixed(2)} accent />
+              <Stat label="QIE Balance" value={counts.balance.toFixed(2)} accent />
             </div>
           </div>
 
