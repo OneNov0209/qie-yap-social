@@ -3,7 +3,7 @@ export const API_BASE = import.meta.env.VITE_API_BASE || "https://api.yap.onenov
 export interface FeedPost {
   id: string;
   content: string;
-  mediaUrl?: string | null;
+  mediaUrl?: string | null; // ✅ Tambahan untuk gambar
   isSuperYap: boolean;
   isBoosted: boolean;
   createdAt: string;
@@ -42,7 +42,7 @@ export function mapPost(item: any): FeedPost {
   return {
     id: item.id,
     content: item.content,
-    mediaUrl: item.media_url || item.mediaUrl || null,
+    mediaUrl: item.media_url || item.mediaUrl || null, // ✅ Ambil media_url
     isSuperYap: Boolean(item.is_super_yap || item.isSuperYap || false),
     isBoosted: Boolean(item.is_boosted || item.isBoosted || false),
     createdAt: item.created_at || item.createdAt || new Date().toISOString(),
@@ -68,7 +68,7 @@ export function mapPost(item: any): FeedPost {
 export async function createPost(
   postData: {
     content: string;
-    mediaUrl?: string;
+    mediaUrl?: string; // ✅ Tambahan
     isSuperYap?: boolean;
     isBoosted?: boolean;
     boostHours?: number;
@@ -83,7 +83,7 @@ export async function createPost(
   const payload = {
     author_id: authorId,
     content: postData.content,
-    media_url: postData.mediaUrl,
+    media_url: postData.mediaUrl, // ✅ Kirim media_url ke backend
     is_super_yap: postData.isSuperYap,
     is_boosted: postData.isBoosted,
     tx_hash: postData.txHash,
@@ -162,38 +162,27 @@ export async function fetchFeed(tab: string, userId: string | null): Promise<Fee
   return posts.map(mapPost);
 }
 
-// ✅ PERBAIKAN: relativeTime yang lebih kuat menangani format tanggal
 export function relativeTime(dateString: string): string {
   if (!dateString) return "Just now";
-  
-  // Coba parsing dengan berbagai format
   let date: Date;
   try {
-    // Jika ada karakter 'Z' di akhir, biarkan
     if (dateString.endsWith('Z')) {
       date = new Date(dateString);
     } else {
-      // Jika tidak ada Z, tambahkan Z (asumsi UTC)
       date = new Date(dateString + 'Z');
     }
-    
-    // Jika hasil parsing invalid, coba parse langsung
     if (isNaN(date.getTime())) {
       date = new Date(dateString);
     }
   } catch {
     return "Invalid Date";
   }
-
-  // Jika masih invalid, return fallback
   if (isNaN(date.getTime())) {
     return "Just now";
   }
-
   const now = new Date();
   const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-  
-  if (seconds < 0) return "Just now"; // Data di masa depan
+  if (seconds < 0) return "Just now";
   if (seconds < 60) return "just now";
   const minutes = Math.floor(seconds / 60);
   if (minutes < 60) return `${minutes}m ago`;
@@ -207,4 +196,36 @@ export function relativeTime(dateString: string): string {
 export function shortAddr(addr: string): string {
   if (!addr || addr.length < 10) return addr;
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
+}
+
+// ✅ FUNGSI UPLOAD GAMBAR KE PINATA (IPFS)
+export async function uploadToIPFS(file: File): Promise<string | null> {
+  const PINATA_JWT = import.meta.env.VITE_PINATA_JWT;
+  if (!PINATA_JWT) {
+    console.error("Pinata JWT not found in env");
+    return null;
+  }
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  try {
+    const res = await fetch("https://api.pinata.cloud/pinning/pinFileToIPFS", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${PINATA_JWT}`,
+      },
+      body: formData,
+    });
+
+    const data = await res.json();
+    if (data.IpfsHash) {
+      // Kembalikan URL gateway (bisa diganti dengan gateway Anda sendiri)
+      return `https://gateway.pinata.cloud/ipfs/${data.IpfsHash}`;
+    }
+    return null;
+  } catch (error) {
+    console.error("Upload to IPFS failed:", error);
+    return null;
+  }
 }
