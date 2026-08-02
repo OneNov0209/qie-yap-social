@@ -18,6 +18,7 @@ export function Header() {
       
       <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3">
         
+        {/* Logo tetap mengarah ke Landing Page (/) */}
         <Link to="/" className="flex items-center gap-2.5">
           <img src={LOGO} alt="QIE" className="size-9 rounded-xl shadow-sm shadow-brand/30" />
           <span className="font-display text-xl font-bold tracking-tight">
@@ -41,7 +42,8 @@ export function MobileBottomNav() {
   const profilePath = user?.address ?? "0x0000000000000000000000000000000000000000";
 
   const items = [
-    { to: "/", label: "Feed", icon: Home },
+    // ✅ Ubah route Feed dari "/" menjadi "/feed"
+    { to: "/feed", label: "Feed", icon: Home },
     { to: "/search", label: "Search", icon: Search },
     { to: "/explorer", label: "Explorer", icon: Activity },
     { to: "/dashboard", label: "Dashboard", icon: Wallet },
