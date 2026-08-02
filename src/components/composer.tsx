@@ -27,7 +27,6 @@ export function Composer({ onPosted, replyToId, onCancelReply }: ComposerProps) 
   const [uploading, setUploading] = useState(false);
   const [mediaUrl, setMediaUrl] = useState<string | null>(null);
   
-  // Link Preview
   const [linkPreview, setLinkPreview] = useState<{
     title: string;
     description: string;
@@ -44,14 +43,12 @@ export function Composer({ onPosted, replyToId, onCancelReply }: ComposerProps) 
     if (replyToId) ref.current?.focus();
   }, [replyToId]);
 
-  // Ekstrak URL pertama dari teks
   const extractUrl = (text: string) => {
     const urlRegex = /(https?:\/\/[^\s]+)/g;
     const match = text.match(urlRegex);
     return match ? match[0] : null;
   };
 
-  // Deteksi link saat user mengetik
   useEffect(() => {
     const url = extractUrl(text);
     if (url && !linkPreview) {
@@ -121,6 +118,7 @@ export function Composer({ onPosted, replyToId, onCancelReply }: ComposerProps) 
         {
           content: text.trim(),
           mediaUrl: mediaUrl || undefined,
+          linkPreview: linkPreview || undefined, // ✅ Kirim link preview ke backend
           isSuperYap: superYap,
           isBoosted: boostHours > 0,
           boostHours,
@@ -194,7 +192,6 @@ export function Composer({ onPosted, replyToId, onCancelReply }: ComposerProps) 
             rows={4}
           />
 
-          {/* Preview Image */}
           {mediaUrl && (
             <div className="relative mt-2 w-full max-w-sm rounded-xl overflow-hidden border border-border/50">
               <img src={mediaUrl} alt="Uploaded" className="w-full h-auto object-cover max-h-64" />
@@ -207,7 +204,6 @@ export function Composer({ onPosted, replyToId, onCancelReply }: ComposerProps) 
             </div>
           )}
 
-          {/* Link Preview Box */}
           {fetchingPreview && (
             <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground animate-pulse">
               <Loader2 className="size-4 animate-spin" />
