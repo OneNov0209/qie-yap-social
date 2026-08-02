@@ -14,6 +14,8 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { useAuth } from "@/lib/auth-store";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "sonner";
+// ✅ Import Sidebar yang baru kita buat
+import { Sidebar } from "@/components/sidebar";
 
 function NotFoundComponent() {
   return (
@@ -121,7 +123,17 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <Outlet />
+        {/* ✅ LAYOUT BARU: Flex container dengan Sidebar di kiri */}
+        <div className="flex min-h-screen w-full bg-background">
+          {/* Sidebar - Hanya muncul di layar desktop (lg ke atas) */}
+          <Sidebar />
+
+          {/* Konten Utama - Diberi margin kiri agar tidak tertutup sidebar */}
+          <div className="flex-1 lg:ml-64">
+            <Outlet />
+          </div>
+        </div>
+
         <Toaster
           position="bottom-right"
           toastOptions={{
