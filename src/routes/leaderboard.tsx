@@ -5,7 +5,7 @@ import { Avatar } from "@/components/avatar-img";
 import { StakingBadgeChip } from "@/components/staking-badge";
 import { shortAddr, API_BASE } from "@/lib/posts";
 import { cn } from "@/lib/utils";
-import { Crown, Medal, User, ArrowUp, ArrowDown, Loader2 } from "lucide-react";
+import { Crown, Medal, TrendingUp, TrendingDown, Minus, Loader2, Coins, MessageSquare, Users } from "lucide-react";
 
 export const Route = createFileRoute("/leaderboard")({
   head: () => ({
@@ -28,6 +28,7 @@ interface LeaderboardEntry {
   yapCount: number;
   followerCount: number;
   isValidator: boolean;
+  trend?: "up" | "down" | "same";
 }
 
 function LeaderboardPage() {
@@ -35,64 +36,43 @@ function LeaderboardPage() {
   const [loading, setLoading] = useState(true);
   const [timeframe, setTimeframe] = useState<"all" | "week">("all");
 
-  useEffect(() => {
-    const loadLeaderboard = async () => {
-      setLoading(true);
-      try {
-        // 1. Ambil semua profil dari VPS
+  const loadLeaderboard = async () => {
+    setLoading(true);
+    try {
+      // Panggil endpoint dengan parameter timeframe (backend harus disesuaikan nanti)
+      const res = await fetch(`${API_BASE}/leaderboard?timeframe=${timeframe}&limit=50`);
+      if (!res.ok) throw new Error("Failed to fetch leaderboard");
+      
+      const data = await res.json();
+      
+      // Jika backend belum punya endpoint leaderboard, gunakan logika lokal (fallback)
+      if (!data || data.length === 0) {
+        // Fallback ke logika lama
         let profiles: any[] = [];
         try {
-          const res = await fetch(`${API_BASE}/profiles?limit=100`);
-          if (res.ok) {
-            profiles = await res.json();
-          }
-        } catch (err) {
-          console.warn("Failed to fetch profiles");
-        }
+          const profileRes = await fetch(`${API_BASE}/profiles?limit=100`);
+          if (profileRes.ok) profiles = await profileRes.json();
+        } catch {}
 
-        if (!profiles.length) {
-          setUsers([]);
-          setLoading(false);
-          return;
-        }
-
-        // 2. Ambil semua tips dari VPS (untuk menghitung total per user)
         let allTips: any[] = [];
         try {
-          const res = await fetch(`${API_BASE}/tips?limit=500`);
-          if (res.ok) {
-            allTips = await res.json();
-          }
-        } catch (err) {
-          console.warn("Failed to fetch tips");
-        }
+          const tipsRes = await fetch(`${API_BASE}/tips?limit=500`);
+          if (tipsRes.ok) allTips = await tipsRes.json();
+        } catch {}
 
-        // 3. Ambil semua postingan dari VPS (untuk menghitung yaps per user)
         let allPosts: any[] = [];
         try {
-          const res = await fetch(`${API_BASE}/feed?limit=200`);
-          if (res.ok) {
-            allPosts = await res.json();
-          }
-        } catch (err) {
-          console.warn("Failed to fetch posts");
-        }
+          const postsRes = await fetch(`${API_BASE}/feed?limit=200`);
+          if (postsRes.ok) allPosts = await postsRes.json();
+        } catch {}
 
-        // 4. Ambil semua follows dari VPS (untuk menghitung followers per user)
         let allFollows: any[] = [];
         try {
-          const res = await fetch(`${API_BASE}/follows?limit=500`);
-          if (res.ok) {
-            allFollows = await res.json();
-          }
-        } catch (err) {
-          console.warn("Failed to fetch follows");
-        }
+          const followsRes = await fetch(`${API_BASE}/follows?limit=500`);
+          if (followsRes.ok) allFollows = await followsRes.json();
+        } catch {}
 
-        // 5. Proses data: hitung statistik per user
         const userStats: Record<string, any> = {};
-
-        // Inisialisasi semua profil
         profiles.forEach((p: any) => {
           userStats[p.id] = {
             id: p.id,
@@ -108,71 +88,76 @@ function LeaderboardPage() {
           };
         });
 
-        // Hitung total tips yang diterima per user
         allTips.forEach((tip: any) => {
-          const toUserId = tip.to_user_id;
-          if (userStats[toUserId]) {
-            userStats[toUserId].totalTipsReceived += Number(tip.amount || 0);
+          if (userStats[tip.to_user_id]) {
+            userStats[tip.to_user_id].totalTipsReceived += Number(tip.amount || 0);
           }
         });
 
-        // Hitung jumlah yaps per user (hanya post utama, bukan reply)
         allPosts.forEach((post: any) => {
-          // Ambil author_id dari field author (object) atau author_id langsung
           let authorId = post.author_id;
-          if (post.author && post.author.id) {
-            authorId = post.author.id;
-          }
-          // Jika post adalah reply, jangan dihitung
-          if (post.reply_to) return;
-          
-          if (userStats[authorId]) {
+          if (post.author && post.author.id) authorId = post.author.id;
+          if (!post.reply_to && userStats[authorId]) {
             userStats[authorId].yapCount += 1;
           }
         });
 
-        // Hitung jumlah followers per user
         allFollows.forEach((follow: any) => {
-          const followingId = follow.following_id;
-          if (userStats[followingId]) {
-            userStats[followingId].followerCount += 1;
+          if (userStats[follow.following_id]) {
+            userStats[follow.following_id].followerCount += 1;
           }
         });
 
-        // 6. Konversi ke array dan urutkan berdasarkan totalTipsReceived
         let leaderboard = Object.values(userStats) as LeaderboardEntry[];
-        
-        // Filter hanya yang punya tips atau yaps (supaya tidak muncul user kosong)
-        leaderboard = leaderboard.filter(
-          (u) => u.totalTipsReceived > 0 || u.yapCount > 0
-        );
-
-        // Urutkan descending berdasarkan totalTipsReceived
+        // ✅ Tampilkan semua user (jangan di-filter)
         leaderboard.sort((a, b) => b.totalTipsReceived - a.totalTipsReceived);
-
         setUsers(leaderboard.slice(0, 50));
-      } catch (err) {
-        console.error("Leaderboard error:", err);
-      } finally {
         setLoading(false);
+        return;
       }
-    };
 
+      setUsers(data);
+    } catch (err) {
+      console.error("Leaderboard error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     loadLeaderboard();
   }, [timeframe]);
+
+  // Ikon berdasarkan peringkat
+  const RankIcon = ({ index }: { index: number }) => {
+    if (index === 0) return <Crown className="size-6 text-gold drop-shadow-md" />;
+    if (index === 1) return <Medal className="size-6 text-muted-foreground" />;
+    if (index === 2) return <Medal className="size-6 text-amber-600" />;
+    return <span className="text-sm font-bold text-muted-foreground/40">#{index + 1}</span>;
+  };
+
+  // Indikator tren
+  const Trend = ({ trend }: { trend?: "up" | "down" | "same" }) => {
+    if (trend === "up") return <TrendingUp className="size-4 text-emerald-500" />;
+    if (trend === "down") return <TrendingDown className="size-4 text-red-500" />;
+    return <Minus className="size-4 text-muted-foreground/40" />;
+  };
 
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-12">
       <Header />
-      <div className="mx-auto max-w-2xl px-4 py-6">
+      <div className="mx-auto max-w-4xl px-4 py-6">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="font-display text-2xl font-bold">Leaderboard</h1>
-          <div className="flex gap-2 rounded-full bg-muted p-1">
+          <div>
+            <h1 className="font-display text-2xl font-bold">Leaderboard</h1>
+            <p className="text-sm text-muted-foreground">Top creators on QIE Mainnet</p>
+          </div>
+          <div className="flex gap-1 rounded-full bg-muted p-1">
             <button
               onClick={() => setTimeframe("all")}
               className={cn(
-                "rounded-full px-3 py-1 text-xs font-medium transition-colors",
-                timeframe === "all" ? "bg-brand text-white" : "text-muted-foreground hover:text-foreground"
+                "rounded-full px-4 py-1.5 text-xs font-semibold transition-all",
+                timeframe === "all" ? "bg-brand text-white shadow-md" : "text-muted-foreground hover:text-foreground"
               )}
             >
               All Time
@@ -180,8 +165,8 @@ function LeaderboardPage() {
             <button
               onClick={() => setTimeframe("week")}
               className={cn(
-                "rounded-full px-3 py-1 text-xs font-medium transition-colors",
-                timeframe === "week" ? "bg-brand text-white" : "text-muted-foreground hover:text-foreground"
+                "rounded-full px-4 py-1.5 text-xs font-semibold transition-all",
+                timeframe === "week" ? "bg-brand text-white shadow-md" : "text-muted-foreground hover:text-foreground"
               )}
             >
               This Week
@@ -206,50 +191,61 @@ function LeaderboardPage() {
         ) : users.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border bg-card p-12 text-center">
             <div className="mx-auto mb-3 grid size-12 place-items-center rounded-full bg-brand-soft text-2xl">🏆</div>
-            <h3 className="font-display text-lg font-semibold">No yappers yet</h3>
+            <h3 className="font-display text-lg font-semibold">No data yet</h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              Start yapping and tipping to climb the ranks!
+              Start yapping and tipping to see the leaderboard!
             </p>
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-3">
             {users.map((user, index) => (
               <Link
                 key={user.id}
                 to="/profile/$address"
                 params={{ address: user.address }}
-                className="flex items-center gap-4 rounded-xl border border-border/50 bg-card/50 p-4 transition-colors hover:bg-card/80"
+                className="group flex items-center gap-4 rounded-2xl border border-border/50 bg-card/50 p-4 transition-all hover:bg-card/80 hover:scale-[1.005] hover:shadow-md"
               >
-                <div className="flex w-8 items-center justify-center text-lg font-bold">
-                  {index === 0 ? (
-                    <Crown className="size-6 text-gold" />
-                  ) : index === 1 ? (
-                    <Medal className="size-6 text-muted-foreground" />
-                  ) : index === 2 ? (
-                    <Medal className="size-6 text-amber-600" />
-                  ) : (
-                    <span className="text-sm text-muted-foreground">#{index + 1}</span>
-                  )}
+                {/* Peringkat */}
+                <div className="flex w-10 justify-center">
+                  <RankIcon index={index} />
                 </div>
-                <Avatar seed={user.avatarSeed} size={40} className="ring-1 ring-border" />
+
+                {/* Avatar */}
+                <Avatar seed={user.avatarSeed} size={44} className="ring-2 ring-background" />
+
+                {/* Identitas */}
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold truncate">{user.displayName}</span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-semibold truncate text-foreground group-hover:text-brand-start transition-colors">
+                      {user.displayName}
+                    </span>
                     <StakingBadgeChip badge={user.badge as any} />
                     {user.isValidator && (
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-brand">
+                      <span className="px-1.5 py-0.5 rounded-full bg-brand/10 text-[9px] font-bold uppercase tracking-wider text-brand border border-brand/20">
                         Validator
                       </span>
                     )}
+                    <Trend trend={user.trend || "same"} />
                   </div>
-                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground mt-0.5">
                     <span>@{user.username}</span>
-                    <span>· {user.yapCount} Yaps</span>
-                    <span>· {user.followerCount} Followers</span>
+                    <span className="flex items-center gap-1">
+                      <MessageSquare className="size-3" />
+                      {user.yapCount}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Users className="size-3" />
+                      {user.followerCount}
+                    </span>
                   </div>
                 </div>
+
+                {/* Tips Received */}
                 <div className="text-right">
-                  <div className="text-sm font-bold text-brand">{user.totalTipsReceived.toFixed(4)} QIE</div>
+                  <div className="flex items-center justify-end gap-1 text-sm font-bold text-brand">
+                    <Coins className="size-4" />
+                    {user.totalTipsReceived.toFixed(4)} QIE
+                  </div>
                   <div className="text-[10px] text-muted-foreground">Tips Received</div>
                 </div>
               </Link>
