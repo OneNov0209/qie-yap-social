@@ -40,6 +40,7 @@ app.post('/api/admin/create-tables', async (req, res) => {
         author_id UUID NOT NULL,
         content TEXT NOT NULL,
         media_url TEXT,
+        link_preview JSONB,
         is_super_yap BOOLEAN DEFAULT false,
         is_boosted BOOLEAN DEFAULT false,
         boost_expires_at TIMESTAMPTZ,
@@ -211,18 +212,62 @@ app.get('/api/profiles', async (req, res) => {
 });
 
 // ============================================
-// 3. POSTS
+// 3. POSTS (YANG BENAR DENGAN LINK PREVIEW & BOOST)
 // ============================================
 app.post('/api/posts', async (req, res) => {
-  const { author_id, content, media_url, is_super_yap, is_boosted, boost_expires_at, tx_hash, content_hash, on_chain, reply_to, original_post_id } = req.body;
+  const { 
+    author_id, 
+    content, 
+    media_url, 
+    link_preview, 
+    is_super_yap, 
+    is_boosted, 
+    boost_expires_at, 
+    tx_hash, 
+    content_hash, 
+    on_chain, 
+    reply_to, 
+    original_post_id 
+  } = req.body;
+
+  console.log("📥 [POST] Received:", { content: content?.slice(0, 30), link_preview, is_boosted });
+
   try {
     const result = await pool.query(
-      `INSERT INTO posts (author_id, content, media_url, is_super_yap, is_boosted, boost_expires_at, tx_hash, content_hash, on_chain, reply_to, original_post_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
-      [author_id, content, media_url, is_super_yap, is_boosted, boost_expires_at, tx_hash, content_hash, on_chain, reply_to, original_post_id]
+      `INSERT INTO posts (
+        author_id, 
+        content, 
+        media_url, 
+        link_preview, 
+        is_super_yap, 
+        is_boosted, 
+        boost_expires_at, 
+        tx_hash, 
+        content_hash, 
+        on_chain, 
+        reply_to, 
+        original_post_id
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
+      [
+        author_id, 
+        content, 
+        media_url, 
+        link_preview, 
+        is_super_yap, 
+        is_boosted, 
+        boost_expires_at, 
+        tx_hash, 
+        content_hash, 
+        on_chain, 
+        reply_to, 
+        original_post_id
+      ]
     );
+    console.log("✅ [POST] Saved to DB with preview & boost:", result.rows[0].id);
     res.json(result.rows[0]);
   } catch (err) {
+    console.error("❌ [POST] Error:", err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -721,7 +766,7 @@ app.get('/api/link-preview', async (req, res) => {
   }
   try {
     const response = await axios.get(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; QIEYapBot/1.0)' },
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' },
       timeout: 10000
     });
     const html = response.data;
