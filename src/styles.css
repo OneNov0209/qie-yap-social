@@ -53,7 +53,6 @@
 
 :root {
   --radius: 0.75rem;
-
   --background: oklch(0.985 0.003 280);
   --foreground: oklch(0.21 0.03 265);
 
@@ -82,13 +81,11 @@
   --input: oklch(0.92 0.01 280);
   --ring: oklch(0.66 0.27 340);
 
-  /* Brand */
   --brand: oklch(0.66 0.27 340);           
   --brand-soft: oklch(0.97 0.04 340);
   --gold: oklch(0.78 0.16 75);             
   --gold-soft: oklch(0.97 0.05 90);
 
-  /* Badge tints */
   --shrimp: oklch(0.85 0.07 30);
   --fish: oklch(0.82 0.09 200);
   --dolphin: oklch(0.78 0.11 230);
@@ -144,42 +141,36 @@
 }
 
 /* ============================================ */
-/* ✨ TITIK EMAS (GOLDEN PARTICLES BACKGROUND)  */
+/* ✨ POLA TITIK EMAS (GOLD DOT GRID) SEPERTI GAMBAR */
 /* ============================================ */
 body {
-  /* Lapisan background gelap + gradasi brand */
+  /* Tambahkan background gradasi brand (seperti sebelumnya) */
   background: 
     radial-gradient(circle at 80% 20%, rgba(255, 10, 108, 0.08), transparent 50%),
     radial-gradient(circle at 10% 80%, rgba(0, 64, 255, 0.08), transparent 50%),
     var(--color-background);
   
-  /* Tambahkan titik-titik emas */
+  /* Tumpangkan pola titik emas (kotak-kotak rapi) */
   background-image: 
-    radial-gradient(rgba(255, 215, 0, 0.4) 1px, transparent 1px),
-    radial-gradient(rgba(255, 215, 0, 0.15) 2px, transparent 2px);
+    repeating-linear-gradient(transparent, transparent 19px, rgba(255, 215, 0, 0.6) 19px, rgba(255, 215, 0, 0.6) 20px),
+    repeating-linear-gradient(90deg, transparent, transparent 19px, rgba(255, 215, 0, 0.6) 19px, rgba(255, 215, 0, 0.6) 20px);
   
-  background-size: 
-    500px 500px,
-    300px 300px;
-  
-  background-position:
-    0 0,
-    50px 70px;
-  
+  background-size: 20px 20px;
   background-attachment: fixed;
 }
 
-/* Light Mode adjustment for golden dots */
+/* Light Mode: Warna emas sedikit lebih gelap/soft */
 :root body {
   background-image: 
-    radial-gradient(rgba(180, 150, 0, 0.15) 1px, transparent 1px),
-    radial-gradient(rgba(180, 150, 0, 0.05) 2px, transparent 2px);
+    repeating-linear-gradient(transparent, transparent 19px, rgba(180, 150, 0, 0.25) 19px, rgba(180, 150, 0, 0.25) 20px),
+    repeating-linear-gradient(90deg, transparent, transparent 19px, rgba(180, 150, 0, 0.25) 19px, rgba(180, 150, 0, 0.25) 20px);
 }
 
+/* Dark Mode: Emas terang berkilau */
 .dark body {
   background-image: 
-    radial-gradient(rgba(255, 215, 0, 0.4) 1px, transparent 1px),
-    radial-gradient(rgba(255, 215, 0, 0.15) 2px, transparent 2px);
+    repeating-linear-gradient(transparent, transparent 19px, rgba(255, 215, 0, 0.6) 19px, rgba(255, 215, 0, 0.6) 20px),
+    repeating-linear-gradient(90deg, transparent, transparent 19px, rgba(255, 215, 0, 0.6) 19px, rgba(255, 215, 0, 0.6) 20px);
 }
 
 /* ============================================ */
