@@ -204,17 +204,29 @@ notifications Aggregated real-time notifications (Follow, Like, Reply, Tip)
 
 Feature Description
 ✅ Post Yaps (Text) Unlimited characters (max 2500) with Markdown-like support.
+
 ✅ Image Upload Upload images directly via Pinata IPFS.
+
 ✅ Link Preview Auto-fetches OG metadata (title, image, description) when pasting a URL.
+
 ✅ On-Chain Tips Send QIE directly to creators. 2% platform fee, 98% to recipient.
+
 ✅ Super Yaps Premium post with gold border. Burns 50% of the fee.
+
 ✅ Boost Promoted post badge. Shows "⚡ Promoted" indicator in feed.
+
 ✅ Social Interactions Follow, Unfollow, Like, Repost, Bookmark.
+
 ✅ Real-Time Feed "Latest" feed with real-time updates via Supabase (deprecated) / Polling.
+
 ✅ Leaderboard Top creators ranked by total tips received.
+
 ✅ Dashboard View tips received, wallet balance, and withdraw earnings.
+
 ✅ Explorer On-chain activity explorer (Tips, Yaps, Super Yaps, Boosts).
+
 ✅ Notifications Real-time notifications for Follows, Likes, Replies, and Tips.
+
 ✅ Delete Post Users can delete their own posts (Cascading deletion).
 
 ---
@@ -222,7 +234,9 @@ Feature Description
 🎨 Design Philosophy
 
 · Futuristic UI with glassmorphism, subtle gold dot patterns, and neon gradients (#FF0A6C → #0040FF).
+
 · Responsive Design with a dedicated sidebar for desktop and a bottom navigation bar for mobile.
+
 · Premium Typography using Inter, Space Grotesk, and JetBrains Mono.
 
 ---
