@@ -132,8 +132,8 @@ export function NotificationsPopover() {
                 // Tapi kita harus pastikan ini adalah ID post yang benar
                 // Untuk saat ini, kita asumsikan n.id adalah ID post (karena backend kita mengirim ID post)
                 // Tapi kita akan coba ambil dari n.post_id jika ada
-                const postId = n.post_id || n.id;
-                linkTo = `/yap/${postId}`;
+                const postId = n.post_id || (n.type === 'tip' ? null : n.id);
+                linkTo = postId ? `/yap/${postId}` : '#';
               }
 
               return (
