@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { BadgeCheck, X, BarChart2, Coins } from "lucide-react";
+import { BadgeCheck, X, BarChart2 } from "lucide-react";
 import { Header } from "@/components/header";
 import { PostCard } from "@/components/post-card";
 import { StakingBadgeChip } from "@/components/staking-badge";
@@ -12,7 +12,6 @@ import { useAuth } from "@/lib/auth-store";
 import { shortAddr, type FeedPost, fetchFeed, API_BASE } from "@/lib/posts";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-// Import Recharts
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 export const Route = createFileRoute("/profile/$address")({
@@ -45,7 +44,7 @@ function ProfilePage() {
     followers: 0, 
     following: 0, 
     yaps: 0, 
-    totalTipsReceived: 0 // ✅ Ganti balance dengan totalTipsReceived
+    totalTipsReceived: 0
   });
   const [isFollowing, setIsFollowing] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -55,18 +54,15 @@ function ProfilePage() {
   const [editAvatarSeed, setEditAvatarSeed] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
-  // State untuk Chart
   const [chartData, setChartData] = useState<any[]>([]);
   const [chartLoading, setChartLoading] = useState(true);
 
   const isOwn = user?.address?.toLowerCase() === address?.toLowerCase();
 
-  // ✅ Load Profile, Counts, Follow Status, dan Chart
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
       try {
-        // Ambil Profil
         let profileData: any = null;
         if (user && user.address === address) {
           profileData = {
@@ -102,7 +98,6 @@ function ProfilePage() {
         }
         setProfile(profileData);
 
-        // Ambil Followers & Following Counts
         const [followersRes, followingRes, statusRes] = await Promise.all([
           fetch(`${API_BASE}/follows?following_id=${profileData.id}&count=followers`),
           fetch(`${API_BASE}/follows?follower_id=${profileData.id}&count=following`),
@@ -122,21 +117,19 @@ function ProfilePage() {
           setIsFollowing(data.isFollowing || false);
         }
 
-        // Ambil Yaps
         const feed = await fetchFeed("latest", user?.id || null);
         const userYaps = feed.filter((p) => p.author.address.toLowerCase() === address.toLowerCase());
         setYaps(userYaps);
         setCounts(prev => ({ ...prev, yaps: userYaps.length }));
 
-        // ✅ Ambil Total Tips Diterima
-        const tipsRes = await fetch(`${API_BASE}/tips?to_user_id=${profileData.id}&limit=100`);
+        // ✅ PERBAIKAN: Gunakan endpoint /tips/user/:userId
+        const tipsRes = await fetch(`${API_BASE}/tips/user/${profileData.id}?limit=100`);
         if (tipsRes.ok) {
           const tipsData = await tipsRes.json();
           const totalTips = tipsData.reduce((sum: number, t: any) => sum + Number(t.amount), 0);
           setCounts(prev => ({ ...prev, totalTipsReceived: totalTips }));
         }
 
-        // ✅ Ambil Data Chart
         const chartRes = await fetch(`${API_BASE}/stats/chart?days=7`);
         if (chartRes.ok) {
           const chart = await chartRes.json();
@@ -153,7 +146,6 @@ function ProfilePage() {
     loadData();
   }, [address, user]);
 
-  // ✅ FOLLOW / UNFOLLOW
   const toggleFollow = async () => {
     if (!user || !profile) return toast("Connect your wallet to follow");
     if (isOwn) return;
@@ -185,7 +177,6 @@ function ProfilePage() {
     }
   };
 
-  // ✅ EDIT PROFILE
   const handleSaveProfile = async () => {
     if (!user || !profile) return;
     if (!editName.trim()) return toast.error("Display name cannot be empty");
@@ -275,7 +266,7 @@ function ProfilePage() {
             </div>
           </div>
 
-          {/* === CHART SECTION (DITEMPATKAN DI ATAS YAPS) === */}
+          {/* Chart Section */}
           <div className="mt-6 rounded-2xl border border-border/40 bg-card/50 p-4 backdrop-blur-sm shadow-sm">
             <div className="flex items-center gap-2 mb-3">
               <BarChart2 className="size-5 text-brand" />
