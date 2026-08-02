@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { 
   Sparkles, MessageCircle, Heart, Coins, Zap, 
   TrendingUp, Shield, Globe, Wallet, ArrowRight, 
-  Users, Loader2, BarChart2
+  Users, Rocket, Loader2, BarChart2
 } from "lucide-react";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
