@@ -3,6 +3,7 @@ import {
   Outlet,
   Link,
   createRootRouteWithContext,
+  useRouterState,
   useRouter,
   HeadContent,
   Scripts,
@@ -16,6 +17,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "sonner";
 import { Sidebar } from "@/components/sidebar";
 import { MobileBottomNav } from "@/components/header";
+import { cn } from "@/lib/utils";
 
 function NotFoundComponent() {
   return (
@@ -119,17 +121,22 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  // ✅ Deteksi halaman saat ini
+  const path = useRouterState({ select: (s) => s.location.pathname });
+  const isLandingPage = path === "/";
 
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <div className="flex min-h-screen w-full bg-background">
-          <Sidebar />
+          {/* Hanya tampilkan Sidebar jika BUKAN Landing Page */}
+          {!isLandingPage && <Sidebar />}
           
           {/* Padding bottom untuk Mobile Nav */}
-          <div className="flex-1 lg:ml-64 pb-20 lg:pb-0">
+          <div className={cn("flex-1 pb-20 lg:pb-0", !isLandingPage && "lg:ml-64")}>
             <Outlet />
-            <MobileBottomNav />
+            {/* Hanya tampilkan Mobile Nav jika BUKAN Landing Page */}
+            {!isLandingPage && <MobileBottomNav />}
           </div>
         </div>
 
