@@ -3,7 +3,7 @@ export const API_BASE = import.meta.env.VITE_API_BASE || "https://api.yap.onenov
 export interface FeedPost {
   id: string;
   content: string;
-  mediaUrl?: string | null; // ✅ Tambahan untuk gambar
+  mediaUrl?: string | null;
   isSuperYap: boolean;
   isBoosted: boolean;
   createdAt: string;
@@ -23,6 +23,13 @@ export interface FeedPost {
     badge: "shrimp" | "fish" | "dolphin" | "shark" | "whale";
     isValidator: boolean;
   };
+  linkPreview?: {
+    title: string;
+    description: string;
+    image: string | null;
+    siteName: string;
+    url: string;
+  } | null;
 }
 
 export function mapPost(item: any): FeedPost {
@@ -42,7 +49,7 @@ export function mapPost(item: any): FeedPost {
   return {
     id: item.id,
     content: item.content,
-    mediaUrl: item.media_url || item.mediaUrl || null, // ✅ Ambil media_url
+    mediaUrl: item.media_url || item.mediaUrl || null,
     isSuperYap: Boolean(item.is_super_yap || item.isSuperYap || false),
     isBoosted: Boolean(item.is_boosted || item.isBoosted || false),
     createdAt: item.created_at || item.createdAt || new Date().toISOString(),
@@ -62,13 +69,14 @@ export function mapPost(item: any): FeedPost {
       badge,
       isValidator,
     },
+    linkPreview: item.link_preview || item.linkPreview || null,
   };
 }
 
 export async function createPost(
   postData: {
     content: string;
-    mediaUrl?: string; // ✅ Tambahan
+    mediaUrl?: string;
     isSuperYap?: boolean;
     isBoosted?: boolean;
     boostHours?: number;
@@ -83,7 +91,7 @@ export async function createPost(
   const payload = {
     author_id: authorId,
     content: postData.content,
-    media_url: postData.mediaUrl, // ✅ Kirim media_url ke backend
+    media_url: postData.mediaUrl,
     is_super_yap: postData.isSuperYap,
     is_boosted: postData.isBoosted,
     tx_hash: postData.txHash,
@@ -198,7 +206,6 @@ export function shortAddr(addr: string): string {
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
 }
 
-// ✅ FUNGSI UPLOAD GAMBAR KE PINATA (IPFS)
 export async function uploadToIPFS(file: File): Promise<string | null> {
   const PINATA_JWT = import.meta.env.VITE_PINATA_JWT;
   if (!PINATA_JWT) {
@@ -220,7 +227,6 @@ export async function uploadToIPFS(file: File): Promise<string | null> {
 
     const data = await res.json();
     if (data.IpfsHash) {
-      // Kembalikan URL gateway (bisa diganti dengan gateway Anda sendiri)
       return `https://gateway.pinata.cloud/ipfs/${data.IpfsHash}`;
     }
     return null;
