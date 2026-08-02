@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { BadgeCheck, X } from "lucide-react";
+import { BadgeCheck, X, BarChart2, Coins } from "lucide-react";
 import { Header } from "@/components/header";
 import { PostCard } from "@/components/post-card";
 import { StakingBadgeChip } from "@/components/staking-badge";
@@ -12,6 +12,8 @@ import { useAuth } from "@/lib/auth-store";
 import { shortAddr, type FeedPost, fetchFeed, API_BASE } from "@/lib/posts";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+// Import Recharts
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 export const Route = createFileRoute("/profile/$address")({
   head: ({ params }) => ({
@@ -43,7 +45,7 @@ function ProfilePage() {
     followers: 0, 
     following: 0, 
     yaps: 0, 
-    balance: 0 
+    totalTipsReceived: 0 // ✅ Ganti balance dengan totalTipsReceived
   });
   const [isFollowing, setIsFollowing] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -53,9 +55,13 @@ function ProfilePage() {
   const [editAvatarSeed, setEditAvatarSeed] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
+  // State untuk Chart
+  const [chartData, setChartData] = useState<any[]>([]);
+  const [chartLoading, setChartLoading] = useState(true);
+
   const isOwn = user?.address?.toLowerCase() === address?.toLowerCase();
 
-  // ✅ Load Profile, Counts, dan Follow Status
+  // ✅ Load Profile, Counts, Follow Status, dan Chart
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
@@ -122,6 +128,22 @@ function ProfilePage() {
         setYaps(userYaps);
         setCounts(prev => ({ ...prev, yaps: userYaps.length }));
 
+        // ✅ Ambil Total Tips Diterima
+        const tipsRes = await fetch(`${API_BASE}/tips?to_user_id=${profileData.id}&limit=100`);
+        if (tipsRes.ok) {
+          const tipsData = await tipsRes.json();
+          const totalTips = tipsData.reduce((sum: number, t: any) => sum + Number(t.amount), 0);
+          setCounts(prev => ({ ...prev, totalTipsReceived: totalTips }));
+        }
+
+        // ✅ Ambil Data Chart
+        const chartRes = await fetch(`${API_BASE}/stats/chart?days=7`);
+        if (chartRes.ok) {
+          const chart = await chartRes.json();
+          setChartData(chart);
+        }
+        setChartLoading(false);
+
       } catch (err) {
         console.error("Load error:", err);
       } finally {
@@ -131,7 +153,7 @@ function ProfilePage() {
     loadData();
   }, [address, user]);
 
-  // ✅ FOLLOW / UNFOLLOW (Twitter Style)
+  // ✅ FOLLOW / UNFOLLOW
   const toggleFollow = async () => {
     if (!user || !profile) return toast("Connect your wallet to follow");
     if (isOwn) return;
@@ -249,8 +271,66 @@ function ProfilePage() {
               <Stat label="Yaps" value={String(counts.yaps)} />
               <Stat label="Followers" value={String(counts.followers)} />
               <Stat label="Following" value={String(counts.following)} />
-              <Stat label="QIE Balance" value={counts.balance.toFixed(2)} accent />
+              <Stat label="QIE Received" value={counts.totalTipsReceived.toFixed(4)} accent />
             </div>
+          </div>
+
+          {/* === CHART SECTION (DITEMPATKAN DI ATAS YAPS) === */}
+          <div className="mt-6 rounded-2xl border border-border/40 bg-card/50 p-4 backdrop-blur-sm shadow-sm">
+            <div className="flex items-center gap-2 mb-3">
+              <BarChart2 className="size-5 text-brand" />
+              <h3 className="text-sm font-semibold">Activity (Last 7 Days)</h3>
+            </div>
+            {chartLoading ? (
+              <div className="flex h-32 items-center justify-center text-muted-foreground text-sm">
+                Loading chart...
+              </div>
+            ) : chartData.length === 0 ? (
+              <div className="flex h-32 items-center justify-center text-muted-foreground text-sm">
+                No activity data yet
+              </div>
+            ) : (
+              <div className="h-32 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={chartData}>
+                    <defs>
+                      <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#FF0A6C" stopOpacity={0.6}/>
+                        <stop offset="95%" stopColor="#0040FF" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                    <XAxis 
+                      dataKey="date" 
+                      tick={{ fill: '#6b7280', fontSize: 9 }} 
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis 
+                      tick={{ fill: '#6b7280', fontSize: 9 }} 
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: 'rgba(0,0,0,0.8)', 
+                        border: '1px solid rgba(255,10,108,0.3)',
+                        borderRadius: '8px',
+                        color: '#fff',
+                        fontSize: '12px'
+                      }}
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey="tx" 
+                      stroke="#FF0A6C" 
+                      strokeWidth={2}
+                      fill="url(#chartGradient)" 
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            )}
           </div>
 
           <h2 className="mt-6 px-1 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">Yaps</h2>
