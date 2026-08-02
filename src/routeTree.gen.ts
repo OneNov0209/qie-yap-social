@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SearchRouteImport } from './routes/search'
 import { Route as LeaderboardRouteImport } from './routes/leaderboard'
+import { Route as FeedRouteImport } from './routes/feed'
 import { Route as ExplorerRouteImport } from './routes/explorer'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as BookmarksRouteImport } from './routes/bookmarks'
@@ -27,6 +28,11 @@ const SearchRoute = SearchRouteImport.update({
 const LeaderboardRoute = LeaderboardRouteImport.update({
   id: '/leaderboard',
   path: '/leaderboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FeedRoute = FeedRouteImport.update({
+  id: '/feed',
+  path: '/feed',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ExplorerRoute = ExplorerRouteImport.update({
@@ -71,6 +77,7 @@ export interface FileRoutesByFullPath {
   '/bookmarks': typeof BookmarksRoute
   '/dashboard': typeof DashboardRoute
   '/explorer': typeof ExplorerRoute
+  '/feed': typeof FeedRoute
   '/leaderboard': typeof LeaderboardRoute
   '/search': typeof SearchRoute
   '/profile/$address': typeof ProfileAddressRoute
@@ -82,6 +89,7 @@ export interface FileRoutesByTo {
   '/bookmarks': typeof BookmarksRoute
   '/dashboard': typeof DashboardRoute
   '/explorer': typeof ExplorerRoute
+  '/feed': typeof FeedRoute
   '/leaderboard': typeof LeaderboardRoute
   '/search': typeof SearchRoute
   '/profile/$address': typeof ProfileAddressRoute
@@ -94,6 +102,7 @@ export interface FileRoutesById {
   '/bookmarks': typeof BookmarksRoute
   '/dashboard': typeof DashboardRoute
   '/explorer': typeof ExplorerRoute
+  '/feed': typeof FeedRoute
   '/leaderboard': typeof LeaderboardRoute
   '/search': typeof SearchRoute
   '/profile/$address': typeof ProfileAddressRoute
@@ -107,6 +116,7 @@ export interface FileRouteTypes {
     | '/bookmarks'
     | '/dashboard'
     | '/explorer'
+    | '/feed'
     | '/leaderboard'
     | '/search'
     | '/profile/$address'
@@ -118,6 +128,7 @@ export interface FileRouteTypes {
     | '/bookmarks'
     | '/dashboard'
     | '/explorer'
+    | '/feed'
     | '/leaderboard'
     | '/search'
     | '/profile/$address'
@@ -129,6 +140,7 @@ export interface FileRouteTypes {
     | '/bookmarks'
     | '/dashboard'
     | '/explorer'
+    | '/feed'
     | '/leaderboard'
     | '/search'
     | '/profile/$address'
@@ -141,6 +153,7 @@ export interface RootRouteChildren {
   BookmarksRoute: typeof BookmarksRoute
   DashboardRoute: typeof DashboardRoute
   ExplorerRoute: typeof ExplorerRoute
+  FeedRoute: typeof FeedRoute
   LeaderboardRoute: typeof LeaderboardRoute
   SearchRoute: typeof SearchRoute
   ProfileAddressRoute: typeof ProfileAddressRoute
@@ -161,6 +174,13 @@ declare module '@tanstack/react-router' {
       path: '/leaderboard'
       fullPath: '/leaderboard'
       preLoaderRoute: typeof LeaderboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/feed': {
+      id: '/feed'
+      path: '/feed'
+      fullPath: '/feed'
+      preLoaderRoute: typeof FeedRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/explorer': {
@@ -221,6 +241,7 @@ const rootRouteChildren: RootRouteChildren = {
   BookmarksRoute: BookmarksRoute,
   DashboardRoute: DashboardRoute,
   ExplorerRoute: ExplorerRoute,
+  FeedRoute: FeedRoute,
   LeaderboardRoute: LeaderboardRoute,
   SearchRoute: SearchRoute,
   ProfileAddressRoute: ProfileAddressRoute,
@@ -229,3 +250,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
