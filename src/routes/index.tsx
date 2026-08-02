@@ -3,10 +3,11 @@ import { useEffect, useRef, useState } from "react";
 import { 
   Sparkles, MessageCircle, Heart, Coins, Zap, 
   TrendingUp, Shield, Globe, Wallet, ArrowRight, 
-  Users, Award, Star, Rocket 
+  Users, Award, Star, Rocket, Loader2
 } from "lucide-react";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
+import { API_BASE } from "@/lib/posts";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({
@@ -52,8 +53,39 @@ function ScrollReveal({ children, delay = 0 }: { children: React.ReactNode; dela
 }
 
 function LandingPage() {
+  // State untuk menyimpan data statistik
+  const [stats, setStats] = useState({
+    totalYaps: 0,
+    totalQie: "0",
+    activeUsers: 0,
+    totalTx: 0
+  });
+  const [loading, setLoading] = useState(true);
+
+  // Ambil data statistik dari backend
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/stats`);
+        if (res.ok) {
+          const data = await res.json();
+          setStats({
+            totalYaps: data.totalYaps || 0,
+            totalQie: data.totalQie || "0",
+            activeUsers: data.activeUsers || 0,
+            totalTx: data.totalTx || 0
+          });
+        }
+      } catch (err) {
+        console.error("Failed to fetch stats:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchStats();
+  }, []);
+
   return (
-    // Tambahkan class landing-page agar Sidebar & Mobile Nav tidak terlihat
     <div className="min-h-screen bg-background overflow-x-hidden">
       <Header />
 
@@ -99,21 +131,23 @@ function LandingPage() {
         </div>
       </section>
 
-      {/* === STATISTICS === */}
+      {/* === STATISTICS (DATA DARI BACKEND) === */}
       <section className="mx-auto max-w-6xl px-4 pb-20">
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
           {[
-            { label: "Yaps Posted", value: "1.2k+", icon: MessageCircle },
-            { label: "QIE Tipped", value: "342 QIE", icon: Coins },
-            { label: "Active Users", value: "250+", icon: Users },
-            { label: "On-Chain Tx", value: "890+", icon: Zap },
+            { label: "Yaps Posted", value: loading ? "..." : stats.totalYaps.toLocaleString(), icon: MessageCircle },
+            { label: "QIE Tipped", value: loading ? "..." : `${stats.totalQie} QIE`, icon: Coins },
+            { label: "Active Users", value: loading ? "..." : stats.activeUsers.toLocaleString(), icon: Users },
+            { label: "On-Chain Tx", value: loading ? "..." : stats.totalTx.toLocaleString(), icon: Zap },
           ].map((stat, i) => (
             <ScrollReveal key={i} delay={i * 100}>
               <div className="rounded-2xl border border-border/40 bg-card/50 p-6 text-center backdrop-blur-sm">
                 <div className="mx-auto mb-2 flex size-12 items-center justify-center rounded-full bg-brand-soft">
                   <stat.icon className="size-5 text-brand" />
                 </div>
-                <div className="text-2xl font-bold">{stat.value}</div>
+                <div className="text-2xl font-bold">
+                  {loading ? <Loader2 className="mx-auto size-5 animate-spin text-muted-foreground" /> : stat.value}
+                </div>
                 <div className="text-xs text-muted-foreground">{stat.label}</div>
               </div>
             </ScrollReveal>
