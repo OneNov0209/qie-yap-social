@@ -172,3 +172,20 @@ body {
     repeating-linear-gradient(transparent, transparent 19px, rgba(255, 215, 0, 0.6) 19px, rgba(255, 215, 0, 0.6) 20px),
     repeating-linear-gradient(90deg, transparent, transparent 19px, rgba(255, 215, 0, 0.6) 19px, rgba(255, 215, 0, 0.6) 20px);
 }
+
+/* ============================================ */
+/* 🚀 HIDE SIDEBAR & MOBILE NAV ON LANDING PAGE */
+/* ============================================ */
+.landing-page ~ aside {
+  display: none !important;
+}
+.landing-page ~ .lg\:ml-64 {
+  margin-left: 0 !important;
+}
+.landing-page ~ .flex-1 .lg\:ml-64 {
+  margin-left: 0 !important;
+}
+/* Untuk Mobile Nav */
+.landing-page ~ nav.fixed.bottom-0 {
+  display: none !important;
+}
