@@ -212,7 +212,7 @@ app.get('/api/profiles', async (req, res) => {
 });
 
 // ============================================
-// 3. POSTS (ENDPOINT FEED YANG BENAR - HANYA SATU)
+// 3. POSTS
 // ============================================
 app.post('/api/posts', async (req, res) => {
   const { 
@@ -299,7 +299,6 @@ app.get('/api/posts/:id', async (req, res) => {
   }
 });
 
-// ✅ ENDPOINT FEED YANG BENAR (HANYA SATU)
 app.get('/api/feed', async (req, res) => {
   const { limit = 10, user_id, tab = 'latest' } = req.query;
 
@@ -580,6 +579,7 @@ app.get('/api/tips/user/:userId', async (req, res) => {
        LIMIT $2`,
       [userId, limit]
     );
+    console.log(`📦 [TIPS-USER] Found ${result.rows.length} tips for user ${userId}`);
     res.json(result.rows);
   } catch (err) {
     console.error("❌ [TIPS-USER] Error:", err);
@@ -895,7 +895,7 @@ app.get('/api/leaderboard', async (req, res) => {
 });
 
 // ============================================
-// 13. LANDING PAGE STATISTICS (FIXED)
+// 13. LANDING PAGE STATISTICS
 // ============================================
 app.get('/api/stats', async (req, res) => {
   try {
