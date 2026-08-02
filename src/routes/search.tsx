@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useDebounce } from "@/hooks/use-mobile";
 import { Header } from "@/components/header";
@@ -35,6 +35,7 @@ type SearchTab = "all" | "users" | "yaps";
 
 function SearchPage() {
   const { user } = useAuth();
+  const router = useRouter();
   const [query, setQuery] = useState("");
   const [tab, setTab] = useState<SearchTab>("all");
   const [results, setResults] = useState<{
@@ -44,10 +45,8 @@ function SearchPage() {
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   
-  // Debounce 300ms untuk realtime search
   const debouncedQuery = useDebounce(query, 300);
 
-  // ✅ Search function (menggunakan VPS API + local filter)
   const performSearch = useCallback(async (searchTerm: string) => {
     if (!searchTerm.trim()) {
       setResults({ users: [], posts: [] });
@@ -59,7 +58,6 @@ function SearchPage() {
     setHasSearched(true);
 
     try {
-      // 1. Search Users dari VPS (endpoint khusus search)
       let users: SearchUser[] = [];
       try {
         const usersRes = await fetch(
@@ -68,7 +66,6 @@ function SearchPage() {
         if (usersRes.ok) {
           users = await usersRes.json();
         } else {
-          // Fallback: fetch semua profil lalu filter lokal
           console.warn("Search users endpoint not available, falling back to local filter");
           const allProfilesRes = await fetch(`${API_BASE}/profiles?limit=100`);
           if (allProfilesRes.ok) {
@@ -85,7 +82,6 @@ function SearchPage() {
         console.error("User search error:", err);
       }
 
-      // 2. Search Posts (filter dari feed lokal)
       const allPosts = await fetchFeed("latest", user?.id || null);
       const term = searchTerm.toLowerCase();
       const filteredPosts = allPosts.filter((p) => 
@@ -106,12 +102,10 @@ function SearchPage() {
     }
   }, [user]);
 
-  // ✅ Trigger search saat debouncedQuery berubah
   useEffect(() => {
     performSearch(debouncedQuery);
   }, [debouncedQuery, performSearch]);
 
-  // ✅ Filter hasil berdasarkan tab
   const filteredResults = useMemo(() => {
     if (tab === "users") {
       return { users: results.users, posts: [] };
@@ -122,7 +116,6 @@ function SearchPage() {
     return results;
   }, [results, tab]);
 
-  // ✅ Highlight keyword di konten
   const highlightText = (text: string, keyword: string) => {
     if (!keyword.trim()) return text;
     const parts = text.split(new RegExp(`(${keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'));
@@ -174,7 +167,6 @@ function SearchPage() {
             </Button>
           </div>
 
-          {/* Tab Filter */}
           {(hasSearched || results.users.length > 0 || results.posts.length > 0) && (
             <Tabs 
               value={tab} 
@@ -199,7 +191,6 @@ function SearchPage() {
           )}
         </div>
 
-        {/* Loading State */}
         {loading && (
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (
@@ -220,7 +211,6 @@ function SearchPage() {
           </div>
         )}
 
-        {/* Empty State */}
         {!loading && hasSearched && 
           filteredResults.users.length === 0 && 
           filteredResults.posts.length === 0 && (
@@ -233,7 +223,6 @@ function SearchPage() {
           </div>
         )}
 
-        {/* Hasil User */}
         {!loading && filteredResults.users.length > 0 && (
           <div className="mb-6">
             <h2 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
@@ -268,7 +257,6 @@ function SearchPage() {
           </div>
         )}
 
-        {/* Hasil Postingan */}
         {!loading && filteredResults.posts.length > 0 && (
           <div>
             <h2 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
