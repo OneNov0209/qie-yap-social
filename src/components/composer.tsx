@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { createPost, API_BASE, uploadToIPFS } from "@/lib/posts";
 import { submitYapOnChain, YAP_CONTRACT, hashContent } from "@/lib/yap-onchain";
 
-const MAX = 280;
+const MAX = 2500;
 
 interface ComposerProps {
   onPosted?: () => void;
