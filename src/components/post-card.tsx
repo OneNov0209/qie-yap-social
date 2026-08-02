@@ -103,7 +103,7 @@ export function PostCard({ post }: { post: FeedPost }) {
     }
   };
 
-  // ✅ PERBAIKAN HANDLE TIP (Mengirim UUID valid ke backend)
+  // ✅ HANDLE TIP (VERSI RINGAN - HANYA ON-CHAIN)
   const handleTip = async () => {
     if (!user) return toast.error("Connect your wallet to tip");
     if (!contractAddress) return toast.error("Contract not deployed yet");
@@ -120,49 +120,28 @@ export function PostCard({ post }: { post: FeedPost }) {
       toast.error("Invalid amount");
       return;
     }
-    
-    // Validasi UUID
-    if (!post.id || !user.id) {
-      toast.error("Invalid post or user ID");
-      return;
-    }
 
     setIsProcessing(true);
     try {
       toast.loading("Waiting for wallet confirmation...");
-      
-      // 1. Lakukan transaksi on-chain
       const hash = await sendTip(
         contractAddress,
         String(post.author.address) as `0x${string}`,
         amount,
         `Tip for post ${post.id}`
       );
-      
-      // 2. Kirim request ke backend dengan UUID yang valid
-      const backendRes = await fetch(`${API_BASE}/tips`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          post_id: post.id,
-          from_user_id: user.id,
-          to_user_id: post.author.id || user.id, // Jika author.id tidak ada, fallback ke user.id
-          amount: parseFloat(amount),
-          tx_hash: hash
-        })
-      });
-
-      if (!backendRes.ok) {
-        const errText = await backendRes.text();
-        throw new Error(`Backend save failed: ${backendRes.status} - ${errText}`);
-      }
-
       toast.dismiss();
       toast.success(`Tip sent! Tx: ${hash.slice(0, 10)}...`);
     } catch (error: any) {
       toast.dismiss();
       console.error("❌ Tip error:", error);
-      toast.error(error.message || "Tip failed");
+      if (error.message?.includes("insufficient funds")) {
+        toast.error("Insufficient QIE balance");
+      } else if (error.message?.includes("user rejected")) {
+        toast.error("Transaction rejected by user");
+      } else {
+        toast.error(error.message || "Tip failed");
+      }
     } finally {
       setIsProcessing(false);
     }
