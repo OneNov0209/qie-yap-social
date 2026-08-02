@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { Header } from "@/components/header";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
@@ -16,6 +16,7 @@ export const Route = createFileRoute("/add-qie-network")({
 });
 
 function AddQieNetworkPage() {
+  const router = useRouter();
   const [isAdding, setIsAdding] = useState(false);
 
   const addQieNetwork = async () => {
@@ -29,7 +30,7 @@ function AddQieNetworkPage() {
       await window.ethereum.request({
         method: "wallet_addEthereumChain",
         params: [{
-          chainId: "0x7C6", // 1990 dalam hex
+          chainId: "0x7C6", 
           chainName: "QIE Mainnet",
           rpcUrls: ["https://rpc-evm.qie.onenov.xyz"],
           nativeCurrency: {
@@ -57,9 +58,9 @@ function AddQieNetworkPage() {
       <Header />
       <div className="mx-auto max-w-2xl px-4 py-6">
         <div className="flex items-center gap-3 mb-6">
-          <Link to="/" className="text-muted-foreground hover:text-foreground">
+          <button onClick={() => router.history.back()} className="text-muted-foreground hover:text-foreground">
             <ArrowLeft className="size-5" />
-          </Link>
+          </button>
           <h1 className="font-display text-2xl font-bold">Add QIE Network</h1>
         </div>
 
