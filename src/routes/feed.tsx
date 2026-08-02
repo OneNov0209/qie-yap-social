@@ -6,7 +6,6 @@ import { Composer } from "@/components/composer";
 import { PostCard } from "@/components/post-card";
 import { useAuth } from "@/lib/auth-store";
 import { fetchFeed, type FeedPost } from "@/lib/posts";
-import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/feed")({
@@ -40,7 +39,7 @@ function FeedPage() {
     setLoading(true);
     try {
       const userId = user?.id || null;
-      console.log("🔍 Loading feed for user:", userId);
+      console.log(`🔍 Loading feed for tab: ${tab}, user: ${userId}`);
       const data = await fetchFeed(tab, userId);
       console.log(`📊 ${tab} posts loaded:`, data.length);
       setPosts(data);
@@ -53,22 +52,6 @@ function FeedPage() {
 
   useEffect(() => {
     load();
-  }, [load]);
-
-  // Real-time update (tidak perlu Supabase, tapi tetap aman jika ada)
-  useEffect(() => {
-    const ch = supabase
-      .channel("feed")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "posts" }, () => {
-        console.log("🔄 Real-time update: new post detected");
-        load();
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "likes" }, () => {
-        console.log("🔄 Real-time update: likes changed");
-        load();
-      })
-      .subscribe();
-    return () => { supabase.removeChannel(ch); };
   }, [load]);
 
   return (
