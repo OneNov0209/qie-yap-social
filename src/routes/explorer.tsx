@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Header } from "@/components/header";
 import { shortAddr, API_BASE, fetchFeed } from "@/lib/posts";
@@ -31,6 +31,7 @@ interface ExplorerTx {
 
 function ExplorerPage() {
   const { user } = useAuth();
+  const router = useRouter();
   const [txs, setTxs] = useState<ExplorerTx[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "tip" | "super_yap" | "boost" | "yap">("all");
@@ -49,10 +50,8 @@ function ExplorerPage() {
   const loadExplorer = async () => {
     setLoading(true);
     try {
-      // 1. Ambil semua postingan dari feed
       const posts = await fetchFeed("latest", user?.id || null);
       
-      // 2. Ambil semua tips dari backend (endpoint khusus tips)
       let tips: any[] = [];
       try {
         const tipsRes = await fetch(`${API_BASE}/tips?limit=100`);
@@ -63,7 +62,6 @@ function ExplorerPage() {
         console.warn("Tips endpoint not available, skipping...");
       }
 
-      // 3. Kategorikan transaksi
       const tipTxs: ExplorerTx[] = tips.map((t: any) => ({
         id: t.id,
         type: "tip",
@@ -110,11 +108,9 @@ function ExplorerPage() {
           author_display_name: p.author.displayName,
         }));
 
-      // 4. Gabungkan semua
       const allTxs = [...tipTxs, ...yapTxs, ...superYapTxs, ...boostTxs];
       allTxs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-      // 5. Hitung statistik
       const totalTips = tipTxs.reduce((sum, t) => sum + (t.amount || 0), 0);
       const totalSuperYaps = superYapTxs.length;
       const totalBoosts = boostTxs.length;
@@ -137,7 +133,6 @@ function ExplorerPage() {
 
   const filteredTxs = filter === "all" ? txs : txs.filter((tx) => tx.type === filter);
 
-  // Ikon dan warna untuk setiap tipe transaksi
   const getTxMeta = (type: string) => {
     switch (type) {
       case "tip":
@@ -153,7 +148,6 @@ function ExplorerPage() {
     }
   };
 
-  // Format waktu relatif
   const formatTime = (dateString: string) => {
     const date = new Date(dateString + 'Z');
     const now = new Date();
@@ -171,16 +165,15 @@ function ExplorerPage() {
       <Header />
       <div className="mx-auto max-w-2xl px-4 py-6">
         <div className="flex items-center gap-3 mb-6">
-          <Link to="/" className="text-muted-foreground hover:text-foreground transition-colors">
+          <button onClick={() => router.history.back()} className="text-muted-foreground hover:text-foreground transition-colors">
             <ArrowLeft className="size-5" />
-          </Link>
+          </button>
           <div>
             <h1 className="font-display text-2xl font-bold">On-Chain Explorer</h1>
             <p className="text-xs text-muted-foreground">QIE Mainnet · Real-time on-chain activity</p>
           </div>
         </div>
 
-        {/* Statistik Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
           <StatCard 
             icon={<Coins className="size-4 text-emerald-500" />}
@@ -208,7 +201,6 @@ function ExplorerPage() {
           />
         </div>
 
-        {/* Filter Buttons */}
         <div className="flex flex-wrap gap-2 mb-6">
           {[
             { value: "all", label: "All Activity" },
@@ -232,7 +224,6 @@ function ExplorerPage() {
           ))}
         </div>
 
-        {/* Loading State */}
         {loading ? (
           <div className="space-y-3">
             {[1, 2, 3, 4, 5].map((i) => (
