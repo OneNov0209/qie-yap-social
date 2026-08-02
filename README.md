@@ -1,13 +1,15 @@
-# QIE Yap — Social dApp on QIE Mainnet
+# QIE Yap — The First On-Chain Social Network on QIE Mainnet
 
-QIE Yap is a decentralized social platform built on the **QIE blockchain**. Users can post "Yaps", send on-chain **Tips**, create **Super Yaps**, and **Boost** posts — all powered by smart contracts and a Supabase backend.
+QIE Yap is a **hybrid on-chain social platform** built on the **QIE blockchain**.  
+It combines the familiarity of Web2 social media with the transparency and monetization of Web3.  
+Users can post "Yaps", upload images, share link previews, send on-chain **Tips**, create **Super Yaps**, and **Boost** posts — all powered by smart contracts and a self-hosted PostgreSQL backend.
 
 ---
 
 ## 🚀 Live Demo
 
 - **Website:** [https://qie.yap.onenov.xyz/](https://qie.yap.onenov.xyz/)
-- **Blockchain Explorer:** [https://qie.explorer.onenov.xyz](https://qie.explorer.onenov.xyz)
+- **Blockchain Explorer (QIE Mainnet):** [https://qie.explorer.onenov.xyz](https://qie.explorer.onenov.xyz)
 
 ---
 
@@ -16,11 +18,12 @@ QIE Yap is a decentralized social platform built on the **QIE blockchain**. User
 | Layer | Technology |
 |-------|------------|
 | **Blockchain** | QIE Mainnet (Chain ID: 1990) |
-| **Smart Contract** | Solidity ^0.8.24 (Deployed via Remix) |
-| **Frontend** | React + Vite (Lovable-generated) |
-| **Backend / DB** | Supabase (PostgreSQL) |
-| **Hosting** | Vercel |
-| **Wallet Integration** | MetaMask / QIE Wallet (viem) |
+| **Smart Contract** | Solidity ^0.8.24 |
+| **Frontend** | React + Vite + TanStack Router |
+| **Backend** | Node.js + Express + PostgreSQL (Self-hosted on VPS) |
+| **Storage / IPFS** | Pinata (For image/media uploads) |
+| **Hosting** | Vercel (Frontend) & Contabo VPS (Backend) |
+| **Wallet Integration** | QIE Wallet (Official) / MetaMask (via `viem`) |
 
 ---
 
@@ -32,136 +35,210 @@ QIE Yap is a decentralized social platform built on the **QIE blockchain**. User
 - **Contract Address:** `0x2A433A09e0Ce2766affb89E774BbdC3c29044D0a`
 - **Treasury / Dev Wallet:** `0x109b18b9cb9ec1C9CED114A13FfA86F8c13CFa7a`
 
-### Contract Features
+### 🧾 Contract Source Code (`QieYap.sol`)
 
-| Feature | Details |
-|---------|---------|
-| **Tip** | 2% platform fee → `devWallet`, 98% → recipient |
-| **Super Yap** | 50% burned, 50% → `treasury` |
-| **Boost** | 100% → `treasury` |
-| **Yap** | Emits on-chain event hash (no content stored) |
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.24;
 
----
-
-## 🗄️ Supabase Database
-
-- **Project URL:** `https://lwthbqulodmpkwygacbz.supabase.co`
-- **Project ID:** `lwthbqulodmpkwygacbz`
-- **Publishable Key (anon):**
+contract QieYap {
+    address public owner;
+    address public treasury;
+    address public devWallet;
+    
+    uint256 public constant SUPER_YAP_PRICE = 0.01 ether;
+    uint256 public constant BOOST_PRICE_PER_HOUR = 0.005 ether;
+    uint256 public constant PLATFORM_FEE_PERCENT = 2;
+    
+    uint256 public totalTipsSent;
+    uint256 public totalSuperYaps;
+    uint256 public totalBoosts;
+    
+    mapping(address => uint256) public tipsSent;
+    mapping(address => uint256) public tipsReceived;
+    mapping(address => uint256) public superYapsCreated;
+    mapping(address => uint256) public boostsCreated;
+    
+    event TipSent(address indexed from, address indexed to, uint256 amount, string message);
+    event SuperYapCreated(address indexed user, uint256 timestamp);
+    event PostBoosted(address indexed user, uint256 indexed postId, uint256 durationHours, uint256 amount);
+    event Yapped(address indexed author, bytes32 indexed contentHash, uint256 timestamp, string cid);
+    
+    constructor(address _treasury, address _devWallet) {
+        owner = msg.sender;
+        treasury = _treasury;
+        devWallet = _devWallet;
+    }
+    
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Not owner");
+        _;
+    }
+    
+    function yap(bytes32 contentHash, string calldata cid) external {
+        emit Yapped(msg.sender, contentHash, block.timestamp, cid);
+    }
+    
+    function tip(address recipient, string calldata message) external payable {
+        require(msg.value > 0, "Tip must be > 0");
+        require(recipient != address(0), "Invalid recipient");
+        require(recipient != msg.sender, "Cannot tip yourself");
+        
+        uint256 devFee = (msg.value * PLATFORM_FEE_PERCENT) / 100;
+        uint256 recipientAmount = msg.value - devFee;
+        
+        (bool feeSent, ) = payable(devWallet).call{value: devFee}("");
+        require(feeSent, "Fee transfer failed");
+        
+        (bool sent, ) = payable(recipient).call{value: recipientAmount}("");
+        require(sent, "Transfer failed");
+        
+        tipsSent[msg.sender] += recipientAmount;
+        tipsReceived[recipient] += recipientAmount;
+        totalTipsSent += recipientAmount;
+        
+        emit TipSent(msg.sender, recipient, recipientAmount, message);
+    }
+    
+    function createSuperYap() external payable {
+        require(msg.value >= SUPER_YAP_PRICE, "Insufficient fee");
+        
+        uint256 burnAmount = msg.value / 2;
+        (bool burnSuccess, ) = payable(0x000000000000000000000000000000000000dEaD).call{value: burnAmount}("");
+        require(burnSuccess, "Burn failed");
+        
+        uint256 treasuryAmount = msg.value - burnAmount;
+        (bool treasurySuccess, ) = payable(treasury).call{value: treasuryAmount}("");
+        require(treasurySuccess, "Treasury transfer failed");
+        
+        superYapsCreated[msg.sender]++;
+        totalSuperYaps++;
+        
+        emit SuperYapCreated(msg.sender, block.timestamp);
+    }
+    
+    function boost(uint256 postId, uint256 durationHours) external payable {
+        require(durationHours > 0 && durationHours <= 72, "Duration must be 1-72 hours");
+        uint256 cost = BOOST_PRICE_PER_HOUR * durationHours;
+        require(msg.value >= cost, "Insufficient fee");
+        
+        (bool sent, ) = payable(treasury).call{value: msg.value}("");
+        require(sent, "Transfer failed");
+        
+        boostsCreated[msg.sender]++;
+        totalBoosts++;
+        
+        emit PostBoosted(msg.sender, postId, durationHours, msg.value);
+    }
+    
+    function updateTreasury(address _treasury) external onlyOwner {
+        treasury = _treasury;
+    }
+    
+    function updateDevWallet(address _devWallet) external onlyOwner {
+        devWallet = _devWallet;
+    }
+    
+    function withdrawTips() external {
+        uint256 amount = tipsReceived[msg.sender];
+        require(amount > 0, "No tips to withdraw");
+        tipsReceived[msg.sender] = 0;
+        (bool sent, ) = payable(msg.sender).call{value: amount}("");
+        require(sent, "Withdraw failed");
+    }
+    
+    function getUserStats(address user) external view returns (
+        uint256 _tipsSent,
+        uint256 _tipsReceived,
+        uint256 _superYaps,
+        uint256 _boosts
+    ) {
+        return (
+            tipsSent[user],
+            tipsReceived[user],
+            superYapsCreated[user],
+            boostsCreated[user]
+        );
+    }
+    
+    function getGlobalStats() external view returns (
+        uint256 _totalTips,
+        uint256 _totalSuperYaps,
+        uint256 _totalBoosts
+    ) {
+        return (totalTipsSent, totalSuperYaps, totalBoosts);
+    }
+}
 ```
 
-sb_publishable_ypmwDTbkmDtz29_tQhq2pA_YDV7uYI0
+Contract Highlights
 
-```
-
-### Key Tables
-
-| Table | Purpose |
-|-------|---------|
-| `profiles` | User profiles (linked to `auth.users`) |
-| `posts` | Yap posts (content, tx_hash, boost info) |
-| `notifications` | Like, follow, tip, reply notifications |
-| `likes` | User likes on posts |
-| `follows` | User follows |
+Feature Details
+Tip 2% platform fee → devWallet, 98% → recipient wallet instantly
+Super Yap 50% burned, 50% → treasury (Creates premium gold border posts)
+Boost 100% → treasury (Promotes posts with a "Promoted" badge)
+Yap Emits on-chain event hash (content stored off-chain in PostgreSQL)
 
 ---
 
-## ⚙️ Environment Variables (Vercel)
+🗄️ Backend Database (PostgreSQL on VPS)
 
-| Key | Value |
-|-----|-------|
-| `VITE_SUPABASE_URL` | `https://lwthbqulodmpkwygacbz.supabase.co` |
-| `VITE_SUPABASE_PUBLISHABLE_KEY` | `sb_publishable_ypmwDTbkmDtz29_tQhq2pA_YDV7uYI0` |
-| `VITE_SUPABASE_PROJECT_ID` | `lwthbqulodmpkwygacbz` |
-| `SUPABASE_URL` | `https://lwthbqulodmpkwygacbz.supabase.co` |
-| `SUPABASE_SERVICE_ROLE_KEY` | *(Keep secret! Store in Vercel only)* |
-| `VITE_QIE_YAP_CONTRACT` | `0x2A433A09e0Ce2766affb89E774BbdC3c29044D0a` |
+All data is stored in a self-hosted PostgreSQL database managed via a custom Node.js + Express API.
 
----
+Key Tables
 
-## 🛠️ Database Setup (SQL Migrations)
-
-Run these commands in Supabase SQL Editor to set up the required tables and permissions:
-
-```sql
--- Profiles table
-CREATE TABLE IF NOT EXISTS public.profiles (
-  id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  address text NOT NULL UNIQUE,
-  username text NOT NULL UNIQUE,
-  display_name text NOT NULL,
-  bio text DEFAULT '',
-  avatar_seed text NOT NULL,
-  is_validator boolean NOT NULL DEFAULT false,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-
--- Posts table
-CREATE TABLE IF NOT EXISTS public.posts (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  author_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  content text NOT NULL,
-  is_super_yap boolean DEFAULT false,
-  is_boosted boolean DEFAULT false,
-  boost_expires_at timestamptz,
-  tx_hash text,
-  content_hash text,
-  on_chain boolean DEFAULT false,
-  reply_to uuid REFERENCES public.posts(id) ON DELETE CASCADE,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-
--- Notifications table
-CREATE TABLE IF NOT EXISTS public.notifications (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  type text NOT NULL CHECK (type IN ('follow','like','reply','tip')),
-  from_user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE,
-  post_id uuid REFERENCES public.posts(id) ON DELETE CASCADE,
-  amount numeric,
-  read boolean NOT NULL DEFAULT false,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-
--- Likes table
-CREATE TABLE IF NOT EXISTS public.likes (
-  post_id uuid NOT NULL REFERENCES public.posts(id) ON DELETE CASCADE,
-  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  PRIMARY KEY (post_id, user_id)
-);
-
--- Grant permissions
-GRANT SELECT, INSERT, UPDATE ON public.profiles TO authenticated;
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.posts TO authenticated;
-GRANT SELECT, UPDATE ON public.notifications TO authenticated;
-GRANT INSERT, DELETE ON public.likes TO authenticated;
-GRANT SELECT ON public.likes TO authenticated;
-```
+Table Purpose
+profiles User profiles linked to wallet addresses
+posts Yap posts (content, media_url, link_preview, is_boosted, is_super_yap)
+likes User likes on posts
+reposts User reposts
+bookmarks User bookmarks
+follows Follower relationships
+tips On-chain tip transaction records
+comments Replies to posts
+notifications Aggregated real-time notifications (Follow, Like, Reply, Tip)
 
 ---
 
-✅ Features
+✨ Core Features
 
-· ✅ Connect wallet (MetaMask / QIE Wallet)
-
-· ✅ Display QIE balance
-
-· ✅ Post Yaps with Super Yap and Boost options
-
-· ✅ On-chain + off-chain post storage
-
-· ✅ Like posts
-
-· ✅ Send QIE tips to post authors
-
-· ✅ Boost posts (for post owners)
-
-· ✅ Real-time feed updates via Supabase Realtime
+Feature Description
+✅ Post Yaps (Text) Unlimited characters (max 2500) with Markdown-like support.
+✅ Image Upload Upload images directly via Pinata IPFS.
+✅ Link Preview Auto-fetches OG metadata (title, image, description) when pasting a URL.
+✅ On-Chain Tips Send QIE directly to creators. 2% platform fee, 98% to recipient.
+✅ Super Yaps Premium post with gold border. Burns 50% of the fee.
+✅ Boost Promoted post badge. Shows "⚡ Promoted" indicator in feed.
+✅ Social Interactions Follow, Unfollow, Like, Repost, Bookmark.
+✅ Real-Time Feed "Latest" feed with real-time updates via Supabase (deprecated) / Polling.
+✅ Leaderboard Top creators ranked by total tips received.
+✅ Dashboard View tips received, wallet balance, and withdraw earnings.
+✅ Explorer On-chain activity explorer (Tips, Yaps, Super Yaps, Boosts).
+✅ Notifications Real-time notifications for Follows, Likes, Replies, and Tips.
+✅ Delete Post Users can delete their own posts (Cascading deletion).
 
 ---
 
-🧪 Local Development
+🎨 Design Philosophy
+
+· Futuristic UI with glassmorphism, subtle gold dot patterns, and neon gradients (#FF0A6C → #0040FF).
+· Responsive Design with a dedicated sidebar for desktop and a bottom navigation bar for mobile.
+· Premium Typography using Inter, Space Grotesk, and JetBrains Mono.
+
+---
+
+⚙️ Environment Variables (Vercel)
+
+Key Value
+VITE_API_BASE https://api.yap.onenov.xyz/api
+VITE_QIE_YAP_CONTRACT 0x2A433A09e0Ce2766affb89E774BbdC3c29044D0a
+VITE_DEV_WALLET 0x109b18b9cb9ec1C9CED114A13FfA86F8c13CFa7a
+VITE_PINATA_JWT (Your Pinata JWT for IPFS uploads)
+VITE_APP_URL https://qie.yap.onenov.xyz
+
+---
+
+🛠️ Local Development
 
 Clone the repository and install dependencies:
 
@@ -181,7 +258,8 @@ bun run dev
 
 🚀 Deployment
 
-The project is deployed on Vercel via GitHub integration.
+The frontend is deployed on Vercel via GitHub integration.
+The backend is hosted on a Contabo VPS running Ubuntu 22.04 with Node.js v22.
 
 To redeploy manually:
 
@@ -193,9 +271,10 @@ To redeploy manually:
 
 🔐 Security Notes
 
-· Never commit .env or SUPABASE_SERVICE_ROLE_KEY to GitHub.
+· Never commit .env or VITE_PINATA_JWT to GitHub.
 · All sensitive keys are stored only in Vercel Environment Variables.
-· Supabase Row Level Security (RLS) is enabled for all tables.
+· The backend uses parameterized SQL queries to prevent injection attacks.
+· Only post owners can delete their own posts (server-side validation).
 
 ---
 
@@ -205,11 +284,13 @@ MIT License — feel free to use and modify this project for your own purposes.
 
 ---
 
-🎯 Acknowledgments
+🏆 Acknowledgments
 
 Built for the QIE Hackathon 3rd Edition (2026).
-Special thanks to the QIE ecosystem and Lovable for the frontend scaffolding.
+Special thanks to the QIE ecosystem, the OneNov for frontend scaffolding, and the Contabo VPS for backend hosting.
 
 ---
 
 Happy Yapping! 🚀✨
+
+```
