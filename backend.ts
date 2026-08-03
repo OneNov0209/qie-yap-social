@@ -212,7 +212,7 @@ app.get('/api/profiles', async (req, res) => {
 });
 
 // ============================================
-// 3. POSTS
+// 3. POSTS (LENGKAP: POST, GET ID, FEED, REPLIES)
 // ============================================
 app.post('/api/posts', async (req, res) => {
   const { 
@@ -282,6 +282,7 @@ app.get('/api/posts/:id', async (req, res) => {
         (SELECT COUNT(*) FROM comments WHERE post_id = p.id) as replies,
         (SELECT COALESCE(SUM(amount), 0) FROM tips WHERE post_id = p.id) as tip_total,
         jsonb_build_object(
+          'id', p.author_id,
           'address', pr.address,
           'display_name', pr.display_name,
           'avatar_seed', pr.avatar_seed,
@@ -329,6 +330,7 @@ app.get('/api/feed', async (req, res) => {
       (SELECT COUNT(*) FROM comments WHERE post_id = p.id) as replies,
       (SELECT COALESCE(SUM(amount), 0) FROM tips WHERE post_id = p.id) as tip_total,
       jsonb_build_object(
+        'id', p.author_id,
         'address', pr.address,
         'display_name', pr.display_name,
         'avatar_seed', pr.avatar_seed,
@@ -361,6 +363,7 @@ app.get('/api/replies', async (req, res) => {
         (SELECT COUNT(*) FROM comments WHERE post_id = p.id) as replies,
         (SELECT COALESCE(SUM(amount), 0) FROM tips WHERE post_id = p.id) as tip_total,
         jsonb_build_object(
+          'id', p.author_id,
           'address', pr.address,
           'display_name', pr.display_name,
           'avatar_seed', pr.avatar_seed,
@@ -511,7 +514,7 @@ app.get('/api/follows', async (req, res) => {
 });
 
 // ============================================
-// 6. TIPS
+// 6. TIPS (FINAL - TERIMA WALLET ADDRESS ATAU UUID)
 // ============================================
 app.post('/api/tips', async (req, res) => {
   const { post_id, from_user_id, to_user_id, amount, tx_hash } = req.body;
@@ -523,21 +526,42 @@ app.post('/api/tips', async (req, res) => {
   console.log("📥 [TIP] amount:", amount);
   console.log("📥 [TIP] tx_hash:", tx_hash);
 
+  // Validasi ketat: pastikan semua field ada
   if (!post_id || !from_user_id || !to_user_id || amount === undefined || amount === null) {
     console.error("❌ [TIP] Missing fields", { post_id, from_user_id, to_user_id, amount });
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
+  // Validasi: pastikan amount adalah angka positif
+  const numericAmount = parseFloat(amount);
+  if (isNaN(numericAmount) || numericAmount <= 0) {
+    return res.status(400).json({ error: 'Amount must be a positive number' });
+  }
+
   try {
-    const numericAmount = parseFloat(amount);
-    if (isNaN(numericAmount) || numericAmount <= 0) {
-      return res.status(400).json({ error: 'Amount must be a positive number' });
+    // ✅ Konversi alamat wallet (0x...) menjadi UUID jika diperlukan
+    let finalToUserId = to_user_id;
+    
+    // Jika to_user_id adalah alamat wallet (0x...), cari UUID-nya di tabel profiles
+    if (typeof to_user_id === 'string' && to_user_id.startsWith('0x')) {
+      console.log("🔍 [TIP] Converting wallet address to UUID:", to_user_id);
+      const profileRes = await pool.query(
+        'SELECT id FROM profiles WHERE address = $1',
+        [to_user_id]
+      );
+      if (profileRes.rows.length > 0) {
+        finalToUserId = profileRes.rows[0].id;
+        console.log("✅ [TIP] Converted to UUID:", finalToUserId);
+      } else {
+        console.warn("⚠️ [TIP] Wallet address not found in profiles:", to_user_id);
+        // Jika tidak ditemukan, tetap gunakan alamat wallet (akan gagal di INSERT)
+      }
     }
 
     const result = await pool.query(
       `INSERT INTO tips (post_id, from_user_id, to_user_id, amount, tx_hash)
        VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [post_id, from_user_id, to_user_id, numericAmount, tx_hash || null]
+      [post_id, from_user_id, finalToUserId, numericAmount, tx_hash || null]
     );
     
     console.log("✅ [TIP] Saved to DB:", result.rows[0]);
@@ -837,7 +861,7 @@ app.get('/api/link-preview', async (req, res) => {
 });
 
 // ============================================
-// 12. LEADERBOARD
+// 12. LEADERBOARD (FINAL FIX - HANYA USER AKTIF + TIP TERHITUNG)
 // ============================================
 app.get('/api/leaderboard', async (req, res) => {
   const { timeframe = 'all', limit = 50 } = req.query;
@@ -856,11 +880,12 @@ app.get('/api/leaderboard', async (req, res) => {
         p.username,
         p.avatar_seed,
         p.is_validator,
-        COALESCE(SUM(t.amount), 0) as total_tips_received,
+        COALESCE(SUM(t.amount::numeric), 0) as total_tips_received,
         (SELECT COUNT(*) FROM posts WHERE author_id = p.id AND reply_to IS NULL) as yap_count,
         (SELECT COUNT(*) FROM follows WHERE following_id = p.id) as follower_count
       FROM profiles p
       LEFT JOIN tips t ON t.to_user_id = p.id ${dateFilter}
+      WHERE (SELECT COUNT(*) FROM posts WHERE author_id = p.id) > 0
       GROUP BY p.id
       ORDER BY total_tips_received DESC
       LIMIT $1
