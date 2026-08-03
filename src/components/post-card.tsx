@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { Heart, MessageCircle, Pin, Sparkles, BadgeCheck, Flame, Zap, Link as LinkIcon, Repeat, Bookmark, Trash2, Loader2 } from "lucide-react";
+import { Heart, MessageCircle, Pin, Sparkles, BadgeCheck, Flame, Zap, Link as LinkIcon, Repeat, Bookmark, Trash2, Loader2, X } from "lucide-react";
 import { StakingBadgeChip } from "./staking-badge";
 import { Avatar } from "./avatar-img";
 import { cn } from "@/lib/utils";
@@ -103,7 +103,6 @@ export function PostCard({ post }: { post: FeedPost }) {
     }
   };
 
-  // ✅ PERBAIKAN HANDLE TIP: Tambahkan fallback ke wallet address jika UUID kosong
   const handleTip = async () => {
     if (!user) return toast.error("Connect your wallet to tip");
     if (!contractAddress) return toast.error("Contract not deployed yet");
@@ -121,7 +120,6 @@ export function PostCard({ post }: { post: FeedPost }) {
       return;
     }
 
-    // ✅ Ambil UUID atau fallback ke address jika UUID belum tersedia
     const recipientUUID = post.author?.id || post.author?.address;
     if (!recipientUUID) {
       console.error("❌ recipientUUID is null or undefined. post.author:", post.author);
@@ -133,7 +131,6 @@ export function PostCard({ post }: { post: FeedPost }) {
     try {
       toast.loading("Waiting for wallet confirmation...");
       
-      // 1. Transaksi on-chain
       const hash = await sendTip(
         contractAddress,
         String(post.author.address) as `0x${string}`,
@@ -141,7 +138,6 @@ export function PostCard({ post }: { post: FeedPost }) {
         `Tip for post ${post.id}`
       );
 
-      // 2. Simpan ke database dengan UUID yang benar
       const backendRes = await fetch(`${API_BASE}/tips`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -240,6 +236,14 @@ export function PostCard({ post }: { post: FeedPost }) {
     }).catch(() => {
       toast.error("Failed to copy link");
     });
+  };
+
+  // ✅ Tambahkan fungsi Share to X
+  const handleShareToX = () => {
+    const url = window.location.origin + `/yap/${post.id}`;
+    const text = `Check out this Yap on QIE Mainnet! 🚀`;
+    const shareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
+    window.open(shareUrl, '_blank');
   };
 
   if (!post || !post.id) {
@@ -403,6 +407,14 @@ export function PostCard({ post }: { post: FeedPost }) {
             className="p-1.5 rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-brand-start"
           >
             <LinkIcon className="size-5" />
+          </button>
+          {/* ✅ Tambahkan tombol Share to X */}
+          <button
+            onClick={handleShareToX}
+            className="p-1.5 rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-brand-start"
+            title="Share on X"
+          >
+            <X className="size-5" />
           </button>
         </div>
       </div>
