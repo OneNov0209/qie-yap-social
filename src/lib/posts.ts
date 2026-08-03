@@ -169,8 +169,9 @@ export async function fetchReplies(parentId: string, userId: string | null): Pro
   return data.map(mapPost);
 }
 
-export async function fetchFeed(tab: string, userId: string | null): Promise<FeedPost[]> {
-  const url = `${API_BASE}/feed?tab=${tab}&limit=50${userId ? `&user_id=${userId}` : ""}`;
+// ✅ PERBAIKAN: Tambahkan parameter offset
+export async function fetchFeed(tab: string, userId: string | null, offset: number = 0): Promise<FeedPost[]> {
+  const url = `${API_BASE}/feed?tab=${tab}&limit=10&offset=${offset}${userId ? `&user_id=${userId}` : ""}`;
   console.log("🔍 Fetching feed from:", url);
   const res = await fetch(url);
   if (!res.ok) return [];
