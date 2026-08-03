@@ -103,7 +103,7 @@ export function PostCard({ post }: { post: FeedPost }) {
     }
   };
 
-  // ✅ HANDLE TIP (PASTIKAN TO_USER_ID ADALAH AUTHOR POST)
+  // ✅ PERBAIKAN HANDLE TIP: Pastikan to_user_id adalah UUID penerima
   const handleTip = async () => {
     if (!user) return toast.error("Connect your wallet to tip");
     if (!contractAddress) return toast.error("Contract not deployed yet");
@@ -121,34 +121,49 @@ export function PostCard({ post }: { post: FeedPost }) {
       return;
     }
 
-    // ✅ Pastikan to_user_id adalah author address (bukan user.id)
-    const recipientAddress = post.author?.address;
-    if (!recipientAddress) {
-      toast.error("Invalid recipient address");
+    // ✅ Pastikan to_user_id adalah UUID dari author postingan
+    const recipientUUID = post.author?.id;
+    if (!recipientUUID) {
+      toast.error("Invalid recipient UUID");
       return;
     }
 
     setIsProcessing(true);
     try {
       toast.loading("Waiting for wallet confirmation...");
+      
+      // 1. Transaksi on-chain
       const hash = await sendTip(
         contractAddress,
-        String(recipientAddress) as `0x${string}`,
+        String(post.author.address) as `0x${string}`,
         amount,
         `Tip for post ${post.id}`
       );
+
+      // 2. Simpan ke database dengan UUID yang benar
+      const backendRes = await fetch(`${API_BASE}/tips`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          post_id: post.id,
+          from_user_id: user.id,
+          to_user_id: recipientUUID, // ✅ Ini kunci perbaikannya!
+          amount: parseFloat(amount),
+          tx_hash: hash
+        })
+      });
+
+      if (!backendRes.ok) {
+        const errText = await backendRes.text();
+        throw new Error(`Backend save failed: ${backendRes.status} - ${errText}`);
+      }
+
       toast.dismiss();
       toast.success(`Tip sent! Tx: ${hash.slice(0, 10)}...`);
     } catch (error: any) {
       toast.dismiss();
       console.error("❌ Tip error:", error);
-      if (error.message?.includes("insufficient funds")) {
-        toast.error("Insufficient QIE balance");
-      } else if (error.message?.includes("user rejected")) {
-        toast.error("Transaction rejected by user");
-      } else {
-        toast.error(error.message || "Tip failed");
-      }
+      toast.error(error.message || "Tip failed");
     } finally {
       setIsProcessing(false);
     }
@@ -181,7 +196,6 @@ export function PostCard({ post }: { post: FeedPost }) {
       );
       toast.dismiss();
       toast.success(`Post boosted for ${hours}h! Tx: ${hash.slice(0, 10)}...`);
-      
       window.location.reload();
     } catch (error: any) {
       toast.dismiss();
