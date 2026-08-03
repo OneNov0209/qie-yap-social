@@ -1,4 +1,3 @@
-cat << 'EOF' > /root/qie-yap-backend/server.js
 const express = require('express');
 const { Pool } = require('pg');
 const cors = require('cors');
@@ -212,107 +211,21 @@ app.get('/api/profiles', async (req, res) => {
 });
 
 // ============================================
-// 3. POSTS (LENGKAP: POST, GET ID, FEED, REPLIES)
+// 3. FEED (DENGAN OFFSET UNTUK INFINITE SCROLL)
 // ============================================
-app.post('/api/posts', async (req, res) => {
-  const { 
-    author_id, 
-    content, 
-    media_url, 
-    link_preview, 
-    is_super_yap, 
-    is_boosted, 
-    boost_expires_at, 
-    tx_hash, 
-    content_hash, 
-    on_chain, 
-    reply_to, 
-    original_post_id 
-  } = req.body;
-
-  console.log("📥 [POST] Received:", { content: content?.slice(0, 30), link_preview, is_boosted });
-
-  try {
-    const result = await pool.query(
-      `INSERT INTO posts (
-        author_id, 
-        content, 
-        media_url, 
-        link_preview, 
-        is_super_yap, 
-        is_boosted, 
-        boost_expires_at, 
-        tx_hash, 
-        content_hash, 
-        on_chain, 
-        reply_to, 
-        original_post_id
-      )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
-      [
-        author_id, 
-        content, 
-        media_url, 
-        link_preview, 
-        is_super_yap, 
-        is_boosted, 
-        boost_expires_at, 
-        tx_hash, 
-        content_hash, 
-        on_chain, 
-        reply_to, 
-        original_post_id
-      ]
-    );
-    console.log("✅ [POST] Saved to DB with preview & boost:", result.rows[0].id);
-    res.json(result.rows[0]);
-  } catch (err) {
-    console.error("❌ [POST] Error:", err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.get('/api/posts/:id', async (req, res) => {
-  const { id } = req.params;
-  try {
-    const result = await pool.query(
-      `SELECT p.*,
-        (SELECT COUNT(*) FROM likes WHERE post_id = p.id) as likes,
-        (SELECT COUNT(*) FROM reposts WHERE post_id = p.id) as reposts,
-        (SELECT COUNT(*) FROM comments WHERE post_id = p.id) as replies,
-        (SELECT COALESCE(SUM(amount), 0) FROM tips WHERE post_id = p.id) as tip_total,
-        jsonb_build_object(
-          'id', p.author_id,
-          'address', pr.address,
-          'display_name', pr.display_name,
-          'avatar_seed', pr.avatar_seed,
-          'is_validator', pr.is_validator
-        ) as author
-       FROM posts p
-       LEFT JOIN profiles pr ON p.author_id = pr.id
-       WHERE p.id = $1`,
-      [id]
-    );
-    if (result.rows.length === 0) return res.status(404).json({ error: 'Post not found' });
-    res.json(result.rows[0]);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
 app.get('/api/feed', async (req, res) => {
-  const { limit = 10, user_id, tab = 'latest' } = req.query;
+  const { limit = 10, offset = 0, user_id, tab = 'latest' } = req.query;
 
   let orderBy = 'p.created_at DESC';
   let whereClause = 'WHERE p.reply_to IS NULL';
   let joinClause = '';
-  let params = [limit];
+  let params = [limit, offset];
 
   if (tab === 'super') {
     whereClause += ' AND p.is_super_yap = true';
   } else if (tab === 'following') {
     if (!user_id) return res.json([]);
-    joinClause = `JOIN follows f ON f.following_id = p.author_id AND f.follower_id = $2`;
+    joinClause = `JOIN follows f ON f.following_id = p.author_id AND f.follower_id = $3`;
     params.push(user_id);
   } else if (tab === 'trending') {
     orderBy = `
@@ -342,6 +255,7 @@ app.get('/api/feed', async (req, res) => {
     ${whereClause}
     ORDER BY ${orderBy}
     LIMIT $1
+    OFFSET $2
   `;
 
   try {
@@ -349,34 +263,6 @@ app.get('/api/feed', async (req, res) => {
     res.json(posts.rows);
   } catch (err) {
     console.error("❌ Feed error:", err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.get('/api/replies', async (req, res) => {
-  const { parent_id } = req.query;
-  try {
-    const posts = await pool.query(
-      `SELECT p.*,
-        (SELECT COUNT(*) FROM likes WHERE post_id = p.id) as likes,
-        (SELECT COUNT(*) FROM reposts WHERE post_id = p.id) as reposts,
-        (SELECT COUNT(*) FROM comments WHERE post_id = p.id) as replies,
-        (SELECT COALESCE(SUM(amount), 0) FROM tips WHERE post_id = p.id) as tip_total,
-        jsonb_build_object(
-          'id', p.author_id,
-          'address', pr.address,
-          'display_name', pr.display_name,
-          'avatar_seed', pr.avatar_seed,
-          'is_validator', pr.is_validator
-        ) as author
-       FROM posts p
-       LEFT JOIN profiles pr ON p.author_id = pr.id
-       WHERE p.reply_to = $1
-       ORDER BY p.created_at DESC`,
-      [parent_id]
-    );
-    res.json(posts.rows);
-  } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
@@ -998,4 +884,3 @@ app.listen(PORT, () => {
 
 // ✅ KUNCI AGAR NODE.JS TIDAK MATI SAAT DIJALANKAN LEWAT SYSTEMD
 process.stdin.resume();
-EOF
