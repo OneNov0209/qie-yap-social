@@ -103,7 +103,7 @@ export function PostCard({ post }: { post: FeedPost }) {
     }
   };
 
-  // ✅ PERBAIKAN HANDLE TIP: Pastikan to_user_id adalah UUID penerima
+  // ✅ PERBAIKAN HANDLE TIP: Tambahkan fallback ke wallet address jika UUID kosong
   const handleTip = async () => {
     if (!user) return toast.error("Connect your wallet to tip");
     if (!contractAddress) return toast.error("Contract not deployed yet");
@@ -121,9 +121,10 @@ export function PostCard({ post }: { post: FeedPost }) {
       return;
     }
 
-    // ✅ Pastikan to_user_id adalah UUID dari author postingan
-    const recipientUUID = post.author?.id;
+    // ✅ Ambil UUID atau fallback ke address jika UUID belum tersedia
+    const recipientUUID = post.author?.id || post.author?.address;
     if (!recipientUUID) {
+      console.error("❌ recipientUUID is null or undefined. post.author:", post.author);
       toast.error("Invalid recipient UUID");
       return;
     }
@@ -147,7 +148,7 @@ export function PostCard({ post }: { post: FeedPost }) {
         body: JSON.stringify({
           post_id: post.id,
           from_user_id: user.id,
-          to_user_id: recipientUUID, // ✅ Ini kunci perbaikannya!
+          to_user_id: recipientUUID,
           amount: parseFloat(amount),
           tx_hash: hash
         })
