@@ -6,6 +6,7 @@ import { API_BASE } from "@/lib/posts";
 import { ArrowLeft, Heart, MessageCircle, GitFork, Code, Calendar, User, X, CheckCircle2, ExternalLink, Copy, FileCode } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/lib/auth-store";
 import { qiePublicClient, QIE_CHAIN } from "@/lib/qie-chain";
 import { formatEther } from "viem";
 
@@ -37,208 +38,19 @@ interface Project {
   comments: number;
 }
 
-// Komponen Transaction Detail Viewer (Internal)
-function TransactionDetailViewer({ 
-  txHash, 
-  contractAddress, 
-  onClose 
-}: { 
-  txHash: string; 
-  contractAddress: string; 
-  onClose: () => void;
-}) {
-  const [txData, setTxData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [receipt, setReceipt] = useState<any>(null);
-
-  useEffect(() => {
-    const fetchTx = async () => {
-      try {
-        // Ambil data transaksi dari RPC
-        const tx = await qiePublicClient.getTransaction({ hash: txHash as `0x${string}` });
-        const receipt = await qiePublicClient.getTransactionReceipt({ hash: txHash as `0x${string}` });
-        setTxData(tx);
-        setReceipt(receipt);
-      } catch (err) {
-        console.error("Error fetching transaction:", err);
-        toast.error("Failed to load transaction details");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchTx();
-  }, [txHash]);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-2 border-brand border-t-transparent" />
-      </div>
-    );
-  }
-
-  if (!txData || !receipt) {
-    return (
-      <div className="text-center text-muted-foreground py-8">
-        Transaction data not found
-      </div>
-    );
-  }
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text).then(() => {
-      toast.success("Copied to clipboard!");
-    });
-  };
-
-  return (
-    <div className="space-y-6">
-      {/* Header Transaction */}
-      <div className="flex items-center justify-between border-b border-border/30 pb-4">
-        <h3 className="font-semibold text-lg flex items-center gap-2">
-          <Code className="size-5 text-brand" />
-          Transaction Details
-        </h3>
-        <button
-          onClick={onClose}
-          className="p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-        >
-          <X className="size-5" />
-        </button>
-      </div>
-
-      {/* Status & Value */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="rounded-xl border border-border/30 bg-muted/20 p-3">
-          <p className="text-xs text-muted-foreground">Value</p>
-          <p className="text-sm font-medium">{formatEther(txData.value)} QIE</p>
-        </div>
-        <div className="rounded-xl border border-border/30 bg-muted/20 p-3">
-          <p className="text-xs text-muted-foreground">Tx Fee</p>
-          <p className="text-sm font-medium">{formatEther(receipt.gasUsed * txData.gasPrice)} QIE</p>
-        </div>
-        <div className="rounded-xl border border-border/30 bg-muted/20 p-3">
-          <p className="text-xs text-muted-foreground">Block</p>
-          <p className="text-sm font-medium">#{receipt.blockNumber.toString()}</p>
-        </div>
-        <div className="rounded-xl border border-border/30 bg-muted/20 p-3">
-          <p className="text-xs text-muted-foreground">Status</p>
-          <div className="flex items-center gap-1.5 text-sm font-medium text-emerald-500">
-            <CheckCircle2 className="size-4" />
-            {receipt.status === '0x1' ? 'Success' : 'Failed'}
-          </div>
-        </div>
-      </div>
-
-      {/* Transaction Hash */}
-      <div className="space-y-2">
-        <p className="text-xs text-muted-foreground">Transaction Hash</p>
-        <div className="flex items-center gap-2 bg-muted/30 rounded-xl p-3 border border-border/30">
-          <code className="text-xs font-mono break-all flex-1">{txHash}</code>
-          <button
-            onClick={() => copyToClipboard(txHash)}
-            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-          >
-            <Copy className="size-4" />
-          </button>
-        </div>
-      </div>
-
-      {/* From & To */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <p className="text-xs text-muted-foreground">From</p>
-          <div className="flex items-center gap-2 bg-muted/30 rounded-xl p-3 border border-border/30">
-            <code className="text-xs font-mono break-all">{txData.from}</code>
-            <button
-              onClick={() => copyToClipboard(txData.from)}
-              className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            >
-              <Copy className="size-4" />
-            </button>
-          </div>
-        </div>
-        <div className="space-y-2">
-          <p className="text-xs text-muted-foreground">To</p>
-          <div className="flex items-center gap-2 bg-muted/30 rounded-xl p-3 border border-border/30">
-            <code className="text-xs font-mono break-all">
-              {txData.to || 'Contract Creation'}
-            </code>
-            {txData.to && (
-              <button
-                onClick={() => copyToClipboard(txData.to)}
-                className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-              >
-                <Copy className="size-4" />
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Gas Info */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="space-y-2">
-          <p className="text-xs text-muted-foreground">Gas Price</p>
-          <p className="text-sm font-medium">{formatEther(txData.gasPrice)} QIE</p>
-        </div>
-        <div className="space-y-2">
-          <p className="text-xs text-muted-foreground">Gas Limit</p>
-          <p className="text-sm font-medium">{txData.gas.toString()}</p>
-        </div>
-        <div className="space-y-2">
-          <p className="text-xs text-muted-foreground">Gas Used</p>
-          <p className="text-sm font-medium">{receipt.gasUsed.toString()}</p>
-        </div>
-      </div>
-
-      {/* Input Data (Bytecode) */}
-      {txData.input && txData.input !== '0x' && (
-        <div className="space-y-2">
-          <p className="text-xs text-muted-foreground">Input Data (Contract Code)</p>
-          <div className="bg-background/50 rounded-xl p-4 border border-border/30 max-h-48 overflow-y-auto">
-            <code className="font-mono text-[10px] break-all whitespace-pre-wrap text-foreground/80 select-all">
-              {txData.input}
-            </code>
-          </div>
-        </div>
-      )}
-
-      {/* Contract Created */}
-      {contractAddress && (
-        <div className="space-y-2">
-          <p className="text-xs text-muted-foreground">Contract Created</p>
-          <div className="flex items-center gap-2 bg-muted/30 rounded-xl p-3 border border-border/30">
-            <code className="text-xs font-mono break-all">{contractAddress}</code>
-            <button
-              onClick={() => copyToClipboard(contractAddress)}
-              className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            >
-              <Copy className="size-4" />
-            </button>
-            <a
-              href={`https://mainnet.qie.digital/address/${contractAddress}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            >
-              <ExternalLink className="size-4" />
-            </a>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// Main Page Component
 function ProjectDetailPage() {
   const { id } = Route.useParams();
   const router = useRouter();
+  const { user } = useAuth();
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [liked, setLiked] = useState(false);
+  const [likeCount, setLikeCount] = useState(0);
+  const [forked, setForked] = useState(false);
+  const [comments, setComments] = useState<any[]>([]);
+  const [newComment, setNewComment] = useState("");
   const [isViewingTx, setIsViewingTx] = useState(false);
+  const [submittingComment, setSubmittingComment] = useState(false);
 
   useEffect(() => {
     const loadProject = async () => {
@@ -247,6 +59,13 @@ function ProjectDetailPage() {
         if (res.ok) {
           const data = await res.json();
           setProject(data);
+          setLikeCount(Number(data.likes) || 0);
+        }
+        // Load comments
+        const commentsRes = await fetch(`${API_BASE}/projects/${id}/comments`);
+        if (commentsRes.ok) {
+          const commentsData = await commentsRes.json();
+          setComments(commentsData);
         }
       } catch (err) {
         console.error("Error loading project:", err);
@@ -258,9 +77,74 @@ function ProjectDetailPage() {
   }, [id]);
 
   const toggleLike = async () => {
+    if (!user) return toast.error("Connect your wallet to like");
     if (!project) return;
-    setLiked(!liked);
-    toast.success(liked ? "Unliked" : "Liked!");
+    const wasLiked = liked;
+    setLiked(!wasLiked);
+    setLikeCount(prev => wasLiked ? prev - 1 : prev + 1);
+    try {
+      const res = await fetch(`${API_BASE}/projects/${project.id}/like`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: user.id }),
+      });
+      if (!res.ok) throw new Error("Like failed");
+      const data = await res.json();
+      toast.success(data.action === 'liked' ? "Liked!" : "Unliked");
+    } catch (err) {
+      setLiked(wasLiked);
+      setLikeCount(prev => wasLiked ? prev + 1 : prev - 1);
+      toast.error("Failed to update like");
+    }
+  };
+
+  const toggleFork = async () => {
+    if (!user) return toast.error("Connect your wallet to fork");
+    if (!project) return;
+    const wasForked = forked;
+    setForked(!wasForked);
+    try {
+      const res = await fetch(`${API_BASE}/projects/${project.id}/fork`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: user.id }),
+      });
+      if (!res.ok) throw new Error("Fork failed");
+      const data = await res.json();
+      toast.success(data.action === 'forked' ? "Forked!" : "Unforked");
+    } catch (err) {
+      setForked(wasForked);
+      toast.error("Failed to update fork");
+    }
+  };
+
+  const submitComment = async () => {
+    if (!user) return toast.error("Connect your wallet to comment");
+    if (!project || !newComment.trim()) return;
+    setSubmittingComment(true);
+    try {
+      const res = await fetch(`${API_BASE}/projects/${project.id}/comment`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: user.id,
+          content: newComment.trim(),
+        }),
+      });
+      if (!res.ok) throw new Error("Comment failed");
+      const data = await res.json();
+      setComments(prev => [data, ...prev]);
+      setNewComment("");
+      toast.success("Comment posted!");
+    } catch (err) {
+      toast.error("Failed to post comment");
+    } finally {
+      setSubmittingComment(false);
+    }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text).then(() => toast.success("Copied!"));
   };
 
   if (loading) {
@@ -302,7 +186,6 @@ function ProjectDetailPage() {
         </button>
 
         <div className="rounded-2xl border border-border/50 bg-card/50 p-6 shadow-sm">
-          {/* Header Project */}
           <div className="flex items-start justify-between">
             <div className="flex items-start gap-4">
               <Avatar seed={project.author?.avatar_seed} size={56} />
@@ -327,14 +210,12 @@ function ProjectDetailPage() {
             </div>
           </div>
 
-          {/* Deskripsi */}
           {project.description && (
             <div className="mt-6">
               <p className="text-foreground/80 leading-relaxed">{project.description}</p>
             </div>
           )}
 
-          {/* Contract Address */}
           {project.contract_address && (
             <div className="mt-4 p-3 rounded-xl bg-muted/50 border border-border/30">
               <p className="text-xs text-muted-foreground mb-1">Contract Address</p>
@@ -354,14 +235,17 @@ function ProjectDetailPage() {
               className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-brand transition-colors"
             >
               <Heart className={cn("size-4", liked && "fill-current text-brand")} />
-              <span>{liked ? project.likes + 1 : project.likes || 0}</span>
+              <span>{likeCount}</span>
             </button>
             <button className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-brand transition-colors">
               <MessageCircle className="size-4" />
-              <span>{project.comments || 0}</span>
+              <span>{comments.length}</span>
             </button>
-            <button className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-brand transition-colors">
-              <GitFork className="size-4" />
+            <button
+              onClick={toggleFork}
+              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-brand transition-colors"
+            >
+              <GitFork className={cn("size-4", forked && "text-brand")} />
               <span>Fork</span>
             </button>
             <button
@@ -371,6 +255,47 @@ function ProjectDetailPage() {
               <FileCode className="size-4" />
               <span>View Transaction</span>
             </button>
+          </div>
+        </div>
+
+        {/* Comment Section */}
+        <div className="mt-8">
+          <h3 className="font-semibold mb-4">Comments ({comments.length})</h3>
+          {user && (
+            <div className="flex gap-2 mb-6">
+              <input
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                placeholder="Add a comment..."
+                className="flex-1 rounded-xl border border-border/50 bg-muted/20 px-4 py-2 text-sm"
+                onKeyDown={(e) => e.key === 'Enter' && submitComment()}
+              />
+              <button
+                onClick={submitComment}
+                disabled={submittingComment || !newComment.trim()}
+                className="px-4 py-2 rounded-full bg-brand text-white text-sm font-medium hover:bg-brand/90 transition-colors disabled:opacity-50"
+              >
+                {submittingComment ? "..." : "Post"}
+              </button>
+            </div>
+          )}
+          <div className="space-y-4">
+            {comments.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No comments yet. Be the first!</p>
+            ) : (
+              comments.map((comment) => (
+                <div key={comment.id} className="flex gap-3 p-3 rounded-xl border border-border/30 bg-muted/10">
+                  <Avatar seed={comment.author?.avatar_seed || "default"} size={32} />
+                  <div>
+                    <p className="text-sm font-medium">{comment.author?.display_name || 'Unknown'}</p>
+                    <p className="text-sm text-foreground/80">{comment.content}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {new Date(comment.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>
@@ -386,6 +311,162 @@ function ProjectDetailPage() {
                 onClose={() => setIsViewingTx(false)}
               />
             </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Transaction Detail Viewer Component
+function TransactionDetailViewer({ 
+  txHash, 
+  contractAddress, 
+  onClose 
+}: { 
+  txHash: string; 
+  contractAddress: string; 
+  onClose: () => void;
+}) {
+  const [txData, setTxData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [receipt, setReceipt] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchTx = async () => {
+      try {
+        const tx = await qiePublicClient.getTransaction({ hash: txHash as `0x${string}` });
+        const receipt = await qiePublicClient.getTransactionReceipt({ hash: txHash as `0x${string}` });
+        setTxData(tx);
+        setReceipt(receipt);
+      } catch (err) {
+        console.error("Error fetching transaction:", err);
+        toast.error("Failed to load transaction details");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchTx();
+  }, [txHash]);
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text).then(() => toast.success("Copied!"));
+  };
+
+  if (loading) {
+    return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-2 border-brand border-t-transparent" /></div>;
+  }
+
+  if (!txData || !receipt) {
+    return <div className="text-center text-muted-foreground py-8">Transaction data not found</div>;
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between border-b border-border/30 pb-4">
+        <h3 className="font-semibold text-lg flex items-center gap-2">
+          <Code className="size-5 text-brand" />
+          Transaction Details
+        </h3>
+        <button onClick={onClose} className="p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+          <X className="size-5" />
+        </button>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="rounded-xl border border-border/30 bg-muted/20 p-3">
+          <p className="text-xs text-muted-foreground">Value</p>
+          <p className="text-sm font-medium">{formatEther(txData.value)} QIE</p>
+        </div>
+        <div className="rounded-xl border border-border/30 bg-muted/20 p-3">
+          <p className="text-xs text-muted-foreground">Tx Fee</p>
+          <p className="text-sm font-medium">{formatEther(receipt.gasUsed * txData.gasPrice)} QIE</p>
+        </div>
+        <div className="rounded-xl border border-border/30 bg-muted/20 p-3">
+          <p className="text-xs text-muted-foreground">Block</p>
+          <p className="text-sm font-medium">#{receipt.blockNumber.toString()}</p>
+        </div>
+        <div className="rounded-xl border border-border/30 bg-muted/20 p-3">
+          <p className="text-xs text-muted-foreground">Status</p>
+          <div className="flex items-center gap-1.5 text-sm font-medium text-emerald-500">
+            <CheckCircle2 className="size-4" />
+            {receipt.status === '0x1' ? 'Success' : 'Failed'}
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <p className="text-xs text-muted-foreground">Transaction Hash</p>
+        <div className="flex items-center gap-2 bg-muted/30 rounded-xl p-3 border border-border/30">
+          <code className="text-xs font-mono break-all flex-1">{txHash}</code>
+          <button onClick={() => copyToClipboard(txHash)} className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+            <Copy className="size-4" />
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground">From</p>
+          <div className="flex items-center gap-2 bg-muted/30 rounded-xl p-3 border border-border/30">
+            <code className="text-xs font-mono break-all">{txData.from}</code>
+            <button onClick={() => copyToClipboard(txData.from)} className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+              <Copy className="size-4" />
+            </button>
+          </div>
+        </div>
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground">To</p>
+          <div className="flex items-center gap-2 bg-muted/30 rounded-xl p-3 border border-border/30">
+            <code className="text-xs font-mono break-all">
+              {txData.to || 'Contract Creation'}
+            </code>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground">Gas Price</p>
+          <p className="text-sm font-medium">{formatEther(txData.gasPrice)} QIE</p>
+        </div>
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground">Gas Limit</p>
+          <p className="text-sm font-medium">{txData.gas.toString()}</p>
+        </div>
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground">Gas Used</p>
+          <p className="text-sm font-medium">{receipt.gasUsed.toString()}</p>
+        </div>
+      </div>
+
+      {txData.input && txData.input !== '0x' && (
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground">Input Data (Contract Code)</p>
+          <div className="bg-background/50 rounded-xl p-4 border border-border/30 max-h-48 overflow-y-auto">
+            <code className="font-mono text-[10px] break-all whitespace-pre-wrap text-foreground/80 select-all">
+              {txData.input}
+            </code>
+          </div>
+        </div>
+      )}
+
+      {contractAddress && (
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground">Contract Created</p>
+          <div className="flex items-center gap-2 bg-muted/30 rounded-xl p-3 border border-border/30">
+            <code className="text-xs font-mono break-all">{contractAddress}</code>
+            <button onClick={() => copyToClipboard(contractAddress)} className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+              <Copy className="size-4" />
+            </button>
+            <a
+              href={`https://mainnet.qie.digital/address/${contractAddress}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            >
+              <ExternalLink className="size-4" />
+            </a>
           </div>
         </div>
       )}
