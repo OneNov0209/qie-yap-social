@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { BadgeCheck, X, BarChart2 } from "lucide-react";
+import { BadgeCheck, X, BarChart2, Coins, Box, Users, Award, Code, Star, Briefcase } from "lucide-react";
 import { Header } from "@/components/header";
 import { PostCard } from "@/components/post-card";
 import { StakingBadgeChip } from "@/components/staking-badge";
@@ -33,6 +33,11 @@ interface FeedProfile {
   avatarSeed: string;
   isValidator: boolean;
   badge: 'shrimp' | 'fish' | 'dolphin' | 'shark' | 'whale';
+  // ✅ Tambahkan skor ke interface
+  builder_score?: number;
+  contributor_score?: number;
+  reputation_score?: number;
+  merchant_score?: number;
 }
 
 function ProfilePage() {
@@ -88,6 +93,11 @@ function ProfilePage() {
               avatarSeed: data.avatar_seed || address,
               isValidator: Boolean(data.is_validator),
               badge: 'shrimp',
+              // ✅ Ambil skor dari database
+              builder_score: data.builder_score || 0,
+              contributor_score: data.contributor_score || 0,
+              reputation_score: data.reputation_score || 0,
+              merchant_score: data.merchant_score || 0,
             };
           }
         }
@@ -122,7 +132,6 @@ function ProfilePage() {
         setYaps(userYaps);
         setCounts(prev => ({ ...prev, yaps: userYaps.length }));
 
-        // ✅ PERBAIKAN: Gunakan endpoint /tips/user/:userId
         const tipsRes = await fetch(`${API_BASE}/tips/user/${profileData.id}?limit=100`);
         if (tipsRes.ok) {
           const tipsData = await tipsRes.json();
@@ -258,6 +267,30 @@ function ProfilePage() {
             </div>
             {profile.bio && <p className="mt-3 text-foreground/90">{profile.bio}</p>}
 
+            {/* ✅ ON-CHAIN RÉSUMÉ (SKOR REPUTASI) */}
+            <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-2">
+              <ScoreCard 
+                icon={<Code className="size-4 text-brand" />}
+                label="Builder Score"
+                value={profile.builder_score || 0}
+              />
+              <ScoreCard 
+                icon={<Users className="size-4 text-brand" />}
+                label="Contributor Score"
+                value={profile.contributor_score || 0}
+              />
+              <ScoreCard 
+                icon={<Star className="size-4 text-gold" />}
+                label="Reputation Score"
+                value={profile.reputation_score || 0}
+              />
+              <ScoreCard 
+                icon={<Briefcase className="size-4 text-brand" />}
+                label="Merchant Score"
+                value={profile.merchant_score || 0}
+              />
+            </div>
+
             <div className="mt-4 grid grid-cols-4 gap-2 rounded-2xl border border-border bg-card p-3 text-center">
               <Stat label="Yaps" value={String(counts.yaps)} />
               <Stat label="Followers" value={String(counts.followers)} />
@@ -291,33 +324,10 @@ function ProfilePage() {
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                    <XAxis 
-                      dataKey="date" 
-                      tick={{ fill: '#6b7280', fontSize: 9 }} 
-                      axisLine={false}
-                      tickLine={false}
-                    />
-                    <YAxis 
-                      tick={{ fill: '#6b7280', fontSize: 9 }} 
-                      axisLine={false}
-                      tickLine={false}
-                    />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: 'rgba(0,0,0,0.8)', 
-                        border: '1px solid rgba(255,10,108,0.3)',
-                        borderRadius: '8px',
-                        color: '#fff',
-                        fontSize: '12px'
-                      }}
-                    />
-                    <Area 
-                      type="monotone" 
-                      dataKey="tx" 
-                      stroke="#FF0A6C" 
-                      strokeWidth={2}
-                      fill="url(#chartGradient)" 
-                    />
+                    <XAxis dataKey="date" tick={{ fill: '#6b7280', fontSize: 9 }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fill: '#6b7280', fontSize: 9 }} axisLine={false} tickLine={false} />
+                    <Tooltip contentStyle={{ backgroundColor: 'rgba(0,0,0,0.8)', border: '1px solid rgba(255,10,108,0.3)', borderRadius: '8px', color: '#fff', fontSize: '12px' }} />
+                    <Area type="monotone" dataKey="tx" stroke="#FF0A6C" strokeWidth={2} fill="url(#chartGradient)" />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
@@ -357,6 +367,17 @@ function ProfilePage() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ✅ Komponen ScoreCard
+function ScoreCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) {
+  return (
+    <div className="rounded-xl border border-border/40 bg-card/50 p-3 text-center backdrop-blur-sm transition-colors hover:bg-card/80">
+      <div className="flex justify-center mb-1">{icon}</div>
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="text-sm font-bold text-foreground">{value}</p>
     </div>
   );
 }
