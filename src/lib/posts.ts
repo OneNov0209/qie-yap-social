@@ -91,7 +91,6 @@ export async function createPost(
     contentHash?: string | null;
     replyToId?: string | null;
     originalPostId?: string | null;
-    onChain?: boolean;
   },
   authorId: string
 ): Promise<{ id: string } | null> {
@@ -104,7 +103,7 @@ export async function createPost(
     is_boosted: postData.isBoosted,
     tx_hash: postData.txHash,
     content_hash: postData.contentHash,
-    on_chain: postData.onChain,
+    on_chain: true,
     reply_to: postData.replyToId,
     original_post_id: postData.originalPostId,
     boost_expires_at: postData.boostHours && postData.boostHours > 0 
@@ -169,7 +168,6 @@ export async function fetchReplies(parentId: string, userId: string | null): Pro
   return data.map(mapPost);
 }
 
-// ✅ PERBAIKAN: Tambahkan parameter offset
 export async function fetchFeed(tab: string, userId: string | null, offset: number = 0): Promise<FeedPost[]> {
   const url = `${API_BASE}/feed?tab=${tab}&limit=10&offset=${offset}${userId ? `&user_id=${userId}` : ""}`;
   console.log("🔍 Fetching feed from:", url);
