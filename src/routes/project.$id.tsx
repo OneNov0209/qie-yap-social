@@ -1,11 +1,12 @@
-import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Header } from "@/components/header";
 import { Avatar } from "@/components/avatar-img";
 import { API_BASE } from "@/lib/posts";
-import { ArrowLeft, Heart, MessageCircle, GitFork, ExternalLink, Code, Calendar, User } from "lucide-react";
+import { ArrowLeft, Heart, MessageCircle, GitFork, Code, Calendar, User, X, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils"; // ✅ Tambahkan ini!
+import { cn } from "@/lib/utils";
+import { getContractCode } from "@/lib/qie-chain";
 
 export const Route = createFileRoute("/project/$id")({
   head: ({ params }) => ({
@@ -41,6 +42,9 @@ function ProjectDetailPage() {
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [liked, setLiked] = useState(false);
+  const [isViewingCode, setIsViewingCode] = useState(false);
+  const [codeLoading, setCodeLoading] = useState(false);
+  const [bytecode, setBytecode] = useState<string | null>(null);
 
   useEffect(() => {
     const loadProject = async () => {
@@ -63,6 +67,30 @@ function ProjectDetailPage() {
     if (!project) return;
     setLiked(!liked);
     toast.success(liked ? "Unliked" : "Liked!");
+  };
+
+  const handleViewCode = async () => {
+    if (!project?.contract_address) return;
+    setIsViewingCode(true);
+    setCodeLoading(true);
+    try {
+      const code = await getContractCode(project.contract_address as `0x${string}`);
+      if (code) {
+        setBytecode(code);
+      } else {
+        toast.error("No code found for this contract");
+      }
+    } catch (err) {
+      console.error("Error fetching code:", err);
+      toast.error("Failed to fetch contract code");
+    } finally {
+      setCodeLoading(false);
+    }
+  };
+
+  const closeCodeViewer = () => {
+    setIsViewingCode(false);
+    setBytecode(null);
   };
 
   if (loading) {
@@ -144,14 +172,7 @@ function ProjectDetailPage() {
                 <code className="text-sm font-mono text-foreground/80">
                   {project.contract_address}
                 </code>
-                <a
-                  href={`https://mainnet.qie.digital/address/${project.contract_address}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-brand hover:text-brand/80"
-                >
-                  <ExternalLink className="size-4" />
-                </a>
+                <CheckCircle2 className="size-4 text-emerald-500" />
               </div>
             </div>
           )}
@@ -173,18 +194,65 @@ function ProjectDetailPage() {
               <GitFork className="size-4" />
               <span>Fork</span>
             </button>
-            <a
-              href={`https://mainnet.qie.digital/tx/${project.tx_hash}`}
-              target="_blank"
-              rel="noopener noreferrer"
+            {/* ✅ Tombol View Code Internal */}
+            <button
+              onClick={handleViewCode}
               className="ml-auto flex items-center gap-1.5 text-sm text-muted-foreground hover:text-brand transition-colors"
             >
               <Code className="size-4" />
               <span>View Code</span>
-            </a>
+            </button>
           </div>
         </div>
       </div>
+
+      {/* ✅ Code Viewer Modal (Internal) */}
+      {isViewingCode && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="w-full max-w-4xl max-h-[80vh] bg-card rounded-2xl border border-border shadow-2xl overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between border-b border-border/30 px-6 py-4">
+              <h3 className="font-semibold text-lg flex items-center gap-2">
+                <Code className="size-5 text-brand" />
+                Contract Code
+              </h3>
+              <button
+                onClick={closeCodeViewer}
+                className="p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              >
+                <X className="size-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto p-6 bg-muted/30">
+              {codeLoading ? (
+                <div className="flex items-center justify-center h-32">
+                  <div className="animate-spin rounded-full h-8 w-8 border-2 border-brand border-t-transparent" />
+                </div>
+              ) : bytecode ? (
+                <div className="space-y-4">
+                  <div className="text-xs text-muted-foreground mb-2">Bytecode (Hex)</div>
+                  <div className="bg-background/50 rounded-xl p-4 border border-border/30">
+                    <code className="font-mono text-xs break-all whitespace-pre-wrap text-foreground/80 select-all">
+                      {bytecode}
+                    </code>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center text-muted-foreground py-8">
+                  No bytecode found for this contract
+                </div>
+              )}
+            </div>
+            <div className="border-t border-border/30 px-6 py-4 flex justify-end">
+              <button
+                onClick={closeCodeViewer}
+                className="px-4 py-2 bg-brand text-white rounded-full hover:bg-brand/90 transition-colors text-sm font-medium"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
