@@ -18,6 +18,7 @@ import { Toaster } from "sonner";
 import { Sidebar } from "@/components/sidebar";
 import { MobileBottomNav } from "@/components/header";
 import { cn } from "@/lib/utils";
+import { useSidebarStore } from "@/lib/sidebar-store";
 
 function NotFoundComponent() {
   return (
@@ -121,21 +122,23 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-  // ✅ Deteksi halaman saat ini
   const path = useRouterState({ select: (s) => s.location.pathname });
   const isLandingPage = path === "/";
+  const { isOpen } = useSidebarStore(); // ✅ Ambil state sidebar
 
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <div className="flex min-h-screen w-full bg-background">
-          {/* Hanya tampilkan Sidebar jika BUKAN Landing Page */}
+          {/* Sidebar hanya muncul jika BUKAN Landing Page */}
           {!isLandingPage && <Sidebar />}
           
-          {/* Padding bottom untuk Mobile Nav */}
-          <div className={cn("flex-1 pb-20 lg:pb-0", !isLandingPage && "lg:ml-64")}>
+          {/* ✅ Konten bergeser jika Sidebar terbuka */}
+          <div className={cn(
+            "flex-1 pb-20 lg:pb-0 transition-all duration-300",
+            !isLandingPage && isOpen ? "lg:ml-64" : "lg:ml-0"
+          )}>
             <Outlet />
-            {/* Hanya tampilkan Mobile Nav jika BUKAN Landing Page */}
             {!isLandingPage && <MobileBottomNav />}
           </div>
         </div>
