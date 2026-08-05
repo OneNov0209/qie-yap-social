@@ -215,3 +215,38 @@ export async function getContractInfo(address: `0x${string}`): Promise<any | nul
     return null;
   }
 }
+
+// ✅ SCAN KONTRAK BARU DARI RPC
+export async function scanNewContracts(blockCount: number = 100): Promise<any[]> {
+  try {
+    const contracts: any[] = [];
+    const latestBlock = await qiePublicClient.getBlockNumber();
+    const startBlock = latestBlock - BigInt(blockCount);
+
+    for (let i = startBlock; i <= latestBlock; i++) {
+      const block = await qiePublicClient.getBlock({ blockNumber: i, includeTransactions: true });
+      if (!block.transactions) continue;
+
+      for (const tx of block.transactions) {
+        // Jika to = null atau undefined, ini adalah transaksi deploy kontrak
+        if (!tx.to) {
+          // Ambil receipt untuk mendapatkan contractAddress
+          const receipt = await qiePublicClient.getTransactionReceipt({ hash: tx.hash });
+          if (receipt?.contractAddress) {
+            contracts.push({
+              txHash: tx.hash,
+              contractAddress: receipt.contractAddress,
+              from: tx.from,
+              blockNumber: block.number,
+              timestamp: block.timestamp,
+            });
+          }
+        }
+      }
+    }
+    return contracts;
+  } catch (error) {
+    console.error("❌ Error scanning contracts:", error);
+    return [];
+  }
+}
