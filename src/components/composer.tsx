@@ -301,10 +301,11 @@ export function Composer({ onPosted, replyToId, onCancelReply }: ComposerProps) 
                   ✦ Premium Yap
                 </span>
               )}
+              {/* ✅ Tombol Yap dengan Font Display & Shadow Lebih Glow */}
               <button
                 onClick={submit}
                 disabled={(!text.trim() && !mediaUrl) || remaining < 0 || submitting || !user}
-                className="btn-futuristic"
+                className="btn-futuristic font-display text-base tracking-wide shadow-lg shadow-brand-start/25 hover:shadow-brand-start/50"
               >
                 {submitting ? "Yapping…" : "Yap"}
               </button>
