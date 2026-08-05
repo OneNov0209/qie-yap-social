@@ -31,9 +31,9 @@ interface Project {
     display_name: string;
     avatar_seed: string;
   } | null;
-  likes_count: number;
+  likes: number;
   comments: number;
-  forks_count: number;
+  forks: number;
   isScanned?: boolean;
 }
 
@@ -171,13 +171,13 @@ function ProjectsPage() {
                       )}
                       <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
                         <span className="flex items-center gap-1">
-                          <Heart className="size-3" /> {project.likes_count || 0}
+                          <Heart className="size-3" /> {Number(project.likes) || 0}
                         </span>
                         <span className="flex items-center gap-1">
-                          <MessageCircle className="size-3" /> {project.comments || 0}
+                          <MessageCircle className="size-3" /> {Number(project.comments) || 0}
                         </span>
                         <span className="flex items-center gap-1">
-                          <GitFork className="size-3" /> {project.forks_count || 0}
+                          <GitFork className="size-3" /> {Number(project.forks) || 0}
                         </span>
                       </div>
                     </div>
