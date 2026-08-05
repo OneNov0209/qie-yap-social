@@ -5,6 +5,7 @@ import { Avatar } from "@/components/avatar-img";
 import { API_BASE } from "@/lib/posts";
 import { ArrowLeft, Heart, MessageCircle, GitFork, ExternalLink, Code, Calendar, User } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils"; // ✅ Tambahkan ini!
 
 export const Route = createFileRoute("/project/$id")({
   head: ({ params }) => ({
@@ -61,7 +62,6 @@ function ProjectDetailPage() {
   const toggleLike = async () => {
     if (!project) return;
     setLiked(!liked);
-    // TODO: Implement like logic for projects
     toast.success(liked ? "Unliked" : "Liked!");
   };
 
