@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Sparkles, Rocket, Link2, X, Image as ImageIcon, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Sparkles, Rocket, X, Image as ImageIcon, Loader2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Avatar } from "./avatar-img";
 import { useAuth } from "@/lib/auth-store";
@@ -22,7 +21,6 @@ export function Composer({ onPosted, replyToId, onCancelReply }: ComposerProps) 
   const [text, setText] = useState("");
   const [superYap, setSuperYap] = useState(false);
   const [boostHours, setBoostHours] = useState<0 | 1 | 6 | 24>(0);
-  const [onChain, setOnChain] = useState<boolean>(!!YAP_CONTRACT);
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [mediaUrl, setMediaUrl] = useState<string | null>(null);
@@ -61,7 +59,6 @@ export function Composer({ onPosted, replyToId, onCancelReply }: ComposerProps) 
           } else if (data.fallback) {
             setLinkPreview(data.fallback);
           } else {
-            // ✅ Fallback jika gagal ambil metadata
             setLinkPreview({
               title: new URL(url).hostname,
               description: 'Preview not available',
@@ -72,7 +69,6 @@ export function Composer({ onPosted, replyToId, onCancelReply }: ComposerProps) 
           }
         })
         .catch(() => {
-          // ✅ Fallback jika fetch gagal total
           setLinkPreview({
             title: new URL(url).hostname,
             description: 'Preview not available',
@@ -118,18 +114,16 @@ export function Composer({ onPosted, replyToId, onCancelReply }: ComposerProps) 
     try {
       let txHash: string | null = null;
       let cHash: string | null = null;
-      if (onChain && YAP_CONTRACT) {
-        try {
-          toast("Sign the on-chain yap in your wallet…");
-          const r = await submitYapOnChain(user.address as `0x${string}`, text.trim());
-          txHash = r.txHash;
-          cHash = r.contentHash;
-        } catch (e) {
-          toast.error(e instanceof Error ? e.message : "On-chain yap failed — posting off-chain");
-          cHash = hashContent(text.trim());
-        }
-      } else {
-        cHash = hashContent(text.trim());
+      
+      // ✅ WAJIB ON-CHAIN: Selalu panggil submitYapOnChain
+      try {
+        toast("Sign the on-chain yap in your wallet…");
+        const r = await submitYapOnChain(user.address as `0x${string}`, text.trim());
+        txHash = r.txHash;
+        cHash = r.contentHash;
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "On-chain transaction failed");
+        throw new Error("On-chain transaction required for all posts");
       }
       
       const newPost = await createPost(
@@ -143,7 +137,6 @@ export function Composer({ onPosted, replyToId, onCancelReply }: ComposerProps) 
           txHash,
           contentHash: cHash,
           replyToId,
-          onChain: onChain,
         },
         user.id
       );
@@ -292,16 +285,6 @@ export function Composer({ onPosted, replyToId, onCancelReply }: ComposerProps) 
                   </button>
                 ))}
               </div>
-
-              {YAP_CONTRACT && (
-                <label className="inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-1.5 text-xs">
-                  <Link2 className={cn("size-3.5", onChain ? "text-brand" : "text-muted-foreground")} />
-                  <span className={cn("font-bold uppercase tracking-wider", onChain ? "text-brand" : "text-muted-foreground")}>
-                    On-chain
-                  </span>
-                  <Switch checked={onChain} onCheckedChange={setOnChain} className="data-[state=checked]:bg-brand" />
-                </label>
-              )}
             </div>
 
             <div className="flex items-center gap-3">
