@@ -3,10 +3,11 @@ import { useEffect, useState } from "react";
 import { Header } from "@/components/header";
 import { Avatar } from "@/components/avatar-img";
 import { API_BASE } from "@/lib/posts";
-import { ArrowLeft, Heart, MessageCircle, GitFork, Code, Calendar, User, X, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Heart, MessageCircle, GitFork, Code, Calendar, User, X, CheckCircle2, ExternalLink, Copy, FileCode } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { getContractCode } from "@/lib/qie-chain";
+import { qiePublicClient, QIE_CHAIN } from "@/lib/qie-chain";
+import { formatEther } from "viem";
 
 export const Route = createFileRoute("/project/$id")({
   head: ({ params }) => ({
@@ -36,15 +37,208 @@ interface Project {
   comments: number;
 }
 
+// Komponen Transaction Detail Viewer (Internal)
+function TransactionDetailViewer({ 
+  txHash, 
+  contractAddress, 
+  onClose 
+}: { 
+  txHash: string; 
+  contractAddress: string; 
+  onClose: () => void;
+}) {
+  const [txData, setTxData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [receipt, setReceipt] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchTx = async () => {
+      try {
+        // Ambil data transaksi dari RPC
+        const tx = await qiePublicClient.getTransaction({ hash: txHash as `0x${string}` });
+        const receipt = await qiePublicClient.getTransactionReceipt({ hash: txHash as `0x${string}` });
+        setTxData(tx);
+        setReceipt(receipt);
+      } catch (err) {
+        console.error("Error fetching transaction:", err);
+        toast.error("Failed to load transaction details");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchTx();
+  }, [txHash]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-2 border-brand border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (!txData || !receipt) {
+    return (
+      <div className="text-center text-muted-foreground py-8">
+        Transaction data not found
+      </div>
+    );
+  }
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      toast.success("Copied to clipboard!");
+    });
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header Transaction */}
+      <div className="flex items-center justify-between border-b border-border/30 pb-4">
+        <h3 className="font-semibold text-lg flex items-center gap-2">
+          <Code className="size-5 text-brand" />
+          Transaction Details
+        </h3>
+        <button
+          onClick={onClose}
+          className="p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+        >
+          <X className="size-5" />
+        </button>
+      </div>
+
+      {/* Status & Value */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="rounded-xl border border-border/30 bg-muted/20 p-3">
+          <p className="text-xs text-muted-foreground">Value</p>
+          <p className="text-sm font-medium">{formatEther(txData.value)} QIE</p>
+        </div>
+        <div className="rounded-xl border border-border/30 bg-muted/20 p-3">
+          <p className="text-xs text-muted-foreground">Tx Fee</p>
+          <p className="text-sm font-medium">{formatEther(receipt.gasUsed * txData.gasPrice)} QIE</p>
+        </div>
+        <div className="rounded-xl border border-border/30 bg-muted/20 p-3">
+          <p className="text-xs text-muted-foreground">Block</p>
+          <p className="text-sm font-medium">#{receipt.blockNumber.toString()}</p>
+        </div>
+        <div className="rounded-xl border border-border/30 bg-muted/20 p-3">
+          <p className="text-xs text-muted-foreground">Status</p>
+          <div className="flex items-center gap-1.5 text-sm font-medium text-emerald-500">
+            <CheckCircle2 className="size-4" />
+            {receipt.status === '0x1' ? 'Success' : 'Failed'}
+          </div>
+        </div>
+      </div>
+
+      {/* Transaction Hash */}
+      <div className="space-y-2">
+        <p className="text-xs text-muted-foreground">Transaction Hash</p>
+        <div className="flex items-center gap-2 bg-muted/30 rounded-xl p-3 border border-border/30">
+          <code className="text-xs font-mono break-all flex-1">{txHash}</code>
+          <button
+            onClick={() => copyToClipboard(txHash)}
+            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          >
+            <Copy className="size-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* From & To */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground">From</p>
+          <div className="flex items-center gap-2 bg-muted/30 rounded-xl p-3 border border-border/30">
+            <code className="text-xs font-mono break-all">{txData.from}</code>
+            <button
+              onClick={() => copyToClipboard(txData.from)}
+              className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            >
+              <Copy className="size-4" />
+            </button>
+          </div>
+        </div>
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground">To</p>
+          <div className="flex items-center gap-2 bg-muted/30 rounded-xl p-3 border border-border/30">
+            <code className="text-xs font-mono break-all">
+              {txData.to || 'Contract Creation'}
+            </code>
+            {txData.to && (
+              <button
+                onClick={() => copyToClipboard(txData.to)}
+                className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              >
+                <Copy className="size-4" />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Gas Info */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground">Gas Price</p>
+          <p className="text-sm font-medium">{formatEther(txData.gasPrice)} QIE</p>
+        </div>
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground">Gas Limit</p>
+          <p className="text-sm font-medium">{txData.gas.toString()}</p>
+        </div>
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground">Gas Used</p>
+          <p className="text-sm font-medium">{receipt.gasUsed.toString()}</p>
+        </div>
+      </div>
+
+      {/* Input Data (Bytecode) */}
+      {txData.input && txData.input !== '0x' && (
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground">Input Data (Contract Code)</p>
+          <div className="bg-background/50 rounded-xl p-4 border border-border/30 max-h-48 overflow-y-auto">
+            <code className="font-mono text-[10px] break-all whitespace-pre-wrap text-foreground/80 select-all">
+              {txData.input}
+            </code>
+          </div>
+        </div>
+      )}
+
+      {/* Contract Created */}
+      {contractAddress && (
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground">Contract Created</p>
+          <div className="flex items-center gap-2 bg-muted/30 rounded-xl p-3 border border-border/30">
+            <code className="text-xs font-mono break-all">{contractAddress}</code>
+            <button
+              onClick={() => copyToClipboard(contractAddress)}
+              className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            >
+              <Copy className="size-4" />
+            </button>
+            <a
+              href={`https://mainnet.qie.digital/address/${contractAddress}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            >
+              <ExternalLink className="size-4" />
+            </a>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Main Page Component
 function ProjectDetailPage() {
   const { id } = Route.useParams();
   const router = useRouter();
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [liked, setLiked] = useState(false);
-  const [isViewingCode, setIsViewingCode] = useState(false);
-  const [codeLoading, setCodeLoading] = useState(false);
-  const [bytecode, setBytecode] = useState<string | null>(null);
+  const [isViewingTx, setIsViewingTx] = useState(false);
 
   useEffect(() => {
     const loadProject = async () => {
@@ -67,30 +261,6 @@ function ProjectDetailPage() {
     if (!project) return;
     setLiked(!liked);
     toast.success(liked ? "Unliked" : "Liked!");
-  };
-
-  const handleViewCode = async () => {
-    if (!project?.contract_address) return;
-    setIsViewingCode(true);
-    setCodeLoading(true);
-    try {
-      const code = await getContractCode(project.contract_address as `0x${string}`);
-      if (code) {
-        setBytecode(code);
-      } else {
-        toast.error("No code found for this contract");
-      }
-    } catch (err) {
-      console.error("Error fetching code:", err);
-      toast.error("Failed to fetch contract code");
-    } finally {
-      setCodeLoading(false);
-    }
-  };
-
-  const closeCodeViewer = () => {
-    setIsViewingCode(false);
-    setBytecode(null);
   };
 
   if (loading) {
@@ -194,61 +364,27 @@ function ProjectDetailPage() {
               <GitFork className="size-4" />
               <span>Fork</span>
             </button>
-            {/* ✅ Tombol View Code Internal */}
             <button
-              onClick={handleViewCode}
+              onClick={() => setIsViewingTx(true)}
               className="ml-auto flex items-center gap-1.5 text-sm text-muted-foreground hover:text-brand transition-colors"
             >
-              <Code className="size-4" />
-              <span>View Code</span>
+              <FileCode className="size-4" />
+              <span>View Transaction</span>
             </button>
           </div>
         </div>
       </div>
 
-      {/* ✅ Code Viewer Modal (Internal) */}
-      {isViewingCode && (
+      {/* Transaction Detail Modal */}
+      {isViewingTx && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
           <div className="w-full max-w-4xl max-h-[80vh] bg-card rounded-2xl border border-border shadow-2xl overflow-hidden flex flex-col">
-            <div className="flex items-center justify-between border-b border-border/30 px-6 py-4">
-              <h3 className="font-semibold text-lg flex items-center gap-2">
-                <Code className="size-5 text-brand" />
-                Contract Code
-              </h3>
-              <button
-                onClick={closeCodeViewer}
-                className="p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-              >
-                <X className="size-5" />
-              </button>
-            </div>
-            <div className="flex-1 overflow-auto p-6 bg-muted/30">
-              {codeLoading ? (
-                <div className="flex items-center justify-center h-32">
-                  <div className="animate-spin rounded-full h-8 w-8 border-2 border-brand border-t-transparent" />
-                </div>
-              ) : bytecode ? (
-                <div className="space-y-4">
-                  <div className="text-xs text-muted-foreground mb-2">Bytecode (Hex)</div>
-                  <div className="bg-background/50 rounded-xl p-4 border border-border/30">
-                    <code className="font-mono text-xs break-all whitespace-pre-wrap text-foreground/80 select-all">
-                      {bytecode}
-                    </code>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center text-muted-foreground py-8">
-                  No bytecode found for this contract
-                </div>
-              )}
-            </div>
-            <div className="border-t border-border/30 px-6 py-4 flex justify-end">
-              <button
-                onClick={closeCodeViewer}
-                className="px-4 py-2 bg-brand text-white rounded-full hover:bg-brand/90 transition-colors text-sm font-medium"
-              >
-                Close
-              </button>
+            <div className="flex-1 overflow-auto p-6">
+              <TransactionDetailViewer 
+                txHash={project.tx_hash} 
+                contractAddress={project.contract_address}
+                onClose={() => setIsViewingTx(false)}
+              />
             </div>
           </div>
         </div>
