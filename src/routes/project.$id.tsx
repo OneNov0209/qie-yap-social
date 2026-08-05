@@ -7,7 +7,7 @@ import { ArrowLeft, Heart, MessageCircle, GitFork, Code, Calendar, User, X, Chec
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-store";
-import { qiePublicClient, QIE_CHAIN } from "@/lib/qie-chain";
+import { qiePublicClient } from "@/lib/qie-chain";
 import { formatEther } from "viem";
 
 export const Route = createFileRoute("/project/$id")({
@@ -34,8 +34,8 @@ interface Project {
     display_name: string;
     avatar_seed: string;
   };
-  likes: number;
-  comments: number;
+  likes_count: number;
+  forks_count: number;
 }
 
 function ProjectDetailPage() {
@@ -47,6 +47,7 @@ function ProjectDetailPage() {
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
   const [forked, setForked] = useState(false);
+  const [forksCount, setForksCount] = useState(0);
   const [comments, setComments] = useState<any[]>([]);
   const [newComment, setNewComment] = useState("");
   const [isViewingTx, setIsViewingTx] = useState(false);
@@ -60,8 +61,8 @@ function ProjectDetailPage() {
           const data = await res.json();
           setProject(data);
           setLikeCount(Number(data.likes_count) || 0);
+          setForksCount(Number(data.forks_count) || 0);
         }
-        // Load comments
         const commentsRes = await fetch(`${API_BASE}/projects/${id}/comments`);
         if (commentsRes.ok) {
           const commentsData = await commentsRes.json();
@@ -86,10 +87,11 @@ function ProjectDetailPage() {
       const res = await fetch(`${API_BASE}/projects/${project.id}/like`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: user.id }),
+        body: JSON.stringify({ user_id: user.id }), // ✅ Kirim UUID user
       });
       if (!res.ok) throw new Error("Like failed");
       const data = await res.json();
+      setLikeCount(data.count || likeCount);
       toast.success(data.action === 'liked' ? "Liked!" : "Unliked");
     } catch (err) {
       setLiked(wasLiked);
@@ -103,17 +105,20 @@ function ProjectDetailPage() {
     if (!project) return;
     const wasForked = forked;
     setForked(!wasForked);
+    setForksCount(prev => wasForked ? prev - 1 : prev + 1);
     try {
       const res = await fetch(`${API_BASE}/projects/${project.id}/fork`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: user.id }),
+        body: JSON.stringify({ user_id: user.id }), // ✅ Kirim UUID user
       });
       if (!res.ok) throw new Error("Fork failed");
       const data = await res.json();
+      setForksCount(data.count || forksCount);
       toast.success(data.action === 'forked' ? "Forked!" : "Unforked");
     } catch (err) {
       setForked(wasForked);
+      setForksCount(prev => wasForked ? prev + 1 : prev - 1);
       toast.error("Failed to update fork");
     }
   };
@@ -127,7 +132,7 @@ function ProjectDetailPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          user_id: user.id,
+          user_id: user.id, // ✅ Kirim UUID user
           content: newComment.trim(),
         }),
       });
@@ -246,7 +251,7 @@ function ProjectDetailPage() {
               className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-brand transition-colors"
             >
               <GitFork className={cn("size-4", forked && "text-brand")} />
-              <span>Fork</span>
+              <span>{forksCount}</span>
             </button>
             <button
               onClick={() => setIsViewingTx(true)}
