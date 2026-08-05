@@ -19,6 +19,8 @@ import { Sidebar } from "@/components/sidebar";
 import { MobileBottomNav } from "@/components/header";
 import { cn } from "@/lib/utils";
 import { useSidebarStore } from "@/lib/sidebar-store";
+// ✅ Import komponen ScrollToTop yang baru dibuat
+import { ScrollToTop } from "@/components/scroll-to-top";
 
 function NotFoundComponent() {
   return (
@@ -124,7 +126,7 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const path = useRouterState({ select: (s) => s.location.pathname });
   const isLandingPage = path === "/";
-  const { isOpen } = useSidebarStore(); // ✅ Ambil state sidebar
+  const { isOpen } = useSidebarStore();
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -138,7 +140,15 @@ function RootComponent() {
             "flex-1 pb-20 lg:pb-0 transition-all duration-300",
             !isLandingPage && isOpen ? "lg:ml-64" : "lg:ml-0"
           )}>
-            <Outlet />
+            {/* ✅ Animasi Fade-in saat pindah halaman */}
+            <div className="animate-in fade-in duration-300">
+              <Outlet />
+            </div>
+            
+            {/* ✅ Tombol Scroll to Top */}
+            {!isLandingPage && <ScrollToTop />}
+            
+            {/* Bottom Nav Mobile */}
             {!isLandingPage && <MobileBottomNav />}
           </div>
         </div>
