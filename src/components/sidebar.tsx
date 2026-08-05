@@ -2,22 +2,22 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { Home, Search, Activity, Wallet, Trophy, User, Coins, PlusCircle, X, Menu } from "lucide-react";
 import { useAuth } from "@/lib/auth-store";
 import { cn } from "@/lib/utils";
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
+import { useSidebarStore } from "@/lib/sidebar-store";
 
 export function Sidebar() {
   const { user } = useAuth();
   const path = useRouterState({ select: (s) => s.location.pathname });
   const profilePath = user?.address ?? "0x0000000000000000000000000000000000000000";
   
-  // ✅ State dikontrol penuh oleh user (tombol buka/tutup)
-  const [isOpen, setIsOpen] = useState(true);
+  const { isOpen, toggle, close } = useSidebarStore();
 
-  // ✅ Hanya jalankan 1x saat mount untuk set default mobile
+  // Saat pertama kali di mobile, sidebar tertutup
   useEffect(() => {
     if (window.innerWidth < 1024) {
-      setIsOpen(false);
+      close();
     }
-  }, []);
+  }, [close]);
 
   const navItems = [
     { to: "/feed", label: "Feed", icon: Home },
@@ -34,7 +34,7 @@ export function Sidebar() {
       {/* Tombol Open Sidebar (muncul saat sidebar tertutup) */}
       {!isOpen && (
         <button
-          onClick={() => setIsOpen(true)}
+          onClick={toggle}
           className="fixed left-4 top-4 z-50 hidden lg:flex size-10 items-center justify-center rounded-full bg-card/80 backdrop-blur-md border border-white/10 shadow-lg shadow-brand-start/10 hover:shadow-brand-start/30 transition-all hover:scale-105"
         >
           <Menu className="size-5 text-foreground" />
@@ -55,7 +55,7 @@ export function Sidebar() {
             QIE YAP
           </span>
           <button
-            onClick={() => setIsOpen(false)}
+            onClick={close}
             className="hidden lg:flex size-8 items-center justify-center rounded-full text-muted-foreground hover:bg-white/10 hover:text-foreground transition-colors"
           >
             <X className="size-5" />
