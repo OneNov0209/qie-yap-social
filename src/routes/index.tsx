@@ -4,26 +4,27 @@ import {
   Sparkles, MessageCircle, Heart, Coins, Zap, 
   TrendingUp, Shield, Globe, Wallet, ArrowRight, 
   Users, Rocket, Loader2, BarChart2, HelpCircle, ChevronDown, ChevronUp,
-  CheckCircle, Send, Award, Star, Zap as ZapIcon
+  CheckCircle, Send, Award, Star, Zap as ZapIcon, Activity
 } from "lucide-react";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { API_BASE } from "@/lib/posts";
 import { cn } from "@/lib/utils";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "QIE Yap — The On-Chain Social Network" },
-      { name: "description", content: "Yap, tip, and build on the QIE blockchain. The first hybrid on-chain social platform." },
+      { title: "QIE Yap — Discover. Build. Earn. Grow your reputation on-chain." },
+      { name: "description", content: "QIE Yap is the reputation layer of QIE. Discover builders, earn QIE, and grow your on-chain résumé." },
     ],
   }),
   component: LandingPage,
 });
 
-// Komponen Scroll-Reveal
+// ============================================
+// 1. SCROLL REVEAL
+// ============================================
 function ScrollReveal({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
   const ref = useRef<HTMLDivElement>(null);
   const [isVisible, setIsVisible] = useState(false);
@@ -55,7 +56,82 @@ function ScrollReveal({ children, delay = 0 }: { children: React.ReactNode; dela
   );
 }
 
-// Komponen FAQ Accordion
+// ============================================
+// 2. LIVE ACTIVITY TICKER
+// ============================================
+function LiveActivityTicker() {
+  const [activities, setActivities] = useState<string[]>([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  useEffect(() => {
+    const fetchActivity = async () => {
+      try {
+        // Ambil data tips terbaru
+        const tipsRes = await fetch(`${API_BASE}/tips?limit=5`);
+        const tips = tipsRes.ok ? await tipsRes.json() : [];
+        
+        // Ambil feed terbaru
+        const feedRes = await fetch(`${API_BASE}/feed?limit=3`);
+        const feed = feedRes.ok ? await feedRes.json() : [];
+
+        // Gabung menjadi array aktivitas
+        const items: string[] = [];
+        
+        tips.forEach((tip: any) => {
+          const from = tip.from_user_id?.slice(0, 6) || 'Someone';
+          const to = tip.to_user_id?.slice(0, 6) || 'someone';
+          items.push(`💸 ${from} tipped ${to} ${tip.amount} QIE`);
+        });
+
+        feed.forEach((post: any) => {
+          const author = post.author?.display_name || post.author_id?.slice(0, 6) || 'Someone';
+          items.push(`📝 ${author} posted a new Yap`);
+        });
+
+        if (items.length === 0) {
+          items.push("🚀 QIE Yap is live on Mainnet!");
+        }
+
+        setActivities(items);
+      } catch (err) {
+        console.error("Ticker error:", err);
+        setActivities(["🚀 QIE Yap is live on Mainnet!"]);
+      }
+    };
+
+    fetchActivity();
+    const interval = setInterval(fetchActivity, 15000); // Refresh setiap 15 detik
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    if (activities.length === 0) return;
+    const ticker = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % activities.length);
+    }, 3500); // Ganti pesan setiap 3.5 detik
+    return () => clearInterval(ticker);
+  }, [activities]);
+
+  if (activities.length === 0) return null;
+
+  return (
+    <div className="mt-2 flex items-center justify-center gap-2 text-xs md:text-sm font-medium text-brand-start/80 min-h-[30px]">
+      <Activity className="size-4 animate-pulse" />
+      <div className="overflow-hidden h-6 flex items-center">
+        <div 
+          key={currentIndex}
+          className="animate-in fade-in slide-in-from-bottom-2 duration-500"
+        >
+          {activities[currentIndex]}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================
+// 3. FAQ ACCORDION
+// ============================================
 function FAQItem({ question, answer, isOpen: defaultOpen = false }: { question: string; answer: string; isOpen?: boolean }) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
@@ -80,7 +156,9 @@ function FAQItem({ question, answer, isOpen: defaultOpen = false }: { question: 
   );
 }
 
-// Komponen Timeline Card (Persis seperti gambar)
+// ============================================
+// 4. TIMELINE CARD
+// ============================================
 function TimelineCard({ 
   step, 
   title, 
@@ -101,24 +179,17 @@ function TimelineCard({
       "flex w-full items-center gap-6 md:w-[45%]",
       isLeft ? "md:flex-row" : "md:flex-row-reverse"
     )}>
-      {/* Kartu */}
       <div className={cn(
         "flex-1 rounded-2xl border border-border/40 bg-card/50 p-5 backdrop-blur-sm shadow-lg transition-all hover:border-brand-start/30",
         type === 'sell' ? "hover:shadow-brand-start/10" : "hover:shadow-brand-end/10"
       )}>
         <div className="flex items-start gap-4">
-          <div className={cn(
-            "rounded-xl p-3",
-            type === 'sell' ? "bg-brand-soft" : "bg-blue-500/10"
-          )}>
+          <div className={cn("rounded-xl p-3", type === 'sell' ? "bg-brand-soft" : "bg-blue-500/10")}>
             <Icon className={cn("size-6", type === 'sell' ? "text-brand" : "text-blue-500")} />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className={cn(
-                "text-[10px] font-bold uppercase tracking-wider",
-                type === 'sell' ? "text-brand" : "text-blue-500"
-              )}>
+              <span className={cn("text-[10px] font-bold uppercase tracking-wider", type === 'sell' ? "text-brand" : "text-blue-500")}>
                 {type === 'sell' ? 'SELL CONTRACT' : 'BUY CONTRACT'}
               </span>
               <span className="text-[10px] text-muted-foreground">— Step {step}</span>
@@ -128,18 +199,17 @@ function TimelineCard({
           </div>
         </div>
       </div>
-
-      {/* Titik Garis Waktu */}
       <div className="relative flex size-10 shrink-0 items-center justify-center rounded-full border-2 border-border/40 bg-card text-muted-foreground">
         <span className="text-xs font-bold">{step}</span>
       </div>
-
-      {/* Spacer agar layout seimbang */}
       <div className="hidden flex-1 md:block" />
     </div>
   );
 }
 
+// ============================================
+// 5. MAIN PAGE
+// ============================================
 function LandingPage() {
   const [stats, setStats] = useState({
     totalYaps: 0,
@@ -190,35 +260,34 @@ function LandingPage() {
     fetchChart();
   }, []);
 
-  // Daftar FAQ
   const faqs = [
     {
       question: "What is QIE Yap?",
-      answer: "QIE Yap is a hybrid on-chain social platform built on the QIE blockchain. It allows users to post 'Yaps', send on-chain Tips, create Super Yaps, and Boost posts."
+      answer: "QIE Yap is the reputation layer of QIE. It's a platform to discover builders, earn QIE for your contributions, and grow your on-chain résumé."
     },
     {
       question: "Does it cost anything to post a Yap?",
-      answer: "No! Posting a standard Yap is completely free. Only premium features like Tips, Super Yaps, and Boost require a small QIE transaction fee."
+      answer: "Posting is free. Premium features like Tips, Super Yaps, and Boost require a small QIE fee."
     },
     {
-      question: "How do I sign up / log in?",
-      answer: "You don't need an email or password. Simply click 'Connect QIE Wallet'. Your wallet address is your identity."
+      question: "How do I sign up?",
+      answer: "Connect your QIE Wallet. Your wallet address is your identity."
     },
     {
-      question: "How do Tips work on-chain?",
-      answer: "Click 'Tip', enter amount in QIE. The smart contract sends 98% directly to the creator's wallet."
+      question: "How do Tips work?",
+      answer: "Click 'Tip', enter QIE amount. 98% goes directly to the creator, 2% supports the ecosystem."
     },
     {
       question: "What is a Super Yap?",
-      answer: "A premium post with a unique gold border. Creates a Super Yap badge and burns 50% of the fee."
+      answer: "A premium gold-bordered post. 50% of the fee is burned, 50% goes to the treasury."
     },
     {
       question: "What does Boost do?",
-      answer: "A promotional feature. For a small fee, your post gets a '⚡ Promoted' badge, making it stand out in the feed."
+      answer: "Promotes your post with a '⚡ Promoted' badge for a small QIE fee."
     },
     {
       question: "Can I upload images?",
-      answer: "Yes! QIE Yap supports image uploads via IPFS (powered by Pinata)."
+      answer: "Yes! Images are uploaded via IPFS (powered by Pinata)."
     }
   ];
 
@@ -238,22 +307,29 @@ function LandingPage() {
             <Sparkles className="size-3.5" />
             Now Live on QIE Mainnet
           </div>
+          
+          {/* ✅ NEW HEADLINE */}
           <h1 className="font-display text-5xl font-bold tracking-tight md:text-7xl">
-            Yap. Tip. <br />
+            Discover. Build. Earn. <br />
             <span className="bg-gradient-to-r from-[#FF0A6C] to-[#0040FF] bg-clip-text text-transparent">
-              Build On-Chain.
+              Grow Your Reputation On-Chain.
             </span>
           </h1>
+
+          {/* ✅ NEW SUBTEXT */}
           <p className="mx-auto max-w-2xl text-lg text-muted-foreground md:text-xl">
-            The first hybrid social platform built on QIE. Share your thoughts, 
-            support creators with instant QIE tips, and earn rewards for your contribution.
+            QIE Yap is the reputation layer of QIE. Discover top builders, earn QIE for your contributions, and turn your wallet into a verifiable on-chain résumé.
           </p>
+
+          {/* ✅ LIVE ACTIVITY TICKER */}
+          <LiveActivityTicker />
+
           <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
             <Link 
               to="/feed"
               className="btn-futuristic px-8 py-3 text-base group"
             >
-              Start Yapping
+              Start Building
               <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
             </Link>
             <a 
@@ -274,7 +350,7 @@ function LandingPage() {
           {[
             { label: "Yaps Posted", value: loading ? "..." : stats.totalYaps.toLocaleString(), icon: MessageCircle },
             { label: "QIE Tipped", value: loading ? "..." : `${stats.totalQie} QIE`, icon: Coins },
-            { label: "Active Users", value: loading ? "..." : stats.activeUsers.toLocaleString(), icon: Users },
+            { label: "Active Builders", value: loading ? "..." : stats.activeUsers.toLocaleString(), icon: Users },
             { label: "On-Chain Tx", value: loading ? "..." : stats.totalTx.toLocaleString(), icon: Zap },
           ].map((stat, i) => (
             <ScrollReveal key={i} delay={i * 100}>
@@ -298,68 +374,20 @@ function LandingPage() {
           <div className="mb-10 text-center">
             <h2 className="font-display text-3xl font-bold">How It Works</h2>
             <p className="mt-2 text-muted-foreground">Two ways to interact — choose your role</p>
-            
-            {/* Tab Pilihan (Sell / Buy) */}
             <div className="mt-4 inline-flex items-center gap-4 rounded-full bg-muted p-1">
               <button className="rounded-full bg-brand px-4 py-1.5 text-xs font-semibold text-white">SEND TIP</button>
               <button className="rounded-full px-4 py-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground">BOOST</button>
             </div>
           </div>
 
-          {/* Garis Waktu (Timeline) */}
           <div className="relative flex flex-col items-center gap-12 md:gap-16">
-            {/* Garis Vertikal */}
             <div className="absolute left-1/2 top-0 h-full w-[2px] -translate-x-1/2 bg-gradient-to-b from-brand-start via-brand-end to-transparent opacity-30" />
 
-            {/* Step 1 (Kiri) */}
-            <TimelineCard 
-              step={1} 
-              title="Creator Posts a Yap" 
-              description="User writes a post and selects 'Super Yap' or 'Boost' options."
-              icon={MessageCircle} 
-              type="sell" 
-              isLeft={true}
-            />
-
-            {/* Step 2 (Kanan) */}
-            <TimelineCard 
-              step={2} 
-              title="Supporter Sends Tip" 
-              description="Fans click 'Tip', enter amount in QIE, and confirm via wallet."
-              icon={Coins} 
-              type="buy" 
-              isLeft={false}
-            />
-
-            {/* Step 3 (Kiri) */}
-            <TimelineCard 
-              step={3} 
-              title="Smart Contract Processes" 
-              description="2% platform fee is deducted. 98% of QIE is sent instantly to creator's wallet."
-              icon={ZapIcon} 
-              type="sell" 
-              isLeft={true}
-            />
-
-            {/* Step 4 (Kanan) */}
-            <TimelineCard 
-              step={4} 
-              title="Boost or Super Yap Activated" 
-              description="If selected, the post gets a gold border or 'Promoted' badge instantly."
-              icon={Award} 
-              type="buy" 
-              isLeft={false}
-            />
-
-            {/* Step 5 (Kiri) */}
-            <TimelineCard 
-              step={5} 
-              title="On-Chain Verified" 
-              description="Transaction is recorded on QIE Explorer. Full transparency."
-              icon={CheckCircle} 
-              type="sell" 
-              isLeft={true}
-            />
+            <TimelineCard step={1} title="Creator Posts a Yap" description="User writes a post and selects 'Super Yap' or 'Boost' options." icon={MessageCircle} type="sell" isLeft={true} />
+            <TimelineCard step={2} title="Supporter Sends Tip" description="Fans click 'Tip', enter amount in QIE, and confirm via wallet." icon={Coins} type="buy" isLeft={false} />
+            <TimelineCard step={3} title="Smart Contract Processes" description="2% platform fee is deducted. 98% of QIE is sent instantly to creator's wallet." icon={ZapIcon} type="sell" isLeft={true} />
+            <TimelineCard step={4} title="Boost or Super Yap Activated" description="If selected, the post gets a gold border or 'Promoted' badge instantly." icon={Award} type="buy" isLeft={false} />
+            <TimelineCard step={5} title="On-Chain Verified" description="Transaction is recorded on QIE Explorer. Full transparency." icon={CheckCircle} type="sell" isLeft={true} />
           </div>
         </ScrollReveal>
       </section>
@@ -395,32 +423,10 @@ function LandingPage() {
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                    <XAxis 
-                      dataKey="date" 
-                      tick={{ fill: '#6b7280', fontSize: 11 }} 
-                      axisLine={false}
-                      tickLine={false}
-                    />
-                    <YAxis 
-                      tick={{ fill: '#6b7280', fontSize: 11 }} 
-                      axisLine={false}
-                      tickLine={false}
-                    />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: 'rgba(0,0,0,0.8)', 
-                        border: '1px solid rgba(255,10,108,0.3)',
-                        borderRadius: '12px',
-                        color: '#fff'
-                      }}
-                    />
-                    <Area 
-                      type="monotone" 
-                      dataKey="tx" 
-                      stroke="#FF0A6C" 
-                      strokeWidth={2}
-                      fill="url(#colorGradient)" 
-                    />
+                    <XAxis dataKey="date" tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <Tooltip contentStyle={{ backgroundColor: 'rgba(0,0,0,0.8)', border: '1px solid rgba(255,10,108,0.3)', borderRadius: '12px', color: '#fff' }} />
+                    <Area type="monotone" dataKey="tx" stroke="#FF0A6C" strokeWidth={2} fill="url(#colorGradient)" />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
@@ -436,44 +442,18 @@ function LandingPage() {
             <h2 className="font-display text-3xl font-bold md:text-4xl">
               Built for the <span className="text-brand">Community</span>
             </h2>
-            <p className="mt-2 text-muted-foreground">
-              Every feature is designed to bring the QIE ecosystem closer.
-            </p>
+            <p className="mt-2 text-muted-foreground">Every feature is designed to bring the QIE ecosystem closer.</p>
           </ScrollReveal>
         </div>
 
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
           {[
-            {
-              icon: Heart,
-              title: "On-Chain Tips",
-              desc: "Send QIE directly to your favorite creators. No middleman, instant settlement."
-            },
-            {
-              icon: Rocket,
-              title: "Boost Posts",
-              desc: "Promote your content to the top of the feed and reach the entire community."
-            },
-            {
-              icon: Sparkles,
-              title: "Super Yaps",
-              desc: "Premium content with a unique gold border. Burn QIE to stand out."
-            },
-            {
-              icon: TrendingUp,
-              title: "Leaderboard",
-              desc: "Climb the ranks based on tips received and community engagement."
-            },
-            {
-              icon: Shield,
-              title: "On-Chain Identity",
-              desc: "Your wallet is your identity. No email, no KYC, just pure Web3."
-            },
-            {
-              icon: Globe,
-              title: "QIE Ecosystem",
-              desc: "Fully integrated with QIE ID, QIE Pass, and the entire QIE blockchain."
-            },
+            { icon: Heart, title: "On-Chain Tips", desc: "Send QIE directly to creators. No middleman, instant settlement." },
+            { icon: Rocket, title: "Boost Posts", desc: "Promote your content to the top of the feed." },
+            { icon: Sparkles, title: "Super Yaps", desc: "Premium content with a unique gold border." },
+            { icon: TrendingUp, title: "Leaderboard", desc: "Climb the ranks based on tips received and engagement." },
+            { icon: Shield, title: "On-Chain Identity", desc: "Your wallet is your identity. No email, no KYC." },
+            { icon: Globe, title: "QIE Ecosystem", desc: "Fully integrated with QIE ID, QIE Pass, and the entire QIE blockchain." },
           ].map((feat, i) => (
             <ScrollReveal key={i} delay={i * 150}>
               <div className="group rounded-2xl border border-border/40 bg-card/50 p-6 backdrop-blur-sm transition-all hover:border-brand-start/30 hover:bg-card/80 hover:shadow-lg">
@@ -513,14 +493,10 @@ function LandingPage() {
           <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#FF0A6C]/20 to-[#0040FF]/20 p-10 text-center border border-white/5 backdrop-blur-md">
             <div className="absolute inset-0 bg-gradient-to-r from-[#FF0A6C] to-[#0040FF] opacity-5" />
             <div className="relative z-10">
-              <h2 className="font-display text-3xl font-bold">Ready to Yap?</h2>
-              <p className="mt-2 text-muted-foreground">Connect your QIE Wallet and join the conversation.</p>
-              <Link 
-                to="/feed"
-                className="mt-6 inline-flex items-center gap-2 btn-futuristic px-8 py-3"
-              >
-                Get Started
-                <ArrowRight className="size-4" />
+              <h2 className="font-display text-3xl font-bold">Ready to Build?</h2>
+              <p className="mt-2 text-muted-foreground">Connect your QIE Wallet and start growing your reputation.</p>
+              <Link to="/feed" className="mt-6 inline-flex items-center gap-2 btn-futuristic px-8 py-3">
+                Get Started <ArrowRight className="size-4" />
               </Link>
             </div>
           </div>
