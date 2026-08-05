@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { Heart, MessageCircle, Pin, Sparkles, BadgeCheck, Flame, Zap, Link as LinkIcon, Repeat, Bookmark, Trash2, Loader2, X } from "lucide-react";
+import { Heart, MessageCircle, Pin, Sparkles, BadgeCheck, Flame, Zap, Link as LinkIcon, Repeat, Bookmark, Trash2, Loader2, X, User } from "lucide-react";
 import { StakingBadgeChip } from "./staking-badge";
 import { Avatar } from "./avatar-img";
 import { cn } from "@/lib/utils";
@@ -256,12 +256,28 @@ export function PostCard({ post }: { post: FeedPost }) {
   return (
     <article
       className={cn(
-        // ✅ Tambahkan hover scale dan shadow untuk efek smooth
         "group relative flex flex-col gap-3 rounded-2xl border border-border/50 bg-card p-5 shadow-sm transition-all duration-300 hover:shadow-xl hover:scale-[1.005] hover:border-brand-start/30",
         post.isSuperYap && "border-2 border-gold bg-gold-soft/20 shadow-gold/10",
         post.isBoosted && "border-2 border-brand-start/20",
       )}
     >
+      {/* === Repost Attribution (Siapa yang me-repost) === */}
+      {post.reposted && post.repostedBy && (
+        <div className="mb-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Repeat className="size-3.5" />
+          <span>
+            <Link 
+              to="/profile/$address" 
+              params={{ address: post.repostedBy.address }}
+              className="font-semibold text-foreground hover:text-brand-start underline-offset-2 hover:underline"
+            >
+              {post.repostedBy.displayName}
+            </Link>{" "}
+            reposted this
+          </span>
+        </div>
+      )}
+
       {/* === Header: Avatar & Identity === */}
       <div className="flex items-start gap-3">
         <Link to="/profile/$address" params={{ address: post.author?.address || "" }}>
