@@ -31,8 +31,9 @@ interface Project {
     display_name: string;
     avatar_seed: string;
   } | null;
-  likes: number;
+  likes_count: number;
   comments: number;
+  forks_count: number;
   isScanned?: boolean;
 }
 
@@ -50,6 +51,7 @@ function ProjectsPage() {
       if (res.ok) {
         const data = await res.json();
         setProjects(data);
+        console.log("📦 Projects loaded:", data);
       }
     } catch (err) {
       console.error("Error loading projects:", err);
@@ -60,7 +62,6 @@ function ProjectsPage() {
 
   useEffect(() => {
     loadProjects();
-    // Refresh setiap 30 detik
     const interval = setInterval(loadProjects, 30000);
     return () => clearInterval(interval);
   }, []);
@@ -170,10 +171,13 @@ function ProjectsPage() {
                       )}
                       <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
                         <span className="flex items-center gap-1">
-                          <Heart className="size-3" /> {project.likes || 0}
+                          <Heart className="size-3" /> {project.likes_count || 0}
                         </span>
                         <span className="flex items-center gap-1">
                           <MessageCircle className="size-3" /> {project.comments || 0}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <GitFork className="size-3" /> {project.forks_count || 0}
                         </span>
                       </div>
                     </div>
