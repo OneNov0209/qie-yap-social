@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { Heart, MessageCircle, Pin, Sparkles, BadgeCheck, Flame, Zap, Link as LinkIcon, Repeat, Bookmark, Trash2, Loader2, X, User } from "lucide-react";
+import { Heart, MessageCircle, Pin, Sparkles, BadgeCheck, Flame, Zap, Link as LinkIcon, Repeat, Bookmark, Trash2, Loader2, X } from "lucide-react";
 import { StakingBadgeChip } from "./staking-badge";
 import { Avatar } from "./avatar-img";
 import { cn } from "@/lib/utils";
@@ -27,6 +27,9 @@ export function PostCard({ post }: { post: FeedPost }) {
 
   const contractAddress = import.meta.env.VITE_QIE_YAP_CONTRACT as `0x${string}`;
   const isOwner = user?.address?.toLowerCase() === post.author?.address?.toLowerCase();
+
+  // ✅ Ambil data reposters (backend sudah mengirim array)
+  const reposters = (post as any).reposters || [];
 
   const onToggleLike = async () => {
     if (!user) return toast("Connect your wallet to like yaps");
@@ -261,25 +264,18 @@ export function PostCard({ post }: { post: FeedPost }) {
         post.isBoosted && "border-2 border-brand-start/20",
       )}
     >
-      {/* === Repost Attribution (Siapa yang me-repost) === */}
-      {post.reposted && post.repostedBy && (
-        <div className="mb-2 flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Repeat className="size-3.5" />
+      {/* === Repost Indicator (Jika ada reposters) === */}
+      {reposters.length > 0 && (
+        <div className="absolute -top-3 left-5 inline-flex items-center gap-1.5 rounded-full bg-muted/80 backdrop-blur-sm px-2.5 py-0.5 text-[10px] font-medium text-muted-foreground border border-border/30 z-10">
+          <Repeat className="size-3" />
           <span>
-            <Link 
-              to="/profile/$address" 
-              params={{ address: post.repostedBy.address }}
-              className="font-semibold text-foreground hover:text-brand-start underline-offset-2 hover:underline"
-            >
-              {post.repostedBy.displayName}
-            </Link>{" "}
-            reposted this
+            Reposted by {reposters.map((r: any) => r.display_name || shortAddr(r.address)).join(', ')}
           </span>
         </div>
       )}
 
       {/* === Header: Avatar & Identity === */}
-      <div className="flex items-start gap-3">
+      <div className="flex items-start gap-3 pt-2">
         <Link to="/profile/$address" params={{ address: post.author?.address || "" }}>
           <Avatar seed={post.author?.avatarSeed || "default"} size={48} className="ring-2 ring-border/50" />
         </Link>
