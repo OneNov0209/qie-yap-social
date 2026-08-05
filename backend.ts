@@ -1,4 +1,3 @@
-cat << 'EOF' > /root/qie-yap-backend/server.js
 const express = require('express');
 const { Pool } = require('pg');
 const cors = require('cors');
@@ -212,7 +211,7 @@ app.get('/api/profiles', async (req, res) => {
 });
 
 // ============================================
-// 3. POSTS (LENGKAP: POST, GET ID, FEED, REPLIES)
+// 3. POSTS (WAJIB ON-CHAIN)
 // ============================================
 app.post('/api/posts', async (req, res) => {
   const { 
@@ -230,7 +229,12 @@ app.post('/api/posts', async (req, res) => {
     original_post_id 
   } = req.body;
 
-  console.log("📥 [POST] Received:", { content: content?.slice(0, 30), link_preview, is_boosted });
+  console.log("📥 [POST] Received:", { content: content?.slice(0, 30), tx_hash });
+
+  // ✅ VALIDASI: Wajib ada tx_hash (artinya transaksi on-chain sudah terjadi)
+  if (!tx_hash) {
+    return res.status(400).json({ error: 'On-chain transaction required for all posts' });
+  }
 
   try {
     const result = await pool.query(
@@ -259,12 +263,12 @@ app.post('/api/posts', async (req, res) => {
         boost_expires_at, 
         tx_hash, 
         content_hash, 
-        on_chain, 
+        true, // ✅ Paksa on_chain = true
         reply_to, 
         original_post_id
       ]
     );
-    console.log("✅ [POST] Saved to DB with preview & boost:", result.rows[0].id);
+    console.log("✅ [POST] Saved to DB (ON-CHAIN):", result.rows[0].id);
     res.json(result.rows[0]);
   } catch (err) {
     console.error("❌ [POST] Error:", err);
@@ -999,4 +1003,3 @@ app.listen(PORT, () => {
 
 // ✅ KUNCI AGAR NODE.JS TIDAK MATI SAAT DIJALANKAN LEWAT SYSTEMD
 process.stdin.resume();
-EOF
