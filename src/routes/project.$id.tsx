@@ -59,7 +59,7 @@ function ProjectDetailPage() {
         if (res.ok) {
           const data = await res.json();
           setProject(data);
-          setLikeCount(Number(data.likes) || 0);
+          setLikeCount(Number(data.likes_count) || 0);
         }
         // Load comments
         const commentsRes = await fetch(`${API_BASE}/projects/${id}/comments`);
