@@ -9,19 +9,14 @@ export function Sidebar() {
   const path = useRouterState({ select: (s) => s.location.pathname });
   const profilePath = user?.address ?? "0x0000000000000000000000000000000000000000";
   
+  // ✅ State dikontrol penuh oleh user (tombol buka/tutup)
   const [isOpen, setIsOpen] = useState(true);
 
+  // ✅ Hanya jalankan 1x saat mount untuk set default mobile
   useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth < 1024) {
-        setIsOpen(false);
-      } else {
-        setIsOpen(true);
-      }
-    };
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    if (window.innerWidth < 1024) {
+      setIsOpen(false);
+    }
   }, []);
 
   const navItems = [
@@ -36,6 +31,7 @@ export function Sidebar() {
 
   return (
     <>
+      {/* Tombol Open Sidebar (muncul saat sidebar tertutup) */}
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
