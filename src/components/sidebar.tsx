@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Home, Search, Activity, Wallet, Trophy, User, Coins, PlusCircle, X, Menu } from "lucide-react";
+import { Home, Search, Activity, Wallet, Trophy, User, Coins, PlusCircle, X, Menu, Code } from "lucide-react";
 import { useAuth } from "@/lib/auth-store";
 import { cn } from "@/lib/utils";
 import { useEffect } from "react";
@@ -27,6 +27,7 @@ export function Sidebar() {
     { to: "/leaderboard", label: "Leaderboard", icon: Trophy },
     { to: `/profile/${profilePath}`, label: "Profile", icon: User },
     { to: "/add-qie-network", label: "Add Network", icon: PlusCircle },
+    { to: "/projects", label: "Projects", icon: Code },
   ];
 
   return (
