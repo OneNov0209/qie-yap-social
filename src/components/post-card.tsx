@@ -238,7 +238,6 @@ export function PostCard({ post }: { post: FeedPost }) {
     });
   };
 
-  // ✅ Tambahkan fungsi Share to X
   const handleShareToX = () => {
     const url = window.location.origin + `/yap/${post.id}`;
     const text = `Check out this Yap on QIE Mainnet! 🚀`;
@@ -257,7 +256,8 @@ export function PostCard({ post }: { post: FeedPost }) {
   return (
     <article
       className={cn(
-        "group relative flex flex-col gap-3 rounded-2xl border border-border/50 bg-card p-5 shadow-sm transition-all hover:shadow-md hover:border-brand-start/20",
+        // ✅ Tambahkan hover scale dan shadow untuk efek smooth
+        "group relative flex flex-col gap-3 rounded-2xl border border-border/50 bg-card p-5 shadow-sm transition-all duration-300 hover:shadow-xl hover:scale-[1.005] hover:border-brand-start/30",
         post.isSuperYap && "border-2 border-gold bg-gold-soft/20 shadow-gold/10",
         post.isBoosted && "border-2 border-brand-start/20",
       )}
@@ -408,7 +408,6 @@ export function PostCard({ post }: { post: FeedPost }) {
           >
             <LinkIcon className="size-5" />
           </button>
-          {/* ✅ Tambahkan tombol Share to X */}
           <button
             onClick={handleShareToX}
             className="p-1.5 rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-brand-start"
