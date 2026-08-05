@@ -104,7 +104,6 @@ export async function getQieYapContract(contractAddress: `0x${string}`) {
   });
 }
 
-// ✅ CEK HANYA QIE WALLET
 export async function checkWalletConnection(): Promise<boolean> {
   if (typeof window === "undefined" || !window.ethereum) {
     console.error("❌ QIE Wallet tidak terdeteksi. Install QIE Wallet.");
@@ -118,7 +117,6 @@ export async function checkWalletConnection(): Promise<boolean> {
   }
 }
 
-// ✅ AMBIL WALLET CLIENT (HANYA QIE WALLET)
 export async function getWalletClient() {
   if (typeof window === "undefined" || !window.ethereum) {
     throw new Error("❌ QIE Wallet tidak terdeteksi. Harap install QIE Wallet dan login.");
@@ -133,7 +131,6 @@ export async function getWalletClient() {
   return { walletClient, address: address as `0x${string}` };
 }
 
-// ✅ TIP
 export async function sendTip(contractAddress: `0x${string}`, recipient: `0x${string}`, amountInQie: string, message: string) {
   console.log("📤 Sending tip to:", recipient, "amount:", amountInQie);
   const { walletClient, address } = await getWalletClient();
@@ -154,7 +151,6 @@ export async function sendTip(contractAddress: `0x${string}`, recipient: `0x${st
   }
 }
 
-// ✅ SUPER YAP
 export async function createSuperYap(contractAddress: `0x${string}`) {
   console.log("📤 Creating SuperYap");
   const { walletClient, address } = await getWalletClient();
@@ -174,7 +170,6 @@ export async function createSuperYap(contractAddress: `0x${string}`) {
   }
 }
 
-// ✅ BOOST
 export async function boostPost(contractAddress: `0x${string}`, postId: bigint, durationHours: bigint) {
   console.log("📤 Boosting post:", postId, "duration:", durationHours);
   const { walletClient, address } = await getWalletClient();
@@ -193,5 +188,30 @@ export async function boostPost(contractAddress: `0x${string}`, postId: bigint, 
   } catch (error: any) {
     console.error("❌ Boost error:", error);
     throw new Error(error.message || "Boost gagal");
+  }
+}
+
+// ✅ TAMBAHAN BARU: Ambil bytecode kontrak (internal)
+export async function getContractCode(address: `0x${string}`): Promise<string | null> {
+  try {
+    const code = await qiePublicClient.getCode({ address });
+    return code;
+  } catch (error) {
+    console.error("❌ Gagal mengambil bytecode:", error);
+    return null;
+  }
+}
+
+// ✅ TAMBAHAN BARU: Ambil info kontrak dari API (opsional)
+export async function getContractInfo(address: `0x${string}`): Promise<any | null> {
+  try {
+    const res = await fetch(`https://mainnet.qie.digital/api?module=contract&action=getsourcecode&address=${address}`);
+    if (res.ok) {
+      const data = await res.json();
+      return data;
+    }
+    return null;
+  } catch {
+    return null;
   }
 }
