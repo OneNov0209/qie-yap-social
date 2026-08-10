@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
+import { Avatar } from "@/components/avatar-img";
 import { API_BASE } from "@/lib/posts";
 import { cn } from "@/lib/utils";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
@@ -220,6 +221,10 @@ function LandingPage() {
   const [chartData, setChartData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [chartLoading, setChartLoading] = useState(true);
+  
+  // ✅ TAMBAHAN BARU: Trending Builders State
+  const [trending, setTrending] = useState<any[]>([]);
+  const [trendingLoading, setTrendingLoading] = useState(true);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -258,6 +263,24 @@ function LandingPage() {
       }
     };
     fetchChart();
+  }, []);
+
+  // ✅ TAMBAHAN BARU: Fetch Trending Builders
+  useEffect(() => {
+    const fetchTrending = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/leaderboard?timeframe=week&limit=5`);
+        if (res.ok) {
+          const data = await res.json();
+          setTrending(data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch trending:", err);
+      } finally {
+        setTrendingLoading(false);
+      }
+    };
+    fetchTrending();
   }, []);
 
   const faqs = [
@@ -308,7 +331,6 @@ function LandingPage() {
             Now Live on QIE Mainnet
           </div>
           
-          {/* ✅ NEW HEADLINE */}
           <h1 className="font-display text-5xl font-bold tracking-tight md:text-7xl">
             Discover. Build. Earn. <br />
             <span className="bg-gradient-to-r from-[#FF0A6C] to-[#0040FF] bg-clip-text text-transparent">
@@ -316,12 +338,10 @@ function LandingPage() {
             </span>
           </h1>
 
-          {/* ✅ NEW SUBTEXT */}
           <p className="mx-auto max-w-2xl text-lg text-muted-foreground md:text-xl">
             QIE Yap is the reputation layer of QIE. Discover top builders, earn QIE for your contributions, and turn your wallet into a verifiable on-chain résumé.
           </p>
 
-          {/* ✅ LIVE ACTIVITY TICKER */}
           <LiveActivityTicker />
 
           <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
@@ -432,6 +452,53 @@ function LandingPage() {
               </div>
             )}
           </div>
+        </ScrollReveal>
+      </section>
+
+      {/* === TRENDING BUILDERS (DARI DEV'S REQUEST) === */}
+      <section className="mx-auto max-w-6xl px-4 pb-20">
+        <ScrollReveal>
+          <div className="mb-10 text-center">
+            <h2 className="font-display text-3xl font-bold flex items-center justify-center gap-2">
+              <TrendingUp className="size-8 text-brand" />
+              🔥 Trending Builders
+            </h2>
+            <p className="mt-2 text-muted-foreground">Top earners in the QIE ecosystem this week</p>
+          </div>
+
+          {trendingLoading ? (
+            <div className="flex h-32 items-center justify-center">
+              <Loader2 className="size-6 animate-spin text-brand" />
+            </div>
+          ) : trending.length === 0 ? (
+            <div className="text-center text-muted-foreground">No builders yet this week</div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {trending.map((builder, i) => (
+                <div 
+                  key={builder.id}
+                  className="flex items-center gap-4 rounded-xl border border-border/40 bg-card/50 p-4 backdrop-blur-sm hover:bg-card/80 transition-colors"
+                >
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted font-bold text-sm">
+                    #{i + 1}
+                  </div>
+                  <Avatar seed={builder.avatarSeed} size={40} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <Link to="/profile/$address" params={{ address: builder.address }} className="font-semibold truncate hover:text-brand">
+                        {builder.displayName}
+                      </Link>
+                      {builder.isValidator && <Shield className="size-3.5 text-brand" />}
+                    </div>
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                      <span>👥 {builder.followerCount}</span>
+                      <span>💎 {builder.totalTipsReceived.toFixed(2)} QIE</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </ScrollReveal>
       </section>
 
