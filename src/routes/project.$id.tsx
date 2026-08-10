@@ -119,7 +119,6 @@ function ProjectDetailPage() {
       });
       if (!res.ok) throw new Error("Fork failed");
       const data = await res.json();
-      // Jika fork berhasil, data akan berisi project baru (jika fitur fork-by-copy aktif)
       if (data.action === 'forked' && data.project) {
         toast.success(`Forked! New project created: ${data.project.name}`);
         // Redirect ke project baru
@@ -324,61 +323,184 @@ function ProjectDetailPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
           <div className="w-full max-w-4xl max-h-[80vh] bg-card rounded-2xl border border-border shadow-2xl overflow-hidden flex flex-col">
             <div className="flex-1 overflow-auto p-6">
-              <div className="flex items-center justify-between border-b border-border/30 pb-4 mb-4">
-                <h3 className="font-semibold text-lg flex items-center gap-2">
-                  <Code className="size-5 text-brand" />
-                  Transaction Details
-                </h3>
-                <button onClick={() => setIsViewingTx(false)} className="p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
-                  <X className="size-5" />
-                </button>
-              </div>
-              
-              {/* Tampilkan data dari project (sudah ada di database) */}
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">Transaction Hash</p>
-                    <div className="flex items-center gap-2 bg-muted/30 rounded-xl p-3 border border-border/30">
-                      <code className="text-xs font-mono break-all flex-1">{project.tx_hash}</code>
-                      <button onClick={() => navigator.clipboard.writeText(project.tx_hash)} className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
-                        <Copy className="size-4" />
-                      </button>
-                    </div>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">Contract Address</p>
-                    <div className="flex items-center gap-2 bg-muted/30 rounded-xl p-3 border border-border/30">
-                      <code className="text-xs font-mono break-all">{project.contract_address}</code>
-                      <button onClick={() => navigator.clipboard.writeText(project.contract_address)} className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
-                        <Copy className="size-4" />
-                      </button>
-                      <a
-                        href={`https://mainnet.qie.digital/address/${project.contract_address}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                      >
-                        <ExternalLink className="size-4" />
-                      </a>
-                    </div>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">Status</p>
-                    <div className="flex items-center gap-1.5 text-sm font-medium text-emerald-500">
-                      <CheckCircle2 className="size-4" />
-                      Success (On-Chain)
-                    </div>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">Created</p>
-                    <p className="text-sm font-medium">{new Date(project.created_at).toLocaleString()}</p>
-                  </div>
-                </div>
-              </div>
+              <TransactionDetailViewer 
+                txHash={project.tx_hash} 
+                contractAddress={project.contract_address}
+                onClose={() => setIsViewingTx(false)}
+              />
             </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================
+// KOMPONEN TRANSACTION DETAIL VIEWER (MEMANGGIL API)
+// ============================================
+function TransactionDetailViewer({ 
+  txHash, 
+  contractAddress, 
+  onClose 
+}: { 
+  txHash: string; 
+  contractAddress: string; 
+  onClose: () => void;
+}) {
+  const [txData, setTxData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchTx = async () => {
+      try {
+        // Panggil endpoint baru di Backend
+        const res = await fetch(`${API_BASE}/tx/${txHash}`);
+        if (!res.ok) throw new Error("Failed to fetch transaction data");
+        const data = await res.json();
+        setTxData(data);
+      } catch (err) {
+        console.error("Error fetching transaction:", err);
+        toast.error("Failed to load transaction details");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchTx();
+  }, [txHash]);
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text).then(() => toast.success("Copied!"));
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="size-8 animate-spin text-brand" />
+      </div>
+    );
+  }
+
+  if (!txData) {
+    return <div className="text-center text-muted-foreground py-8">Transaction data not found</div>;
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between border-b border-border/30 pb-4">
+        <h3 className="font-semibold text-lg flex items-center gap-2">
+          <Code className="size-5 text-brand" />
+          Transaction Details
+        </h3>
+        <button onClick={onClose} className="p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+          <X className="size-5" />
+        </button>
+      </div>
+
+      {/* Grid Data Utama */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="rounded-xl border border-border/30 bg-muted/20 p-3">
+          <p className="text-xs text-muted-foreground">Value</p>
+          <p className="text-sm font-medium">{txData.value ? (Number(txData.value) / 1e18).toFixed(4) : '0'} QIE</p>
+        </div>
+        <div className="rounded-xl border border-border/30 bg-muted/20 p-3">
+          <p className="text-xs text-muted-foreground">Tx Fee</p>
+          <p className="text-sm font-medium">
+            {txData.gasUsed && txData.gasPrice 
+              ? (Number(txData.gasUsed) * Number(txData.gasPrice) / 1e18).toFixed(6) 
+              : 'N/A'} QIE
+          </p>
+        </div>
+        <div className="rounded-xl border border-border/30 bg-muted/20 p-3">
+          <p className="text-xs text-muted-foreground">Block</p>
+          <p className="text-sm font-medium">#{txData.blockNumber || 'Pending'}</p>
+        </div>
+        <div className="rounded-xl border border-border/30 bg-muted/20 p-3">
+          <p className="text-xs text-muted-foreground">Status</p>
+          <div className="flex items-center gap-1.5 text-sm font-medium text-emerald-500">
+            <CheckCircle2 className="size-4" />
+            {txData.status || 'Success'}
+          </div>
+        </div>
+      </div>
+
+      {/* Tx Hash */}
+      <div className="space-y-2">
+        <p className="text-xs text-muted-foreground">Transaction Hash</p>
+        <div className="flex items-center gap-2 bg-muted/30 rounded-xl p-3 border border-border/30">
+          <code className="text-xs font-mono break-all flex-1">{txHash}</code>
+          <button onClick={() => copyToClipboard(txHash)} className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+            <Copy className="size-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* From / To */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground">From</p>
+          <div className="flex items-center gap-2 bg-muted/30 rounded-xl p-3 border border-border/30">
+            <code className="text-xs font-mono break-all">{txData.from}</code>
+            <button onClick={() => copyToClipboard(txData.from)} className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+              <Copy className="size-4" />
+            </button>
+          </div>
+        </div>
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground">To</p>
+          <div className="flex items-center gap-2 bg-muted/30 rounded-xl p-3 border border-border/30">
+            <code className="text-xs font-mono break-all">
+              {txData.to || 'Contract Creation'}
+            </code>
+          </div>
+        </div>
+      </div>
+
+      {/* Gas Info */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground">Gas Price</p>
+          <p className="text-sm font-medium">{txData.gasPrice ? (Number(txData.gasPrice) / 1e18).toFixed(6) : 'N/A'} QIE</p>
+        </div>
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground">Gas Limit</p>
+          <p className="text-sm font-medium">{txData.gasLimit || 'N/A'}</p>
+        </div>
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground">Gas Used</p>
+          <p className="text-sm font-medium">{txData.gasUsed || 'N/A'}</p>
+        </div>
+      </div>
+
+      {/* Input Data / Contract Code */}
+      {txData.input && txData.input !== '0x' && (
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground">Input Data (Contract Code)</p>
+          <div className="bg-background/50 rounded-xl p-4 border border-border/30 max-h-48 overflow-y-auto">
+            <code className="font-mono text-[10px] break-all whitespace-pre-wrap text-foreground/80 select-all">
+              {txData.input}
+            </text>
+          </div>
+        </div>
+      )}
+
+      {/* Contract Address (jika ada) */}
+      {contractAddress && (
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground">Contract Created</p>
+          <div className="flex items-center gap-2 bg-muted/30 rounded-xl p-3 border border-border/30">
+            <code className="text-xs font-mono break-all">{contractAddress}</code>
+            <button onClick={() => copyToClipboard(contractAddress)} className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+              <Copy className="size-4" />
+            </button>
+            <a
+              href={`https://mainnet.qie.digital/address/${contractAddress}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            >
+              <ExternalLink className="size-4" />
+            </a>
           </div>
         </div>
       )}
