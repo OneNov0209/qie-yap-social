@@ -4,7 +4,7 @@ import { Header } from "@/components/header";
 import { Avatar } from "@/components/avatar-img";
 import { API_BASE } from "@/lib/posts";
 import { cn } from "@/lib/utils";
-import { ArrowLeft, Code, Heart, MessageCircle, GitFork, ExternalLink, Calendar, Loader2, Plus } from "lucide-react";
+import { ArrowLeft, Code, Heart, MessageCircle, GitFork, Plus } from "lucide-react";
 import { useAuth } from "@/lib/auth-store";
 import { toast } from "sonner";
 
@@ -51,7 +51,6 @@ function ProjectsPage() {
       if (res.ok) {
         const data = await res.json();
         setProjects(data);
-        console.log("📦 Projects loaded:", data);
       }
     } catch (err) {
       console.error("Error loading projects:", err);
