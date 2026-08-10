@@ -82,7 +82,7 @@ function ProjectsPage() {
           name: formData.get('name'),
           description: formData.get('description'),
           contract_address: formData.get('contract_address'),
-          tx_hash: formData.get('tx_hash'), // ✅ Tambahan baru
+          tx_hash: formData.get('tx_hash'),
           status: 'active'
         })
       });
@@ -183,9 +183,10 @@ function ProjectsPage() {
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-2">
+                    {/* ✅ PERBAIKAN PENTING DI SINI: Gunakan project.id BUKAN tx_hash */}
                     <Link
                       to="/project/$id"
-                      params={{ id: project.tx_hash || project.id }}
+                      params={{ id: project.id }} // <-- INI KUNCI PERBAIKANNYA
                       className="text-sm text-brand hover:text-brand/80 font-medium"
                     >
                       View Details →
@@ -222,7 +223,6 @@ function ProjectsPage() {
                   placeholder="0x..."
                 />
               </div>
-              {/* ✅ TAMBAHAN BARU: Input Tx Hash */}
               <div>
                 <label className="text-sm font-medium mb-1 block">Transaction Hash *</label>
                 <input
