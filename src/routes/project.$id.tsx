@@ -472,14 +472,14 @@ function TransactionDetailViewer({
         </div>
       </div>
 
-      {/* Input Data / Contract Code */}
+      {/* Input Data / Contract Code - PERBAIKAN TAG DILAKUKAN DI SINI */}
       {txData.input && txData.input !== '0x' && (
         <div className="space-y-2">
           <p className="text-xs text-muted-foreground">Input Data (Contract Code)</p>
           <div className="bg-background/50 rounded-xl p-4 border border-border/30 max-h-48 overflow-y-auto">
             <code className="font-mono text-[10px] break-all whitespace-pre-wrap text-foreground/80 select-all">
               {txData.input}
-            </text>
+            </code>
           </div>
         </div>
       )}
