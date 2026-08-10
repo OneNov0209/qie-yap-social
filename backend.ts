@@ -4,6 +4,7 @@ const cors = require('cors');
 const path = require('path');
 const axios = require('axios');
 const cheerio = require('cheerio');
+const { createPublicClient, defineChain, http } = require('viem');
 
 const app = express();
 app.use(cors());
@@ -16,6 +17,27 @@ const pool = new Pool({
   database: 'qie_yap_db',
   password: 'qie123',
   port: 5432,
+});
+
+const QIE_CHAIN = defineChain({
+  id: 1990,
+  name: "QIE Mainnet",
+  nativeCurrency: { name: "QIE", symbol: "QIE", decimals: 18 },
+  rpcUrls: { 
+    default: { 
+      http: [
+        "https://rpc-evm.qie.onenov.xyz",
+        "https://rpc2mainnet.qie.digital",
+        "https://rpc3mainnet.qie.digital"
+      ] 
+    } 
+  },
+  blockExplorers: { default: { name: "QIE Explorer", url: "https://qie.explorer.onenov.xyz" } },
+});
+
+const qiePublicClient = createPublicClient({
+  chain: QIE_CHAIN,
+  transport: http(),
 });
 
 // ============================================
@@ -108,6 +130,19 @@ app.post('/api/admin/create-tables', async (req, res) => {
         content TEXT NOT NULL,
         created_at TIMESTAMPTZ DEFAULT NOW(),
         FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
+        FOREIGN KEY (author_id) REFERENCES profiles(id) ON DELETE CASCADE
+      );
+      CREATE TABLE IF NOT EXISTS projects (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        author_id UUID NOT NULL,
+        name TEXT NOT NULL,
+        description TEXT,
+        contract_address TEXT,
+        tx_hash TEXT,
+        status TEXT DEFAULT 'active',
+        repo_url TEXT,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW(),
         FOREIGN KEY (author_id) REFERENCES profiles(id) ON DELETE CASCADE
       );
     `);
@@ -211,7 +246,7 @@ app.get('/api/profiles', async (req, res) => {
 });
 
 // ============================================
-// 3. POSTS (WAJIB ON-CHAIN)
+// 3. POSTS
 // ============================================
 app.post('/api/posts', async (req, res) => {
   const { 
@@ -231,7 +266,6 @@ app.post('/api/posts', async (req, res) => {
 
   console.log("📥 [POST] Received:", { content: content?.slice(0, 30), tx_hash });
 
-  // ✅ VALIDASI: Wajib ada tx_hash (artinya transaksi on-chain sudah terjadi)
   if (!tx_hash) {
     return res.status(400).json({ error: 'On-chain transaction required for all posts' });
   }
@@ -263,12 +297,20 @@ app.post('/api/posts', async (req, res) => {
         boost_expires_at, 
         tx_hash, 
         content_hash, 
-        true, // ✅ Paksa on_chain = true
+        true,
         reply_to, 
         original_post_id
       ]
     );
     console.log("✅ [POST] Saved to DB (ON-CHAIN):", result.rows[0].id);
+
+    if (author_id) {
+      await pool.query(
+        `UPDATE profiles SET builder_score = builder_score + 0.5 WHERE id = $1`,
+        [author_id]
+      );
+    }
+
     res.json(result.rows[0]);
   } catch (err) {
     console.error("❌ [POST] Error:", err);
@@ -519,7 +561,7 @@ app.get('/api/follows', async (req, res) => {
 });
 
 // ============================================
-// 6. TIPS (FINAL - TERIMA WALLET ADDRESS ATAU UUID)
+// 6. TIPS
 // ============================================
 app.post('/api/tips', async (req, res) => {
   const { post_id, from_user_id, to_user_id, amount, tx_hash } = req.body;
@@ -531,23 +573,24 @@ app.post('/api/tips', async (req, res) => {
   console.log("📥 [TIP] amount:", amount);
   console.log("📥 [TIP] tx_hash:", tx_hash);
 
-  // Validasi ketat: pastikan semua field ada
   if (!post_id || !from_user_id || !to_user_id || amount === undefined || amount === null) {
     console.error("❌ [TIP] Missing fields", { post_id, from_user_id, to_user_id, amount });
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
-  // Validasi: pastikan amount adalah angka positif
   const numericAmount = parseFloat(amount);
   if (isNaN(numericAmount) || numericAmount <= 0) {
     return res.status(400).json({ error: 'Amount must be a positive number' });
   }
 
   try {
-    // ✅ Konversi alamat wallet (0x...) menjadi UUID jika diperlukan
+    const postRes = await pool.query('SELECT author_id FROM posts WHERE id = $1', [post_id]);
+    if (postRes.rows.length === 0) {
+      return res.status(404).json({ error: 'Post not found' });
+    }
+    const authorId = postRes.rows[0].author_id;
+
     let finalToUserId = to_user_id;
-    
-    // Jika to_user_id adalah alamat wallet (0x...), cari UUID-nya di tabel profiles
     if (typeof to_user_id === 'string' && to_user_id.startsWith('0x')) {
       console.log("🔍 [TIP] Converting wallet address to UUID:", to_user_id);
       const profileRes = await pool.query(
@@ -557,9 +600,6 @@ app.post('/api/tips', async (req, res) => {
       if (profileRes.rows.length > 0) {
         finalToUserId = profileRes.rows[0].id;
         console.log("✅ [TIP] Converted to UUID:", finalToUserId);
-      } else {
-        console.warn("⚠️ [TIP] Wallet address not found in profiles:", to_user_id);
-        // Jika tidak ditemukan, tetap gunakan alamat wallet (akan gagal di INSERT)
       }
     }
 
@@ -568,8 +608,15 @@ app.post('/api/tips', async (req, res) => {
        VALUES ($1, $2, $3, $4, $5) RETURNING *`,
       [post_id, from_user_id, finalToUserId, numericAmount, tx_hash || null]
     );
-    
     console.log("✅ [TIP] Saved to DB:", result.rows[0]);
+
+    if (authorId) {
+      await pool.query(
+        `UPDATE profiles SET reputation_score = reputation_score + 1 WHERE id = $1`,
+        [authorId]
+      );
+    }
+
     res.json(result.rows[0]);
   } catch (err) {
     console.error("❌ [TIP] DB Error DETAIL:", err);
@@ -866,7 +913,7 @@ app.get('/api/link-preview', async (req, res) => {
 });
 
 // ============================================
-// 12. LEADERBOARD (FINAL FIX - HANYA USER AKTIF + TIP TERHITUNG)
+// 12. LEADERBOARD
 // ============================================
 app.get('/api/leaderboard', async (req, res) => {
   const { timeframe = 'all', limit = 50 } = req.query;
@@ -885,12 +932,11 @@ app.get('/api/leaderboard', async (req, res) => {
         p.username,
         p.avatar_seed,
         p.is_validator,
-        COALESCE(SUM(t.amount::numeric), 0) as total_tips_received,
+        COALESCE(SUM(t.amount), 0) as total_tips_received,
         (SELECT COUNT(*) FROM posts WHERE author_id = p.id AND reply_to IS NULL) as yap_count,
         (SELECT COUNT(*) FROM follows WHERE following_id = p.id) as follower_count
       FROM profiles p
       LEFT JOIN tips t ON t.to_user_id = p.id ${dateFilter}
-      WHERE (SELECT COUNT(*) FROM posts WHERE author_id = p.id) > 0
       GROUP BY p.id
       ORDER BY total_tips_received DESC
       LIMIT $1
@@ -932,7 +978,7 @@ app.get('/api/stats', async (req, res) => {
     const yapsRes = await pool.query('SELECT COUNT(*) FROM posts WHERE reply_to IS NULL');
     const totalYaps = parseInt(yapsRes.rows[0].count);
 
-    const tipsRes = await pool.query('SELECT COALESCE(SUM(amount::numeric), 0) as total FROM tips');
+    const tipsRes = await pool.query('SELECT COALESCE(SUM(amount), 0) as total FROM tips');
     const totalQie = parseFloat(tipsRes.rows[0].total);
 
     const usersRes = await pool.query(`
@@ -994,6 +1040,375 @@ app.get('/api/stats/chart', async (req, res) => {
 });
 
 // ============================================
+// 15. PROJECTS (DATABASE & ON-CHAIN INTEGRATION)
+// ============================================
+
+// GET: List all projects
+app.get('/api/projects', async (req, res) => {
+  const { limit = 50 } = req.query;
+  try {
+    const result = await pool.query(`
+      SELECT 
+        p.id,
+        p.name,
+        p.description,
+        p.contract_address,
+        p.tx_hash,
+        p.status,
+        p.is_scanned,
+        p.created_at,
+        jsonb_build_object(
+          'id', pr.id,
+          'display_name', pr.display_name,
+          'avatar_seed', pr.avatar_seed
+        ) as author,
+        (SELECT COUNT(*) FROM project_likes WHERE project_id = p.id) as likes,
+        (SELECT COUNT(*) FROM project_comments WHERE project_id = p.id) as comments,
+        (SELECT COUNT(*) FROM project_forks WHERE project_id = p.id) as forks
+      FROM projects p
+      LEFT JOIN profiles pr ON pr.id = p.author_id
+      ORDER BY p.created_at DESC
+      LIMIT $1
+    `, [limit]);
+    res.json(result.rows);
+  } catch (err) {
+    console.error("❌ Projects error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET: Detail a project (by UUID or Tx Hash)
+app.get('/api/projects/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const isUUID = id.includes('-');
+    let query = `
+      SELECT
+        p.id,
+        p.name,
+        p.description,
+        p.contract_address,
+        p.tx_hash,
+        p.status,
+        p.is_scanned,
+        p.created_at,
+        jsonb_build_object(
+          'id', pr.id,
+          'display_name', pr.display_name,
+          'avatar_seed', pr.avatar_seed
+        ) as author,
+        (SELECT COUNT(*) FROM project_likes WHERE project_id = p.id) as likes_count,
+        (SELECT COUNT(*) FROM project_comments WHERE project_id = p.id) as comments_count,
+        (SELECT COUNT(*) FROM project_forks WHERE project_id = p.id) as forks_count
+      FROM projects p
+      LEFT JOIN profiles pr ON pr.id = p.author_id
+      WHERE ${isUUID ? 'p.id = $1' : 'p.tx_hash = $1'}
+    `;
+    const result = await pool.query(query, [id]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error("❌ Project detail error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST: Create a new project (Manual publish)
+app.post('/api/projects', async (req, res) => {
+  const { author_id, name, description, contract_address, repo_url, status } = req.body;
+  try {
+    const result = await pool.query(
+      `INSERT INTO projects (author_id, name, description, contract_address, repo_url, status, is_scanned)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+      [author_id, name, description, contract_address, repo_url, status || 'active', false]
+    );
+    
+    // 🎯 Tambahkan Builder Score (+5) karena user mempublikasikan project
+    await pool.query(
+      `UPDATE profiles SET builder_score = builder_score + 5 WHERE id = $1`,
+      [author_id]
+    );
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error("❌ Create project error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================
+// 16. PROJECT INTERACTIONS (LIKES, COMMENTS, FORKS)
+// ============================================
+
+// POST: Like / Unlike a project
+app.post('/api/projects/:id/like', async (req, res) => {
+  const { id } = req.params;
+  const { user_id } = req.body;
+  try {
+    // Validasi apakah project ada
+    const projectCheck = await pool.query('SELECT id, author_id FROM projects WHERE id = $1 OR tx_hash = $1', [id]);
+    if (projectCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+    const projectId = projectCheck.rows[0].id;
+    const authorId = projectCheck.rows[0].author_id;
+
+    const existing = await pool.query(
+      'SELECT id FROM project_likes WHERE project_id = $1 AND user_id = $2',
+      [projectId, user_id]
+    );
+
+    let action;
+    if (existing.rows.length > 0) {
+      // UNLIKE
+      await pool.query('DELETE FROM project_likes WHERE project_id = $1 AND user_id = $2', [projectId, user_id]);
+      await pool.query('UPDATE projects SET likes_count = likes_count - 1 WHERE id = $1', [projectId]);
+      // Kurangi contributor score (opsional)
+      await pool.query('UPDATE profiles SET contributor_score = contributor_score - 1 WHERE id = $1', [authorId]);
+      action = 'unliked';
+    } else {
+      // LIKE
+      await pool.query('INSERT INTO project_likes (project_id, user_id) VALUES ($1, $2)', [projectId, user_id]);
+      await pool.query('UPDATE projects SET likes_count = likes_count + 1 WHERE id = $1', [projectId]);
+      // Tambah contributor score (+1) untuk pembuat project karena dapat like
+      await pool.query('UPDATE profiles SET contributor_score = contributor_score + 1 WHERE id = $1', [authorId]);
+      action = 'liked';
+    }
+
+    // Ambil jumlah like terbaru untuk dikirim ke frontend
+    const countResult = await pool.query('SELECT likes_count FROM projects WHERE id = $1', [projectId]);
+    res.json({ action, count: parseInt(countResult.rows[0].likes_count) });
+  } catch (err) {
+    console.error("❌ Like error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST: Comment on a project
+app.post('/api/projects/:id/comment', async (req, res) => {
+  const { id } = req.params;
+  const { user_id, content } = req.body;
+  try {
+    // Validasi project
+    const projectCheck = await pool.query('SELECT id FROM projects WHERE id = $1 OR tx_hash = $1', [id]);
+    if (projectCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+    const projectId = projectCheck.rows[0].id;
+
+    const result = await pool.query(
+      `INSERT INTO project_comments (project_id, user_id, content)
+       VALUES ($1, $2, $3) RETURNING *`,
+      [projectId, user_id, content]
+    );
+    
+    // Ambil data author untuk dikirim balik ke frontend
+    const authorResult = await pool.query(
+      'SELECT id, display_name, avatar_seed FROM profiles WHERE id = $1',
+      [user_id]
+    );
+    const commentWithAuthor = {
+      ...result.rows[0],
+      author: authorResult.rows[0] || null
+    };
+    
+    res.json(commentWithAuthor);
+  } catch (err) {
+    console.error("❌ Comment error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET: Get comments for a project
+app.get('/api/projects/:id/comments', async (req, res) => {
+  const { id } = req.params;
+  try {
+    let projectId = id;
+    if (!id.includes('-')) {
+      const result = await pool.query('SELECT id FROM projects WHERE tx_hash = $1', [id]);
+      if (result.rows.length > 0) {
+        projectId = result.rows[0].id;
+      } else {
+        return res.json([]);
+      }
+    }
+
+    const comments = await pool.query(`
+      SELECT c.*,
+        jsonb_build_object(
+          'id', p.id,
+          'display_name', p.display_name,
+          'avatar_seed', p.avatar_seed
+        ) as author
+      FROM project_comments c
+      LEFT JOIN profiles p ON p.id = c.user_id
+      WHERE c.project_id = $1
+      ORDER BY c.created_at DESC
+    `, [projectId]);
+    res.json(comments.rows);
+  } catch (err) {
+    console.error("❌ Comments error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST: Fork a project (GitHub-style: Duplicate the project for the user)
+app.post('/api/projects/:id/fork', async (req, res) => {
+  const { id } = req.params;
+  const { user_id } = req.body;
+  
+  if (!user_id) {
+    return res.status(400).json({ error: 'user_id required' });
+  }
+  
+  try {
+    // 1. Ambil data project asli
+    const original = await pool.query(
+      'SELECT * FROM projects WHERE id = $1 OR tx_hash = $1', 
+      [id]
+    );
+    if (original.rows.length === 0) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+    const proj = original.rows[0];
+    
+    // 2. Cek apakah user ini sudah pernah fork project ini
+    const existingFork = await pool.query(
+      'SELECT id FROM project_forks WHERE project_id = $1 AND user_id = $2',
+      [proj.id, user_id]
+    );
+    
+    if (existingFork.rows.length > 0) {
+      // UNFORK: Hapus project hasil fork (jika ada) dan hapus catatan fork
+      await pool.query(
+        'DELETE FROM projects WHERE forked_from = $1 AND author_id = $2', 
+        [proj.id, user_id]
+      );
+      await pool.query(
+        'DELETE FROM project_forks WHERE project_id = $1 AND user_id = $2', 
+        [proj.id, user_id]
+      );
+      await pool.query(
+        'UPDATE projects SET forks_count = forks_count - 1 WHERE id = $1', 
+        [proj.id]
+      );
+      
+      // (Opsional) Kurangi contributor score karena unfork
+      await pool.query(
+        'UPDATE profiles SET contributor_score = contributor_score - 2 WHERE id = $1', 
+        [proj.author_id]
+      );
+
+      return res.json({ 
+        action: 'unforked', 
+        count: Math.max(0, proj.forks_count - 1) 
+      });
+    }
+    
+    // FORK: Buat salinan project baru (Duplikat)
+    const newProject = await pool.query(
+      `INSERT INTO projects (author_id, name, description, contract_address, tx_hash, status, forked_from, is_scanned, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW()) RETURNING *`,
+      [
+        user_id, 
+        `${proj.name} (Fork)`, 
+        proj.description, 
+        proj.contract_address, 
+        proj.tx_hash, 
+        'active', 
+        proj.id,
+        proj.is_scanned
+      ]
+    );
+    
+    // Catat aktivitas fork
+    await pool.query(
+      'INSERT INTO project_forks (project_id, user_id) VALUES ($1, $2)',
+      [proj.id, user_id]
+    );
+    await pool.query(
+      'UPDATE projects SET forks_count = forks_count + 1 WHERE id = $1', 
+      [proj.id]
+    );
+    
+    // Tambahkan Contributor Score ke pembuat project asli (karena projectnya di-fork)
+    await pool.query(
+      'UPDATE profiles SET contributor_score = contributor_score + 2 WHERE id = $1', 
+      [proj.author_id]
+    );
+    
+    res.json({ 
+      action: 'forked', 
+      project: newProject.rows[0], // Kirim data project baru ke Frontend
+      count: proj.forks_count + 1
+    });
+  } catch (err) {
+    console.error("❌ Fork error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================
+// 17. RPC SCANNER (BACKGROUND JOB) - FIXED
+// ============================================
+async function scanNewContracts() {
+  try {
+    console.log("🔍 Scanning RPC for new contracts...");
+    const latestBlock = await qiePublicClient.getBlockNumber();
+    const startBlock = latestBlock - BigInt(50);
+    
+    let count = 0;
+    for (let i = startBlock; i <= latestBlock; i++) {
+      try {
+        const block = await qiePublicClient.getBlock({ blockNumber: i, includeTransactions: true });
+        if (!block.transactions) continue;
+        for (const tx of block.transactions) {
+          if (!tx.to) {
+            const receipt = await qiePublicClient.getTransactionReceipt({ hash: tx.hash });
+            if (receipt?.contractAddress) {
+              // Cek apakah kontrak sudah ada di database (berdasarkan contract_address ATAU tx_hash)
+              const existing = await pool.query(
+                'SELECT id FROM projects WHERE contract_address = $1 OR tx_hash = $2',
+                [receipt.contractAddress, tx.hash]
+              );
+              if (existing.rows.length === 0) {
+                await pool.query(`
+                  INSERT INTO projects (name, description, contract_address, tx_hash, status, is_scanned, created_at)
+                  VALUES ($1, $2, $3, $4, $5, $6, NOW())
+                `, [
+                  `Contract #${Date.now()}`,
+                  'Auto-detected from QIE Mainnet',
+                  receipt.contractAddress,
+                  tx.hash,
+                  'active',
+                  true
+                ]);
+                count++;
+              }
+            }
+          }
+        }
+      } catch (blockError) {
+        console.warn(`⚠️ Skip block ${i} due to RPC error:`, blockError.message);
+        continue;
+      }
+    }
+    if (count > 0) console.log(`✅ ${count} new contract(s) added to Projects.`);
+  } catch (err) {
+    console.warn("⚠️ RPC scan skipped:", err.message);
+  }
+}
+
+// ============================================
+// 18. JALANKAN BACKGROUND SCANNER
+// ============================================
+setInterval(scanNewContracts, 5 * 60 * 1000);
+// Jalankan pertama kali saat server start
+scanNewContracts();
+
+// ============================================
 // START SERVER
 // ============================================
 const PORT = 3000;
@@ -1001,5 +1416,5 @@ app.listen(PORT, () => {
   console.log(`✅ QIE Yap Backend running on port ${PORT}`);
 });
 
-// ✅ KUNCI AGAR NODE.JS TIDAK MATI SAAT DIJALANKAN LEWAT SYSTEMD
+// Keep process alive
 process.stdin.resume();
