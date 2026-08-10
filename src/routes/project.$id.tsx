@@ -266,12 +266,24 @@ function ProjectDetailPage() {
               <GitFork className={cn("size-4", forked && "text-brand")} />
               <span>{forksCount}</span>
             </button>
+
+            {/* ✅ PERBAIKAN: Cegah klik jika tx_hash null */}
             <button
               onClick={() => setIsViewingTx(true)}
-              className="ml-auto flex items-center gap-1.5 text-sm text-muted-foreground hover:text-brand transition-colors"
+              disabled={!project.tx_hash || project.tx_hash === 'null' || project.tx_hash === ''}
+              className={cn(
+                "ml-auto flex items-center gap-1.5 text-sm transition-colors",
+                (!project.tx_hash || project.tx_hash === 'null' || project.tx_hash === '')
+                  ? "text-muted-foreground/50 cursor-not-allowed"
+                  : "text-muted-foreground hover:text-brand"
+              )}
             >
               <FileCode className="size-4" />
-              <span>View Transaction</span>
+              <span>
+                {(!project.tx_hash || project.tx_hash === 'null' || project.tx_hash === '') 
+                  ? "No Tx Hash" 
+                  : "View Transaction"}
+              </span>
             </button>
           </div>
         </div>
