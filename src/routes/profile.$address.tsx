@@ -33,7 +33,6 @@ interface FeedProfile {
   avatarSeed: string;
   isValidator: boolean;
   badge: 'shrimp' | 'fish' | 'dolphin' | 'shark' | 'whale';
-  // ✅ Tambahkan skor ke interface
   builder_score?: number;
   contributor_score?: number;
   reputation_score?: number;
@@ -93,7 +92,6 @@ function ProfilePage() {
               avatarSeed: data.avatar_seed || address,
               isValidator: Boolean(data.is_validator),
               badge: 'shrimp',
-              // ✅ Ambil skor dari database
               builder_score: data.builder_score || 0,
               contributor_score: data.contributor_score || 0,
               reputation_score: data.reputation_score || 0,
@@ -267,7 +265,7 @@ function ProfilePage() {
             </div>
             {profile.bio && <p className="mt-3 text-foreground/90">{profile.bio}</p>}
 
-            {/* ✅ ON-CHAIN RÉSUMÉ (SKOR REPUTASI) */}
+            {/* ON-CHAIN RÉSUMÉ (SKOR REPUTASI) */}
             <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-2">
               <ScoreCard 
                 icon={<Code className="size-4 text-brand" />}
@@ -371,7 +369,7 @@ function ProfilePage() {
   );
 }
 
-// ✅ Komponen ScoreCard
+// ScoreCard Component
 function ScoreCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) {
   return (
     <div className="rounded-xl border border-border/40 bg-card/50 p-3 text-center backdrop-blur-sm transition-colors hover:bg-card/80">
