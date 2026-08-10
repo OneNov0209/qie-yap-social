@@ -235,16 +235,27 @@ function ProjectDetailPage() {
           )}
 
           {project.contract_address && (
-            <div className="mt-4 p-3 rounded-xl bg-muted/50 border border-border/30">
-              <p className="text-xs text-muted-foreground mb-1">Contract Address</p>
-              <div className="flex items-center gap-2">
-                <code className="text-sm font-mono text-foreground/80">
-                  {project.contract_address}
-                </code>
-                <CheckCircle2 className="size-4 text-emerald-500" />
-              </div>
-            </div>
-          )}
+  <div className="mt-4 p-3 rounded-xl bg-muted/50 border border-border/30">
+    <p className="text-xs text-muted-foreground mb-1">Contract Address</p>
+    <div className="flex items-center gap-2 flex-wrap">
+      <code className="text-sm font-mono text-foreground/80 break-all">
+        {project.contract_address}
+      </code>
+      <CheckCircle2 className="size-4 text-emerald-500 shrink-0" />
+      
+      {/* ✅ TAMBAHAN BARU: Tombol View on Explorer */}
+      <a
+        href={`https://mainnet.qie.digital/address/${project.contract_address}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="ml-auto flex items-center gap-1.5 text-xs font-medium text-brand hover:text-brand/80 transition-colors bg-brand/10 px-3 py-1.5 rounded-full"
+      >
+        <ExternalLink className="size-3.5" />
+        View on Explorer
+      </a>
+    </div>
+  </div>
+)}
 
           {/* Action Bar */}
           <div className="mt-6 flex items-center gap-4 pt-4 border-t border-border/30">
