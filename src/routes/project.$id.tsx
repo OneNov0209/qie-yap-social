@@ -121,7 +121,7 @@ function ProjectDetailPage() {
       const data = await res.json();
       if (data.action === 'forked' && data.project) {
         toast.success(`Forked! New project created: ${data.project.name}`);
-        // ✅ PERBAIKAN PENTING: Redirect menggunakan UUID (id), BUKAN tx_hash!
+        // ✅ FINAL FIX: Redirect menggunakan UUID (id), BUKAN tx_hash!
         router.navigate({ 
           to: "/project/$id", 
           params: { id: data.project.id } 
