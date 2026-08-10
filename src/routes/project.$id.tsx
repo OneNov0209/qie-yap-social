@@ -121,8 +121,11 @@ function ProjectDetailPage() {
       const data = await res.json();
       if (data.action === 'forked' && data.project) {
         toast.success(`Forked! New project created: ${data.project.name}`);
-        // Redirect ke project baru
-        router.navigate({ to: "/project/$id", params: { id: data.project.tx_hash || data.project.id } });
+        // ✅ PERBAIKAN PENTING: Redirect menggunakan UUID (id), BUKAN tx_hash!
+        router.navigate({ 
+          to: "/project/$id", 
+          params: { id: data.project.id } 
+        });
       } else {
         const newCount = data.count !== undefined ? data.count : forksCount;
         setForksCount(newCount);
@@ -243,7 +246,7 @@ function ProjectDetailPage() {
       </code>
       <CheckCircle2 className="size-4 text-emerald-500 shrink-0" />
       
-      {/* ✅ TAMBAHAN BARU: Tombol View on Explorer */}
+      {/* TAMBAHAN BARU: Tombol View on Explorer */}
       <a
         href={`https://mainnet.qie.digital/address/${project.contract_address}`}
         target="_blank"
@@ -278,7 +281,7 @@ function ProjectDetailPage() {
               <span>{forksCount}</span>
             </button>
 
-            {/* ✅ PERBAIKAN: Cegah klik jika tx_hash null */}
+            {/* PERBAIKAN: Cegah klik jika tx_hash null */}
             <button
               onClick={() => setIsViewingTx(true)}
               disabled={!project.tx_hash || project.tx_hash === 'null' || project.tx_hash === '' || project.tx_hash.trim() === ''}
@@ -495,7 +498,7 @@ function TransactionDetailViewer({
         </div>
       </div>
 
-      {/* Input Data / Contract Code - PERBAIKAN TAG DILAKUKAN DI SINI */}
+      {/* Input Data / Contract Code */}
       {txData.input && txData.input !== '0x' && (
         <div className="space-y-2">
           <p className="text-xs text-muted-foreground">Input Data (Contract Code)</p>
