@@ -281,7 +281,7 @@ function ProjectDetailPage() {
             {/* ✅ PERBAIKAN: Cegah klik jika tx_hash null */}
             <button
               onClick={() => setIsViewingTx(true)}
-              disabled={!project.tx_hash || project.tx_hash === 'null' || project.tx_hash === ''}
+              disabled={!project.tx_hash || project.tx_hash === 'null' || project.tx_hash === '' || project.tx_hash.trim() === ''}
               className={cn(
                 "ml-auto flex items-center gap-1.5 text-sm transition-colors",
                 (!project.tx_hash || project.tx_hash === 'null' || project.tx_hash === '')
