@@ -82,6 +82,7 @@ function ProjectsPage() {
           name: formData.get('name'),
           description: formData.get('description'),
           contract_address: formData.get('contract_address'),
+          tx_hash: formData.get('tx_hash'), // ✅ Tambahan baru
           status: 'active'
         })
       });
@@ -216,6 +217,16 @@ function ProjectsPage() {
                 <label className="text-sm font-medium mb-1 block">Contract Address *</label>
                 <input
                   name="contract_address"
+                  required
+                  className="w-full rounded-xl border border-border/50 bg-muted/20 px-4 py-2 text-sm font-mono"
+                  placeholder="0x..."
+                />
+              </div>
+              {/* ✅ TAMBAHAN BARU: Input Tx Hash */}
+              <div>
+                <label className="text-sm font-medium mb-1 block">Transaction Hash *</label>
+                <input
+                  name="tx_hash"
                   required
                   className="w-full rounded-xl border border-border/50 bg-muted/20 px-4 py-2 text-sm font-mono"
                   placeholder="0x..."
