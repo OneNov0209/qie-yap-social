@@ -28,7 +28,6 @@ export function PostCard({ post }: { post: FeedPost }) {
   const contractAddress = import.meta.env.VITE_QIE_YAP_CONTRACT as `0x${string}`;
   const isOwner = user?.address?.toLowerCase() === post.author?.address?.toLowerCase();
 
-  // ✅ Ambil data reposters (backend sudah mengirim array)
   const reposters = (post as any).reposters || [];
 
   const onToggleLike = async () => {
@@ -264,7 +263,6 @@ export function PostCard({ post }: { post: FeedPost }) {
         post.isBoosted && "border-2 border-brand-start/20",
       )}
     >
-      {/* === Repost Indicator (Jika ada reposters) === */}
       {reposters.length > 0 && (
         <div className="absolute -top-3 left-5 inline-flex items-center gap-1.5 rounded-full bg-muted/80 backdrop-blur-sm px-2.5 py-0.5 text-[10px] font-medium text-muted-foreground border border-border/30 z-10">
           <Repeat className="size-3" />
@@ -274,7 +272,6 @@ export function PostCard({ post }: { post: FeedPost }) {
         </div>
       )}
 
-      {/* === Header: Avatar & Identity === */}
       <div className="flex items-start gap-3 pt-2">
         <Link to="/profile/$address" params={{ address: post.author?.address || "" }}>
           <Avatar seed={post.author?.avatarSeed || "default"} size={48} className="ring-2 ring-border/50" />
@@ -292,6 +289,11 @@ export function PostCard({ post }: { post: FeedPost }) {
             
             <StakingBadgeChip badge={post.author?.badge || "shrimp"} />
             {post.author?.isValidator && <BadgeCheck className="size-4 text-brand-start fill-current" />}
+            {post.author?.qie_pass_verified && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-500">
+                ✅ QIE Pass Verified
+              </span>
+            )}
             
             <span className="text-sm text-muted-foreground">· {relativeTime(post.createdAt)}</span>
           </div>
@@ -312,7 +314,6 @@ export function PostCard({ post }: { post: FeedPost }) {
           </div>
         </div>
 
-        {/* Tombol Delete (Hanya untuk pemilik post) */}
         {isOwner && (
           <button
             onClick={handleDelete}
@@ -324,7 +325,6 @@ export function PostCard({ post }: { post: FeedPost }) {
           </button>
         )}
 
-        {/* Badge Super Yap (Pojok Kanan Atas) */}
         {post.isSuperYap && (
           <span className="flex items-center gap-1.5 rounded-full bg-gold/90 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-white shadow-sm">
             <Sparkles className="size-3" />
@@ -333,13 +333,11 @@ export function PostCard({ post }: { post: FeedPost }) {
         )}
       </div>
 
-      {/* === Content === */}
       <div className="ml-[60px] -mt-1">
         <div className="block text-[15px] leading-relaxed text-foreground/90 whitespace-pre-wrap hover:text-foreground transition-colors">
           {post.content}
         </div>
 
-        {/* Tampilkan Gambar jika ada */}
         {post.mediaUrl && (
           <div className="mt-3 w-full max-w-md rounded-xl overflow-hidden border border-border/50 shadow-sm">
             <img 
@@ -350,7 +348,6 @@ export function PostCard({ post }: { post: FeedPost }) {
           </div>
         )}
 
-        {/* Link Preview Card */}
         {post.linkPreview && (
           <div className="mt-3 rounded-xl overflow-hidden border border-border/50 bg-card/80 hover:border-brand-start/50 transition-colors">
             <a href={post.linkPreview.url} target="_blank" rel="noopener noreferrer" className="block">
@@ -373,7 +370,6 @@ export function PostCard({ post }: { post: FeedPost }) {
         )}
       </div>
 
-      {/* === Action Bar === */}
       <div className="ml-[60px] mt-2 flex items-center justify-between border-t border-border/40 pt-3">
         <div className="flex items-center gap-6">
           <button
@@ -430,7 +426,6 @@ export function PostCard({ post }: { post: FeedPost }) {
         </div>
       </div>
 
-      {/* === Bottom: Premium Actions === */}
       <div className="ml-[60px] mt-1 flex flex-wrap items-center gap-2 border-t border-border/20 pt-3">
         <button
           onClick={handleTip}
