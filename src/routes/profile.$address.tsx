@@ -37,6 +37,7 @@ interface FeedProfile {
   contributor_score?: number;
   reputation_score?: number;
   merchant_score?: number;
+  qie_pass_verified?: boolean;
 }
 
 function ProfilePage() {
@@ -96,6 +97,7 @@ function ProfilePage() {
               contributor_score: data.contributor_score || 0,
               reputation_score: data.reputation_score || 0,
               merchant_score: data.merchant_score || 0,
+              qie_pass_verified: data.qie_pass_verified || false,
             };
           }
         }
@@ -258,6 +260,11 @@ function ProfilePage() {
               <h1 className="font-display text-2xl font-bold">{profile.displayName}</h1>
               {profile.isValidator && <BadgeCheck className="size-5 text-brand" />}
               <StakingBadgeChip badge={profile.badge} />
+              {profile.qie_pass_verified && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-500">
+                  ✅ QIE Pass Verified
+                </span>
+              )}
             </div>
             <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
               <span>@{profile.username}</span>
