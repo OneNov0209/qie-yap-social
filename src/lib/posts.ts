@@ -22,6 +22,8 @@ export interface FeedPost {
     avatarSeed: string;
     badge: "shrimp" | "fish" | "dolphin" | "shark" | "whale";
     isValidator: boolean;
+    qie_id?: string;
+    qie_pass_verified?: boolean;
   };
   linkPreview?: {
     title: string;
@@ -38,6 +40,8 @@ export function mapPost(item: any): FeedPost {
   const displayName = authorData.display_name || authorData.displayName || item.author_display_name || item.author_name || "Anonymous";
   const avatarSeed = authorData.avatar_seed || authorData.avatarSeed || item.author_avatar_seed || "default";
   const isValidator = Boolean(authorData.is_validator || authorData.isValidator || item.author_is_validator || false);
+  const qie_id = authorData.qie_id || null;
+  const qie_pass_verified = Boolean(authorData.qie_pass_verified || false);
 
   let badge: "shrimp" | "fish" | "dolphin" | "shark" | "whale" = "shrimp";
   const addrHash = address.length > 10 ? parseInt(address.slice(2, 6), 16) : 0;
@@ -68,6 +72,8 @@ export function mapPost(item: any): FeedPost {
       avatarSeed,
       badge,
       isValidator,
+      qie_id,
+      qie_pass_verified,
     },
     linkPreview: item.link_preview || item.linkPreview || null,
   };
