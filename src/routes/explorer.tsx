@@ -2,7 +2,7 @@ import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Header } from "@/components/header";
 import { shortAddr, API_BASE, fetchFeed, relativeTime } from "@/lib/posts";
-import { ArrowLeft, Coins, Sparkles, Zap, ExternalLink, MessageCircle, Loader2, Hash, Clock } from "lucide-react";
+import { ArrowLeft, Coins, Sparkles, Zap, ExternalLink, MessageCircle, Loader2, Hash, Clock, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-store";
 
@@ -29,6 +29,13 @@ interface ExplorerTx {
   recipient_display_name?: string;
 }
 
+interface QIEDexToken {
+  id: string;
+  symbol: string;
+  name: string;
+  totalSupply: string;
+}
+
 function ExplorerPage() {
   const { user } = useAuth();
   const router = useRouter();
@@ -42,10 +49,31 @@ function ExplorerPage() {
     totalYaps: 0,
     totalQIE: 0,
   });
+  
+  // ✅ STATE UNTUK QIEDEX
+  const [qiedexTokens, setQIEDexTokens] = useState<QIEDexToken[]>([]);
+  const [qiedexLoading, setQIEDexLoading] = useState(false);
 
   useEffect(() => {
     loadExplorer();
+    fetchQIEDexTokens();
   }, []);
+
+  // ✅ Fetch QIEDex Tokens
+  const fetchQIEDexTokens = async () => {
+    setQIEDexLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/qiedex/tokens`);
+      if (res.ok) {
+        const data = await res.json();
+        setQIEDexTokens(data);
+      }
+    } catch (err) {
+      console.error("Error fetching QIEDex tokens:", err);
+    } finally {
+      setQIEDexLoading(false);
+    }
+  };
 
   const loadExplorer = async () => {
     setLoading(true);
@@ -148,9 +176,16 @@ function ExplorerPage() {
     }
   };
 
-  // ✅ PERBAIKAN: Gunakan relativeTime yang sudah fix di posts.ts
   const formatTime = (dateString: string) => {
     return relativeTime(dateString);
+  };
+
+  const formatSupply = (supply: string) => {
+    const num = Number(supply);
+    if (num >= 1_000_000_000_000_000_000) {
+      return (num / 1_000_000_000_000_000_000).toFixed(2) + " QIE";
+    }
+    return num.toLocaleString();
   };
 
   return (
@@ -193,6 +228,49 @@ function ExplorerPage() {
             sub="Promoted posts"
           />
         </div>
+
+        {/* ============================================ */}
+        {/* ✅ BAGIAN BARU: QIEDEX TOKENS */}
+        {/* ============================================ */}
+        <div className="mb-6">
+          <div className="flex items-center gap-2 mb-3">
+            <TrendingUp className="size-5 text-brand" />
+            <h2 className="font-semibold text-sm">QIEDex Tokens</h2>
+          </div>
+
+          {qiedexLoading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="size-6 animate-spin text-brand" />
+            </div>
+          ) : qiedexTokens.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-border bg-card/50 p-8 text-center">
+              <p className="text-sm text-muted-foreground">No tokens found</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {qiedexTokens.map((token) => (
+                <div key={token.id} className="flex items-center justify-between rounded-xl border border-border/50 bg-card/50 p-3">
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-full bg-muted p-2">
+                      <Coins className="size-4 text-brand" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold">{token.symbol}</p>
+                      <p className="text-xs text-muted-foreground">{token.name}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-medium">{formatSupply(token.totalSupply)}</p>
+                    <p className="text-[10px] text-muted-foreground">Supply</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        {/* ============================================ */}
+        {/* ✅ END BAGIAN QIEDEX */}
+        {/* ============================================ */}
 
         <div className="flex flex-wrap gap-2 mb-6">
           {[
