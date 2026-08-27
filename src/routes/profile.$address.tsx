@@ -38,6 +38,7 @@ interface FeedProfile {
   reputation_score?: number;
   merchant_score?: number;
   qie_pass_verified?: boolean;
+  qie_id?: string;
 }
 
 function ProfilePage() {
@@ -98,6 +99,7 @@ function ProfilePage() {
               reputation_score: data.reputation_score || 0,
               merchant_score: data.merchant_score || 0,
               qie_pass_verified: data.qie_pass_verified || false,
+              qie_id: data.qie_id || null,
             };
           }
         }
@@ -263,6 +265,11 @@ function ProfilePage() {
               {profile.qie_pass_verified && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-500">
                   ✅ QIE Pass Verified
+                </span>
+              )}
+              {profile.qie_id && (
+                <span className="inline-flex items-center gap-1 text-sm font-medium text-brand">
+                  @{profile.qie_id}
                 </span>
               )}
             </div>
