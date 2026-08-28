@@ -1,15 +1,17 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Home, Search, Activity, Wallet, User } from "lucide-react";
+import { Home, Search, Activity, Wallet, User, ChevronDown, Coins } from "lucide-react";
 import { ConnectWalletButton } from "./connect-wallet-button";
 import { ThemeToggle } from "./theme-toggle";
 import { useAuth } from "@/lib/auth-store";
 import { NotificationsPopover } from "./notifications-popover";
 import { cn } from "@/lib/utils";
+import { useState } from "react";
 
 const LOGO = "https://raw.githubusercontent.com/OneNov0209/logo/refs/heads/main/qie-logo.png";
 
 export function Header() {
   const { user } = useAuth();
+  const [isExplorerOpen, setIsExplorerOpen] = useState(false);
 
   return (
     <header className="sticky top-0 z-40 border-b border-transparent bg-background/60 backdrop-blur-xl shadow-sm shadow-brand-start/5">
@@ -27,6 +29,39 @@ export function Header() {
         </Link>
 
         <div className="flex items-center gap-2">
+          {/* ✅ Dropdown Explorer */}
+          <div className="relative">
+            <button
+              onClick={() => setIsExplorerOpen(!isExplorerOpen)}
+              className="flex items-center gap-1 rounded-full px-3 py-1.5 text-sm font-medium transition-colors hover:bg-muted"
+            >
+              <Activity className="size-4" />
+              <span>Explorer</span>
+              <ChevronDown className={cn("size-3 transition-transform", isExplorerOpen && "rotate-180")} />
+            </button>
+
+            {isExplorerOpen && (
+              <div className="absolute top-full right-0 mt-2 w-48 rounded-xl border border-border bg-card p-2 shadow-lg">
+                <Link
+                  to="/explorer"
+                  onClick={() => setIsExplorerOpen(false)}
+                  className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-muted"
+                >
+                  <Activity className="size-4 text-brand" />
+                  QIEYap
+                </Link>
+                <Link
+                  to="/explorer/tokens"
+                  onClick={() => setIsExplorerOpen(false)}
+                  className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-muted"
+                >
+                  <Coins className="size-4 text-brand" />
+                  Tokens
+                </Link>
+              </div>
+            )}
+          </div>
+
           {user && <NotificationsPopover />}
           <ThemeToggle />
           <ConnectWalletButton />
@@ -42,7 +77,6 @@ export function MobileBottomNav() {
   const profilePath = user?.address ?? "0x0000000000000000000000000000000000000000";
 
   const items = [
-    // ✅ Ubah route Feed dari "/" menjadi "/feed"
     { to: "/feed", label: "Feed", icon: Home },
     { to: "/search", label: "Search", icon: Search },
     { to: "/explorer", label: "Explorer", icon: Activity },
