@@ -1,8 +1,8 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Home, Search, Activity, Wallet, Trophy, User, Coins, PlusCircle, X, Menu, Code } from "lucide-react";
+import { Home, Search, Activity, Wallet, Trophy, User, Coins, PlusCircle, X, Menu, Code, ChevronDown } from "lucide-react";
 import { useAuth } from "@/lib/auth-store";
 import { cn } from "@/lib/utils";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useSidebarStore } from "@/lib/sidebar-store";
 
 export function Sidebar() {
@@ -11,6 +11,7 @@ export function Sidebar() {
   const profilePath = user?.address ?? "0x0000000000000000000000000000000000000000";
   
   const { isOpen, toggle, close } = useSidebarStore();
+  const [isExplorerOpen, setIsExplorerOpen] = useState(false);
 
   // Saat pertama kali di mobile, sidebar tertutup
   useEffect(() => {
@@ -22,7 +23,6 @@ export function Sidebar() {
   const navItems = [
     { to: "/feed", label: "Feed", icon: Home },
     { to: "/search", label: "Search", icon: Search },
-    { to: "/explorer", label: "Explorer", icon: Activity },
     { to: "/dashboard", label: "Dashboard", icon: Wallet },
     { to: "/leaderboard", label: "Leaderboard", icon: Trophy },
     { to: `/profile/${profilePath}`, label: "Profile", icon: User },
@@ -79,6 +79,52 @@ export function Sidebar() {
               {it.label}
             </Link>
           ))}
+
+          {/* ✅ Dropdown Explorer */}
+          <div>
+            <button
+              onClick={() => setIsExplorerOpen(!isExplorerOpen)}
+              className={cn(
+                "flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-300",
+                path === "/explorer" || path.startsWith("/explorer/tokens")
+                  ? "bg-gradient-to-r from-[#FF0A6C]/10 to-[#0040FF]/10 text-foreground border border-brand-start/20 shadow-[inset_0_0_20px_rgba(255,10,108,0.1)]"
+                  : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
+              )}
+            >
+              <Activity className={cn("size-5", path === "/explorer" || path.startsWith("/explorer/tokens") ? "text-brand-start drop-shadow-[0_0_8px_rgba(255,10,108,0.3)]" : "text-muted-foreground")} />
+              Explorer
+              <ChevronDown className={cn("size-4 ml-auto transition-transform", isExplorerOpen && "rotate-180")} />
+            </button>
+
+            {isExplorerOpen && (
+              <div className="ml-4 mt-1 space-y-1 border-l border-white/10 pl-3">
+                <Link
+                  to="/explorer"
+                  className={cn(
+                    "flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors",
+                    path === "/explorer"
+                      ? "text-brand-start"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <Activity className="size-4" />
+                  QIEYap
+                </Link>
+                <Link
+                  to="/explorer/tokens"
+                  className={cn(
+                    "flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors",
+                    path === "/explorer/tokens"
+                      ? "text-brand-start"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <Coins className="size-4" />
+                  Tokens
+                </Link>
+              </div>
+            )}
+          </div>
         </nav>
 
         <div className="border-t border-white/5 p-4">
