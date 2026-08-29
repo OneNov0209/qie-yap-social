@@ -1,11 +1,11 @@
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Header } from "@/components/header";
 import { API_BASE } from "@/lib/posts";
 import { ArrowLeft, Coins, Loader2, TrendingUp } from "lucide-react";
 
-export const Route = createFileRoute("/explorer/tokens")({
-  component: ExplorerTokensPage,
+export const Route = createFileRoute("/tokens")({
+  component: TokensPage,
 });
 
 interface QIEDexToken {
@@ -15,7 +15,7 @@ interface QIEDexToken {
   totalSupply: string;
 }
 
-function ExplorerTokensPage() {
+function TokensPage() {
   const router = useRouter();
   const [tokens, setTokens] = useState<QIEDexToken[]>([]);
   const [loading, setLoading] = useState(true);
@@ -88,9 +88,18 @@ function ExplorerTokensPage() {
                       <p className="text-xs text-muted-foreground">{token.name}</p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm font-medium">{formatSupply(token.totalSupply)}</p>
-                    <p className="text-[10px] text-muted-foreground">Supply</p>
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <p className="text-sm font-medium">{formatSupply(token.totalSupply)}</p>
+                      <p className="text-[10px] text-muted-foreground">Supply</p>
+                    </div>
+                    <Link
+                      to="/token/$id"
+                      params={{ id: token.id }}
+                      className="rounded-full bg-brand/10 px-3 py-1 text-xs font-medium text-brand hover:bg-brand/20 transition-colors"
+                    >
+                      View
+                    </Link>
                   </div>
                 </div>
               ))}
