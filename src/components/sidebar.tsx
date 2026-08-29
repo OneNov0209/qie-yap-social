@@ -13,7 +13,6 @@ export function Sidebar() {
   const { isOpen, toggle, close } = useSidebarStore();
   const [isExplorerOpen, setIsExplorerOpen] = useState(false);
 
-  // Saat pertama kali di mobile, sidebar tertutup
   useEffect(() => {
     if (window.innerWidth < 1024) {
       close();
@@ -32,7 +31,6 @@ export function Sidebar() {
 
   return (
     <>
-      {/* Tombol Open Sidebar (muncul saat sidebar tertutup) */}
       {!isOpen && (
         <button
           onClick={toggle}
@@ -48,7 +46,6 @@ export function Sidebar() {
           isOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
-        {/* Garis Glow di sisi kanan Sidebar */}
         <div className="absolute right-0 top-0 bottom-0 w-[1px] bg-gradient-to-b from-transparent via-brand-start to-transparent opacity-30" />
 
         <div className="flex h-16 items-center justify-between border-b border-white/5 px-6 relative">
@@ -80,7 +77,7 @@ export function Sidebar() {
             </Link>
           ))}
 
-          {/* ✅ Dropdown Explorer */}
+          {/* Dropdown Explorer */}
           <div>
             <button
               onClick={() => setIsExplorerOpen(!isExplorerOpen)}
