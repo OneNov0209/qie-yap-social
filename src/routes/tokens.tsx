@@ -13,6 +13,7 @@ interface QIEDexToken {
   symbol: string;
   name: string;
   totalSupply: string;
+  icon_url?: string;
 }
 
 function TokensPage() {
@@ -80,9 +81,13 @@ function TokensPage() {
               {tokens.map((token) => (
                 <div key={token.id} className="flex items-center justify-between rounded-xl border border-border/50 bg-card/50 p-3">
                   <div className="flex items-center gap-3">
-                    <div className="rounded-full bg-muted p-2">
-                      <Coins className="size-4 text-brand" />
-                    </div>
+                    {token.icon_url ? (
+                      <img src={token.icon_url} alt={token.name} className="size-10 rounded-full" />
+                    ) : (
+                      <div className="rounded-full bg-muted p-2">
+                        <Coins className="size-4 text-brand" />
+                      </div>
+                    )}
                     <div>
                       <p className="text-sm font-semibold">{token.symbol}</p>
                       <p className="text-xs text-muted-foreground">{token.name}</p>
