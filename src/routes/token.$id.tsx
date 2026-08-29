@@ -14,44 +14,24 @@ function TokenDetailPage() {
   const { id } = Route.useParams();
   const router = useRouter();
   const [token, setToken] = useState<any>(null);
-  const [counters, setCounters] = useState<any>(null);
-  const [transfers, setTransfers] = useState<any[]>([]);
-  const [holders, setHolders] = useState<any[]>([]);
-  const [contract, setContract] = useState<any>(null);
-  const [tokenIcon, setTokenIcon] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"transfers" | "holders" | "contract">("transfers");
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchToken = async () => {
       try {
-        const [tokenRes, transfersRes, holdersRes, contractRes, metaRes] = await Promise.all([
-          fetch(`${API_BASE}/explorer/token/${id}`),
-          fetch(`${API_BASE}/explorer/token/${id}/transfers`),
-          fetch(`${API_BASE}/explorer/token/${id}/holders`),
-          fetch(`${API_BASE}/explorer/smart-contract/${id}`),
-          fetch(`${API_BASE}/explorer/token-meta/${id}`),
-        ]);
-        
-        const tokenData = await tokenRes.json();
-        const transfersData = await transfersRes.json();
-        const holdersData = await holdersRes.json();
-        const contractData = await contractRes.json();
-        const metaData = await metaRes.json();
-        
-        setToken(tokenData.token);
-        setCounters(tokenData.counters);
-        setTransfers(transfersData.items || []);
-        setHolders(holdersData.items || []);
-        setContract(contractData);
-        setTokenIcon(metaData?.icon_url || null);
+        // ✅ Ambil data token dari backend (Point 23)
+        const res = await fetch(`${API_BASE}/explorer/token/${id}`);
+        if (res.ok) {
+          const data = await res.json();
+          setToken(data);
+        }
       } catch (err) {
         console.error("Error fetching token:", err);
       } finally {
         setLoading(false);
       }
     };
-    fetchData();
+    fetchToken();
   }, [id]);
 
   const formatSupply = (supply: string) => {
@@ -60,14 +40,6 @@ function TokenDetailPage() {
       return (num / 1_000_000_000_000_000_000).toFixed(2) + " QIE";
     }
     return num.toLocaleString();
-  };
-
-  const formatValue = (value: string) => {
-    const num = Number(value);
-    if (num >= 1_000_000_000_000_000_000) {
-      return (num / 1_000_000_000_000_000_000).toFixed(4);
-    }
-    return num.toFixed(4);
   };
 
   const copyAddress = (address: string) => {
@@ -114,8 +86,8 @@ function TokenDetailPage() {
           <div className="flex items-start justify-between">
             <div className="flex items-start gap-4">
               <div className="rounded-full bg-muted p-3">
-                {tokenIcon ? (
-                  <img src={tokenIcon} alt={token.name} className="size-8 rounded-full" />
+                {token.icon_url ? (
+                  <img src={token.icon_url} alt={token.name} className="size-8 rounded-full" />
                 ) : (
                   <Coins className="size-8 text-brand" />
                 )}
@@ -157,141 +129,12 @@ function TokenDetailPage() {
             </div>
             <div className="rounded-xl border border-border/30 bg-muted/20 p-4">
               <p className="text-xs text-muted-foreground">Holders</p>
-              <p className="text-sm font-bold">{counters?.token_holders_count ?? "N/A"}</p>
+              <p className="text-sm font-bold">{token.holders ?? "N/A"}</p>
             </div>
             <div className="rounded-xl border border-border/30 bg-muted/20 p-4">
               <p className="text-xs text-muted-foreground">Transfers</p>
-              <p className="text-sm font-bold">{counters?.transfers_count ?? "N/A"}</p>
+              <p className="text-sm font-bold">{token.transfers_count ?? "N/A"}</p>
             </div>
-          </div>
-
-          {/* Tab */}
-          <div className="mt-6 border-t border-border/30 pt-4">
-            <div className="flex gap-4 border-b border-border/30">
-              <button
-                onClick={() => setActiveTab("transfers")}
-                className={cn(
-                  "text-sm font-semibold pb-3",
-                  activeTab === "transfers" ? "text-brand border-b-2 border-brand" : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                Token transfers
-              </button>
-              <button
-                onClick={() => setActiveTab("holders")}
-                className={cn(
-                  "text-sm font-semibold pb-3",
-                  activeTab === "holders" ? "text-brand border-b-2 border-brand" : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                Holders
-              </button>
-              <button
-                onClick={() => setActiveTab("contract")}
-                className={cn(
-                  "text-sm font-semibold pb-3",
-                  activeTab === "contract" ? "text-brand border-b-2 border-brand" : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                Contract
-              </button>
-            </div>
-
-            {/* Tab Content: Transfers */}
-            {activeTab === "transfers" && (
-              <div className="mt-4">
-                {transfers.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No transfers yet</p>
-                ) : (
-                  <div className="space-y-2">
-                    {transfers.map((transfer: any, index: number) => (
-                      <div key={index} className="flex items-center justify-between rounded-xl border border-border/30 bg-muted/10 p-3">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-mono">{transfer.from?.hash?.slice(0, 6)}...{transfer.from?.hash?.slice(-4)}</span>
-                          <span className="text-xs text-muted-foreground">→</span>
-                          <span className="text-sm font-mono">{transfer.to?.hash?.slice(0, 6)}...{transfer.to?.hash?.slice(-4)}</span>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm font-medium">{formatValue(transfer.total?.value || "0")}</p>
-                          <p className="text-[10px] text-muted-foreground">{new Date(transfer.timestamp).toLocaleDateString()}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Tab Content: Holders */}
-            {activeTab === "holders" && (
-              <div className="mt-4">
-                {holders.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No holders yet</p>
-                ) : (
-                  <div className="rounded-xl border border-border/30 bg-muted/10 p-4">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="text-left text-muted-foreground">
-                          <th className="pb-2">Address</th>
-                          <th className="pb-2 text-right">Balance</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {holders.map((holder: any, index: number) => (
-                          <tr key={index} className="border-t border-border/20">
-                            <td className="py-2 font-mono">{holder.address?.hash?.slice(0, 6)}...{holder.address?.hash?.slice(-4)}</td>
-                            <td className="py-2 text-right">{formatValue(holder.value || "0")}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Tab Content: Contract */}
-            {activeTab === "contract" && (
-              <div className="mt-4">
-                {contract ? (
-                  <div className="rounded-xl border border-border/30 bg-muted/10 p-4">
-                    <div className="flex items-center gap-2 mb-3">
-                      <CheckCircle2 className="size-4 text-emerald-500" />
-                      <span className="text-sm font-semibold text-emerald-500">Contract Source Code Verified</span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <p className="text-muted-foreground">Contract name</p>
-                        <p className="font-medium">{contract.name || "N/A"}</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Compiler version</p>
-                        <p className="font-medium">{contract.compiler_version || "N/A"}</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">EVM Version</p>
-                        <p className="font-medium">{contract.evm_version || "N/A"}</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">License</p>
-                        <p className="font-medium">{contract.license_type || "N/A"}</p>
-                      </div>
-                    </div>
-
-                    {contract.source_code && (
-                      <div className="mt-4">
-                        <p className="text-sm font-semibold mb-2">Contract Source Code (Solidity)</p>
-                        <div className="rounded-lg bg-background/50 p-3 font-mono text-xs overflow-x-auto max-h-96 overflow-y-auto">
-                          <pre>{contract.source_code}</pre>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">Contract source code not available</p>
-                )}
-              </div>
-            )}
           </div>
         </div>
       </div>
