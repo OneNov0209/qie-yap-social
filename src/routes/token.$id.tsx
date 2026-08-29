@@ -2,7 +2,7 @@ import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Header } from "@/components/header";
 import { API_BASE } from "@/lib/posts";
-import { ArrowLeft, Coins, Copy, ExternalLink, Loader2, TrendingUp, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Coins, Copy, ExternalLink, Loader2, TrendingUp, CheckCircle2, Code2, FileJson, FileCode, Braces } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -19,6 +19,7 @@ function TokenDetailPage() {
   const [contract, setContract] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"transfers" | "holders" | "contract">("transfers");
+  const [contractTab, setContractTab] = useState<"code" | "abi" | "bytecode">("code");
 
   useEffect(() => {
     const fetchData = async () => {
@@ -66,6 +67,10 @@ function TokenDetailPage() {
 
   const copyAddress = (address: string) => {
     navigator.clipboard.writeText(address).then(() => toast.success("Copied!"));
+  };
+
+  const copyText = (text: string) => {
+    navigator.clipboard.writeText(text).then(() => toast.success("Copied!"));
   };
 
   if (loading) {
@@ -253,7 +258,9 @@ function TokenDetailPage() {
                       <CheckCircle2 className="size-4 text-emerald-500" />
                       <span className="text-sm font-semibold text-emerald-500">Contract Source Code Verified</span>
                     </div>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
+
+                    {/* Contract Metadata */}
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
                       <div>
                         <p className="text-muted-foreground">Contract name</p>
                         <p className="font-medium">{contract.name || "N/A"}</p>
@@ -270,14 +277,94 @@ function TokenDetailPage() {
                         <p className="text-muted-foreground">License</p>
                         <p className="font-medium">{contract.license_type || "N/A"}</p>
                       </div>
+                      <div>
+                        <p className="text-muted-foreground">Optimization enabled</p>
+                        <p className="font-medium">{contract.optimization_enabled ? "true" : "false"}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Optimization runs</p>
+                        <p className="font-medium">{contract.optimization_runs ?? "N/A"}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Verified at</p>
+                        <p className="font-medium">{contract.verified_at ? new Date(contract.verified_at).toLocaleString() : "N/A"}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Contract file path</p>
+                        <p className="font-medium">{contract.file_path || "N/A"}</p>
+                      </div>
                     </div>
 
-                    {contract.source_code && (
+                    {/* Sub-Tab: Code, ABI, ByteCode */}
+                    <div className="mt-6 flex gap-3 border-b border-border/30 pb-2">
+                      <button
+                        onClick={() => setContractTab("code")}
+                        className={cn(
+                          "flex items-center gap-1.5 text-sm font-medium",
+                          contractTab === "code" ? "text-brand" : "text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        <Code2 className="size-4" />
+                        Code
+                      </button>
+                      <button
+                        onClick={() => setContractTab("abi")}
+                        className={cn(
+                          "flex items-center gap-1.5 text-sm font-medium",
+                          contractTab === "abi" ? "text-brand" : "text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        <FileJson className="size-4" />
+                        ABI
+                      </button>
+                      <button
+                        onClick={() => setContractTab("bytecode")}
+                        className={cn(
+                          "flex items-center gap-1.5 text-sm font-medium",
+                          contractTab === "bytecode" ? "text-brand" : "text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        <FileCode className="size-4" />
+                        ByteCode
+                      </button>
+                    </div>
+
+                    {/* Content: Code */}
+                    {contractTab === "code" && (
                       <div className="mt-4">
-                        <p className="text-sm font-semibold mb-2">Contract Source Code (Solidity)</p>
-                        <div className="rounded-lg bg-background/50 p-3 font-mono text-xs overflow-x-auto max-h-96 overflow-y-auto">
-                          <pre>{contract.source_code}</pre>
-                        </div>
+                        {contract.source_code ? (
+                          <div className="rounded-lg bg-background/50 p-3 font-mono text-xs overflow-x-auto max-h-96 overflow-y-auto">
+                            <pre>{contract.source_code}</pre>
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">Contract source code not available</p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Content: ABI */}
+                    {contractTab === "abi" && (
+                      <div className="mt-4">
+                        {contract.abi ? (
+                          <div className="rounded-lg bg-background/50 p-3 font-mono text-xs overflow-x-auto max-h-96 overflow-y-auto">
+                            <pre>{JSON.stringify(contract.abi, null, 2)}</pre>
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">ABI not available</p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Content: ByteCode */}
+                    {contractTab === "bytecode" && (
+                      <div className="mt-4">
+                        {contract.bytecode ? (
+                          <div className="rounded-lg bg-background/50 p-3 font-mono text-xs overflow-x-auto max-h-96 overflow-y-auto">
+                            <pre>{contract.bytecode}</pre>
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">ByteCode not available</p>
+                        )}
                       </div>
                     )}
                   </div>
