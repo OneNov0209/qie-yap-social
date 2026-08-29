@@ -10,46 +10,44 @@ export const Route = createFileRoute("/token/$id")({
   component: TokenDetailPage,
 });
 
-interface TokenDetail {
-  id: string;
-  symbol: string;
-  name: string;
-  totalSupply: string;
-  decimals?: number;
-  price?: number;
-}
-
 function TokenDetailPage() {
   const { id } = Route.useParams();
   const router = useRouter();
-  const [token, setToken] = useState<TokenDetail | null>(null);
+  const [token, setToken] = useState<any>(null);
+  const [counters, setCounters] = useState<any>(null);
+  const [transfers, setTransfers] = useState<any[]>([]);
+  const [holders, setHolders] = useState<any[]>([]);
+  const [contract, setContract] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"transfers" | "holders" | "contract">("transfers");
 
   useEffect(() => {
-    const fetchToken = async () => {
+    const fetchData = async () => {
       try {
-        // 1. Ambil data token dari GraphQL QIEDex
-        const res = await fetch(`${API_BASE}/qiedex/tokens`);
-        if (res.ok) {
-          const data = await res.json();
-          const found = data.find((t: any) => t.id === id || t.symbol === id);
-          if (found) {
-            setToken({
-              id: found.id,
-              symbol: found.symbol,
-              name: found.name,
-              totalSupply: found.totalSupply,
-            });
-          }
-        }
+        const [tokenRes, transfersRes, holdersRes, contractRes] = await Promise.all([
+          fetch(`${API_BASE}/explorer/token/${id}`),
+          fetch(`${API_BASE}/explorer/token/${id}/transfers`),
+          fetch(`${API_BASE}/explorer/token/${id}/holders`),
+          fetch(`${API_BASE}/explorer/smart-contract/${id}`),
+        ]);
+        
+        const tokenData = await tokenRes.json();
+        const transfersData = await transfersRes.json();
+        const holdersData = await holdersRes.json();
+        const contractData = await contractRes.json();
+        
+        setToken(tokenData.token);
+        setCounters(tokenData.counters);
+        setTransfers(transfersData.items || []);
+        setHolders(holdersData.items || []);
+        setContract(contractData);
       } catch (err) {
         console.error("Error fetching token:", err);
       } finally {
         setLoading(false);
       }
     };
-    fetchToken();
+    fetchData();
   }, [id]);
 
   const formatSupply = (supply: string) => {
@@ -58,6 +56,14 @@ function TokenDetailPage() {
       return (num / 1_000_000_000_000_000_000).toFixed(2) + " QIE";
     }
     return num.toLocaleString();
+  };
+
+  const formatValue = (value: string) => {
+    const num = Number(value);
+    if (num >= 1_000_000_000_000_000_000) {
+      return (num / 1_000_000_000_000_000_000).toFixed(4);
+    }
+    return num.toFixed(4);
   };
 
   const copyAddress = (address: string) => {
@@ -113,12 +119,12 @@ function TokenDetailPage() {
                   <span className="rounded-full bg-brand/10 px-2 py-0.5 text-xs font-medium text-brand">QIE-20</span>
                 </div>
                 <div className="mt-2 flex items-center gap-2">
-                  <code className="text-xs font-mono text-muted-foreground break-all">{token.id}</code>
-                  <button onClick={() => copyAddress(token.id)} className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+                  <code className="text-xs font-mono text-muted-foreground break-all">{token.address}</code>
+                  <button onClick={() => copyAddress(token.address)} className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
                     <Copy className="size-3.5" />
                   </button>
                   <a
-                    href={`https://mainnet.qie.digital/token/${token.id}`}
+                    href={`https://mainnet.qie.digital/token/${token.address}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
@@ -134,20 +140,20 @@ function TokenDetailPage() {
           <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="rounded-xl border border-border/30 bg-muted/20 p-4">
               <p className="text-xs text-muted-foreground">Price</p>
-              <p className="text-sm font-bold">$2,441.04</p>
-              <p className="text-[10px] text-emerald-500">+0.5%</p>
+              <p className="text-sm font-bold">{token.exchange_rate ? `$${token.exchange_rate.toFixed(2)}` : "N/A"}</p>
+              <p className="text-[10px] text-muted-foreground">Market</p>
             </div>
             <div className="rounded-xl border border-border/30 bg-muted/20 p-4">
               <p className="text-xs text-muted-foreground">Max Total Supply</p>
-              <p className="text-sm font-bold">{formatSupply(token.totalSupply)}</p>
+              <p className="text-sm font-bold">{formatSupply(token.total_supply || "0")}</p>
             </div>
             <div className="rounded-xl border border-border/30 bg-muted/20 p-4">
               <p className="text-xs text-muted-foreground">Holders</p>
-              <p className="text-sm font-bold">2</p>
+              <p className="text-sm font-bold">{counters?.token_holders_count ?? "N/A"}</p>
             </div>
             <div className="rounded-xl border border-border/30 bg-muted/20 p-4">
               <p className="text-xs text-muted-foreground">Transfers</p>
-              <p className="text-sm font-bold">3</p>
+              <p className="text-sm font-bold">{counters?.transfers_count ?? "N/A"}</p>
             </div>
           </div>
 
@@ -185,134 +191,97 @@ function TokenDetailPage() {
 
             {/* Tab Content: Transfers */}
             {activeTab === "transfers" && (
-              <div className="mt-4 space-y-2">
-                <div className="flex items-center justify-between rounded-xl border border-border/30 bg-muted/10 p-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium">0x193...5cf0</span>
-                    <span className="text-xs text-muted-foreground">1mo ago</span>
-                    <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-xs text-red-500">burn</span>
+              <div className="mt-4">
+                {transfers.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No transfers yet</p>
+                ) : (
+                  <div className="space-y-2">
+                    {transfers.map((transfer: any, index: number) => (
+                      <div key={index} className="flex items-center justify-between rounded-xl border border-border/30 bg-muted/10 p-3">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-mono">{transfer.from?.hash?.slice(0, 6)}...{transfer.from?.hash?.slice(-4)}</span>
+                          <span className="text-xs text-muted-foreground">→</span>
+                          <span className="text-sm font-mono">{transfer.to?.hash?.slice(0, 6)}...{transfer.to?.hash?.slice(-4)}</span>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-medium">{formatValue(transfer.total?.value || "0")}</p>
+                          <p className="text-[10px] text-muted-foreground">{new Date(transfer.timestamp).toLocaleDateString()}</p>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <span className="text-sm font-medium">0.0000299</span>
-                </div>
-                <div className="flex items-center justify-between rounded-xl border border-border/30 bg-muted/10 p-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium">0x193...5cf0</span>
-                    <span className="text-xs text-muted-foreground">1mo ago</span>
-                    <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-xs text-red-500">burn</span>
-                  </div>
-                  <span className="text-sm font-medium">0.0299</span>
-                </div>
-                <div className="flex items-center justify-between rounded-xl border border-border/30 bg-muted/10 p-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium">0x090...a232</span>
-                    <span className="text-xs text-muted-foreground">1mo ago</span>
-                    <span className="rounded-full bg-green-500/10 px-2 py-0.5 text-xs text-green-500">mint</span>
-                  </div>
-                  <span className="text-sm font-medium">0.02997</span>
-                </div>
+                )}
               </div>
             )}
 
             {/* Tab Content: Holders */}
             {activeTab === "holders" && (
               <div className="mt-4">
-                <div className="rounded-xl border border-border/30 bg-muted/10 p-4">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="text-left text-muted-foreground">
-                        <th className="pb-2">Address</th>
-                        <th className="pb-2 text-right">Balance</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr className="border-t border-border/20">
-                        <td className="py-2 font-mono">0x193...5cf0</td>
-                        <td className="py-2 text-right">0.0000299</td>
-                      </tr>
-                      <tr className="border-t border-border/20">
-                        <td className="py-2 font-mono">0x090...a232</td>
-                        <td className="py-2 text-right">0.02997</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
+                {holders.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No holders yet</p>
+                ) : (
+                  <div className="rounded-xl border border-border/30 bg-muted/10 p-4">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-left text-muted-foreground">
+                          <th className="pb-2">Address</th>
+                          <th className="pb-2 text-right">Balance</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {holders.map((holder: any, index: number) => (
+                          <tr key={index} className="border-t border-border/20">
+                            <td className="py-2 font-mono">{holder.address?.hash?.slice(0, 6)}...{holder.address?.hash?.slice(-4)}</td>
+                            <td className="py-2 text-right">{formatValue(holder.value || "0")}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             )}
 
             {/* Tab Content: Contract */}
             {activeTab === "contract" && (
               <div className="mt-4">
-                <div className="rounded-xl border border-border/30 bg-muted/10 p-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <CheckCircle2 className="size-4 text-emerald-500" />
-                    <span className="text-sm font-semibold text-emerald-500">Contract Source Code Verified</span>
+                {contract ? (
+                  <div className="rounded-xl border border-border/30 bg-muted/10 p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <CheckCircle2 className="size-4 text-emerald-500" />
+                      <span className="text-sm font-semibold text-emerald-500">Contract Source Code Verified</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="text-muted-foreground">Contract name</p>
+                        <p className="font-medium">{contract.name || "N/A"}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Compiler version</p>
+                        <p className="font-medium">{contract.compiler_version || "N/A"}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">EVM Version</p>
+                        <p className="font-medium">{contract.evm_version || "N/A"}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">License</p>
+                        <p className="font-medium">{contract.license_type || "N/A"}</p>
+                      </div>
+                    </div>
+
+                    {contract.source_code && (
+                      <div className="mt-4">
+                        <p className="text-sm font-semibold mb-2">Contract Source Code (Solidity)</p>
+                        <div className="rounded-lg bg-background/50 p-3 font-mono text-xs overflow-x-auto max-h-96 overflow-y-auto">
+                          <pre>{contract.source_code}</pre>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <p className="text-muted-foreground">Contract name</p>
-                      <p className="font-medium">WrappedNative</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Compiler version</p>
-                      <p className="font-medium">v0.8.20+commit.a1b79de6</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">EVM Version</p>
-                      <p className="font-medium">Paris</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">License</p>
-                      <p className="font-medium">MIT</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Optimization enabled</p>
-                      <p className="font-medium">true</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Optimization runs</p>
-                      <p className="font-medium">200</p>
-                    </div>
-                  </div>
-
-                  {/* Constructor Arguments */}
-                  <div className="mt-4">
-                    <p className="text-sm font-semibold mb-2">Constructor Arguments</p>
-                    <div className="rounded-lg bg-background/50 p-3 font-mono text-xs">
-                      <p>0x0000000000000000000000000000000000000000000000000000000000000000</p>
-                      <p>0x0000000000000000000000000000000000000000000000000000000000000000</p>
-                      <p>0000000000000000000000000000000000000000000000000000000000000000</p>
-                      <p>0000000000000000000000000000000000000000000000000000000000000000</p>
-                    </div>
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      Arg [0] name (string): Wrapped ETH
-                      Arg [1] symbol (string): WETH
-                    </p>
-                  </div>
-
-                  {/* Contract Source Code */}
-                  <div className="mt-4">
-                    <p className="text-sm font-semibold mb-2">Contract Source Code (Solidity)</p>
-                    <div className="rounded-lg bg-background/50 p-3 font-mono text-xs overflow-x-auto">
-                      <pre>{`// SPDX-License-Identifier: MIT
-pragma solidity 0.8.20;
-
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-
-contract WrappedNative is ERC20, Ownable {
-    constructor() ERC20("Wrapped ETH", "WETH") {}
-
-    function mint(address to, uint256 amount) external onlyOwner {
-        _mint(to, amount);
-    }
-
-    function burn(uint256 amount) external {
-        _burn(msg.sender, amount);
-    }
-}`}</pre>
-                    </div>
-                  </div>
-                </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Contract source code not available</p>
+                )}
               </div>
             )}
           </div>
