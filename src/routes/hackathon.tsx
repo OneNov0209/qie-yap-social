@@ -3,18 +3,52 @@ import { useEffect, useState } from "react";
 import { Header } from "@/components/header";
 import { API_BASE } from "@/lib/posts";
 import { toast } from "sonner";
-import { Trophy, Users, Rocket, Loader2 } from "lucide-react";
+import { Trophy, Users, Rocket, Loader2, CheckCircle2, Wallet, Link2, Share2, FileText } from "lucide-react";
 import { useAuth } from "@/lib/auth-store";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/hackathon")({
   component: HackathonPage,
 });
 
+interface Participant {
+  id: string;
+  wallet_address: string;
+  project_name: string;
+  track: string;
+  description: string;
+  team_members: string;
+  created_at: string;
+}
+
+const CATEGORIES = [
+  { id: "defi", title: "DeFi & Financial Infrastructure", icon: "💰", desc: "Build lending, savings, payments, treasury, remittance, and tokenized finance tools that move real value on-chain." },
+  { id: "ai", title: "AI + Autonomous Agents", icon: "🤖", desc: "Build autonomous agents that transact, coordinate wallets, and execute real commerce workflows." },
+  { id: "consumer", title: "Consumer Apps & Social", icon: "👥", desc: "Create consumer products that deliver daily utility and engagement across communities, creators, and identity flows." },
+  { id: "commerce", title: "Commerce & Real World", icon: "🛒", desc: "Bring blockchain into real business operations for merchants, subscriptions, invoicing, ticketing, and supply chains." },
+  { id: "dev", title: "Developer Infrastructure & Tooling", icon: "🏗️", desc: "Build tooling that improves the entire QIE ecosystem across wallets, SDKs, APIs, analytics, and security." },
+];
+
 function HackathonPage() {
   const { user } = useAuth();
-  const [participants, setParticipants] = useState<any[]>([]);
+  const [participants, setParticipants] = useState<Participant[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [currentStep, setCurrentStep] = useState(1);
+  const [formData, setFormData] = useState({
+    team_name: "",
+    project_name: "",
+    category: "",
+    description: "",
+    linkedin: "",
+    website: "",
+    github: "",
+    video: "",
+    twitter: "",
+    discord: "",
+    telegram: "",
+    wallet_address: "",
+  });
 
   useEffect(() => {
     const fetchParticipants = async () => {
@@ -32,6 +66,44 @@ function HackathonPage() {
     };
     fetchParticipants();
   }, []);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/hackathon/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          wallet_address: formData.wallet_address,
+          project_name: formData.project_name,
+          track: formData.category,
+          description: formData.description,
+          team_members: formData.team_name,
+        }),
+      });
+      if (res.ok) {
+        toast.success("Registered successfully!");
+        setShowForm(false);
+        setCurrentStep(1);
+        window.location.reload();
+      } else {
+        toast.error("Failed to register");
+      }
+    } catch (err) {
+      toast.error("Error registering");
+    }
+  };
+
+  const steps = [
+    { id: 1, label: "Basic Info", icon: FileText },
+    { id: 2, label: "Links", icon: Link2 },
+    { id: 3, label: "Social", icon: Share2 },
+    { id: 4, label: "Wallet", icon: Wallet },
+    { id: 5, label: "Review", icon: CheckCircle2 },
+  ];
 
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-12">
@@ -79,9 +151,7 @@ function HackathonPage() {
                   <p className="text-sm text-foreground/80 mt-2">{p.description}</p>
                 )}
                 {p.team_members && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Team: {p.team_members}
-                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">Team: {p.team_members}</p>
                 )}
               </div>
             ))}
@@ -92,87 +162,244 @@ function HackathonPage() {
       {/* Modal Register */}
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md rounded-2xl bg-card p-6 border border-border shadow-2xl">
+          <div className="w-full max-w-3xl rounded-2xl bg-card p-6 border border-border shadow-2xl max-h-[90vh] overflow-y-auto">
             <h2 className="text-xl font-bold mb-4">Register for Hackathon</h2>
-            <form
-              onSubmit={async (e) => {
-                e.preventDefault();
-                const formData = new FormData(e.target as HTMLFormElement);
-                try {
-                  const res = await fetch(`${API_BASE}/hackathon/register`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      wallet_address: user?.address,
-                      project_name: formData.get("project_name"),
-                      track: formData.get("track"),
-                      description: formData.get("description"),
-                      team_members: formData.get("team_members"),
-                    }),
-                  });
-                  if (res.ok) {
-                    toast.success("Registered successfully!");
-                    setShowForm(false);
-                    window.location.reload();
-                  } else {
-                    toast.error("Failed to register");
-                  }
-                } catch (err) {
-                  toast.error("Error registering");
-                }
-              }}
-              className="space-y-4"
-            >
-              <div>
-                <label className="text-sm font-medium mb-1 block">Project Name *</label>
-                <input
-                  name="project_name"
-                  required
-                  className="w-full rounded-xl border border-border/50 bg-muted/20 px-4 py-2 text-sm"
-                  placeholder="e.g. My QIE dApp"
-                />
+            
+            {/* Step Indicator */}
+            <div className="flex items-center justify-between mb-6">
+              {steps.map((step) => (
+                <div key={step.id} className="flex flex-col items-center">
+                  <div className={cn(
+                    "flex size-8 items-center justify-center rounded-full text-sm font-medium",
+                    currentStep === step.id ? "bg-brand text-white" : "bg-muted text-muted-foreground"
+                  )}>
+                    {currentStep > step.id ? <CheckCircle2 className="size-4" /> : step.id}
+                  </div>
+                  <span className="text-[10px] mt-1 text-muted-foreground">{step.label}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Step 1: Basic Info */}
+            {currentStep === 1 && (
+              <div className="space-y-4">
+                <h3 className="font-semibold text-lg">Basic Info</h3>
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Team Name</label>
+                  <input
+                    name="team_name"
+                    value={formData.team_name}
+                    onChange={handleInputChange}
+                    className="w-full rounded-xl border border-border/50 bg-muted/20 px-4 py-2 text-sm"
+                    placeholder="e.g. Team QIE"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Project Name</label>
+                  <input
+                    name="project_name"
+                    value={formData.project_name}
+                    onChange={handleInputChange}
+                    className="w-full rounded-xl border border-border/50 bg-muted/20 px-4 py-2 text-sm"
+                    placeholder="e.g. My QIE dApp"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Category</label>
+                  <select
+                    name="category"
+                    value={formData.category}
+                    onChange={handleInputChange}
+                    className="w-full rounded-xl border border-border/50 bg-muted/20 px-4 py-2 text-sm"
+                  >
+                    <option value="">Select category...</option>
+                    {CATEGORIES.map((cat) => (
+                      <option key={cat.id} value={cat.title}>
+                        {cat.icon} {cat.title}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Description</label>
+                  <textarea
+                    name="description"
+                    value={formData.description}
+                    onChange={handleInputChange}
+                    rows={4}
+                    className="w-full rounded-xl border border-border/50 bg-muted/20 px-4 py-2 text-sm resize-none"
+                    placeholder="Brief description..."
+                  />
+                </div>
               </div>
-              <div>
-                <label className="text-sm font-medium mb-1 block">Track</label>
-                <input
-                  name="track"
-                  className="w-full rounded-xl border border-border/50 bg-muted/20 px-4 py-2 text-sm"
-                  placeholder="e.g. DeFi, NFT, Social"
-                />
+            )}
+
+            {/* Step 2: Links */}
+            {currentStep === 2 && (
+              <div className="space-y-4">
+                <h3 className="font-semibold text-lg">Links</h3>
+                <div>
+                  <label className="text-sm font-medium mb-1 block">LinkedIn Profile</label>
+                  <input
+                    name="linkedin"
+                    value={formData.linkedin}
+                    onChange={handleInputChange}
+                    className="w-full rounded-xl border border-border/50 bg-muted/20 px-4 py-2 text-sm"
+                    placeholder="https://linkedin.com/in/yourprofile"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Project Website</label>
+                  <input
+                    name="website"
+                    value={formData.website}
+                    onChange={handleInputChange}
+                    className="w-full rounded-xl border border-border/50 bg-muted/20 px-4 py-2 text-sm"
+                    placeholder="https://yourproject.com"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-1 block">GitHub Repository *</label>
+                  <input
+                    name="github"
+                    value={formData.github}
+                    onChange={handleInputChange}
+                    className="w-full rounded-xl border border-border/50 bg-muted/20 px-4 py-2 text-sm"
+                    placeholder="https://github.com/yourrepo"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Product Video URL *</label>
+                  <input
+                    name="video"
+                    value={formData.video}
+                    onChange={handleInputChange}
+                    className="w-full rounded-xl border border-border/50 bg-muted/20 px-4 py-2 text-sm"
+                    placeholder="https://youtube.com/watch?v=..."
+                  />
+                </div>
               </div>
-              <div>
-                <label className="text-sm font-medium mb-1 block">Description</label>
-                <textarea
-                  name="description"
-                  rows={3}
-                  className="w-full rounded-xl border border-border/50 bg-muted/20 px-4 py-2 text-sm resize-none"
-                  placeholder="Brief description..."
-                />
+            )}
+
+            {/* Step 3: Social */}
+            {currentStep === 3 && (
+              <div className="space-y-4">
+                <h3 className="font-semibold text-lg">Social</h3>
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Twitter/X Handle</label>
+                  <input
+                    name="twitter"
+                    value={formData.twitter}
+                    onChange={handleInputChange}
+                    className="w-full rounded-xl border border-border/50 bg-muted/20 px-4 py-2 text-sm"
+                    placeholder="@yourhandle"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Discord Username</label>
+                  <input
+                    name="discord"
+                    value={formData.discord}
+                    onChange={handleInputChange}
+                    className="w-full rounded-xl border border-border/50 bg-muted/20 px-4 py-2 text-sm"
+                    placeholder="username#0000"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Telegram Handle</label>
+                  <input
+                    name="telegram"
+                    value={formData.telegram}
+                    onChange={handleInputChange}
+                    className="w-full rounded-xl border border-border/50 bg-muted/20 px-4 py-2 text-sm"
+                    placeholder="@yourtelegram"
+                  />
+                </div>
               </div>
-              <div>
-                <label className="text-sm font-medium mb-1 block">Team Members</label>
-                <input
-                  name="team_members"
-                  className="w-full rounded-xl border border-border/50 bg-muted/20 px-4 py-2 text-sm"
-                  placeholder="e.g. 0x123..., 0x456..."
-                />
+            )}
+
+            {/* Step 4: Wallet */}
+            {currentStep === 4 && (
+              <div className="space-y-4">
+                <h3 className="font-semibold text-lg">Wallet</h3>
+                <div>
+                  <label className="text-sm font-medium mb-1 block">QIE Wallet Address</label>
+                  <input
+                    name="wallet_address"
+                    value={user?.address || formData.wallet_address}
+                    onChange={handleInputChange}
+                    className="w-full rounded-xl border border-border/50 bg-muted/20 px-4 py-2 text-sm font-mono"
+                    placeholder="0x..."
+                    readOnly={!!user?.address}
+                  />
+                </div>
+                <div className="rounded-xl border border-border/30 bg-muted/10 p-4 text-sm text-muted-foreground">
+                  <Wallet className="size-4 text-brand inline mr-1" />
+                  Connect your QIE wallet to verify ownership
+                </div>
               </div>
-              <div className="flex justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowForm(false)}
-                  className="px-4 py-2 rounded-full border border-border/50 text-sm font-medium hover:bg-muted/50 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 rounded-full bg-brand text-white text-sm font-medium hover:bg-brand/90 transition-colors"
-                >
-                  Register
-                </button>
+            )}
+
+            {/* Step 5: Review */}
+            {currentStep === 5 && (
+              <div className="space-y-4">
+                <h3 className="font-semibold text-lg">Review</h3>
+                <div className="rounded-xl border border-border/30 bg-muted/10 p-4">
+                  <p className="text-sm font-medium">Basic Information</p>
+                  <div className="mt-2 text-sm space-y-1">
+                    <p>Team Name: <span className="font-medium">{formData.team_name}</span></p>
+                    <p>Project Name: <span className="font-medium">{formData.project_name}</span></p>
+                    <p>Category: <span className="font-medium">{formData.category}</span></p>
+                    <p>Description: <span className="font-medium">{formData.description}</span></p>
+                  </div>
+                </div>
+                <div className="rounded-xl border border-border/30 bg-muted/10 p-4">
+                  <p className="text-sm font-medium">Project Links</p>
+                  <div className="mt-2 text-sm space-y-1">
+                    <p>LinkedIn: <span className="font-medium">{formData.linkedin}</span></p>
+                    <p>Website: <span className="font-medium">{formData.website}</span></p>
+                    <p>GitHub: <span className="font-medium">{formData.github}</span></p>
+                    <p>Video: <span className="font-medium">{formData.video}</span></p>
+                  </div>
+                </div>
+                <div className="rounded-xl border border-border/30 bg-muted/10 p-4">
+                  <p className="text-sm font-medium">Social Media</p>
+                  <div className="mt-2 text-sm space-y-1">
+                    <p>Twitter/X: <span className="font-medium">{formData.twitter}</span></p>
+                    <p>Discord: <span className="font-medium">{formData.discord}</span></p>
+                    <p>Telegram: <span className="font-medium">{formData.telegram}</span></p>
+                  </div>
+                </div>
+                <div className="rounded-xl border border-border/30 bg-muted/10 p-4">
+                  <p className="text-sm font-medium">QIE Wallet</p>
+                  <p className="text-sm mt-1 font-mono">{formData.wallet_address}</p>
+                </div>
               </div>
-            </form>
+            )}
+
+            {/* Navigation Buttons */}
+            <div className="flex justify-between mt-6 pt-4 border-t border-border/30">
+              <button
+                type="button"
+                onClick={() => {
+                  if (currentStep > 1) setCurrentStep(currentStep - 1);
+                  else setShowForm(false);
+                }}
+                className="px-4 py-2 rounded-full border border-border/50 text-sm font-medium hover:bg-muted/50 transition-colors"
+              >
+                {currentStep > 1 ? "Previous" : "Cancel"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (currentStep < 5) setCurrentStep(currentStep + 1);
+                  else handleSubmit();
+                }}
+                className="px-6 py-2 rounded-full bg-brand text-white text-sm font-medium hover:bg-brand/90 transition-colors"
+              >
+                {currentStep < 5 ? "Next" : "Submit"}
+              </button>
+            </div>
           </div>
         </div>
       )}
