@@ -89,7 +89,8 @@ export interface FileRoutesByFullPath {
   '/bookmarks': typeof BookmarksRoute
   '/dashboard': typeof DashboardRoute
   '/explorer': typeof ExplorerRoute
-  '/explorer/tokens': typeof ExplorerTokensRoute
+  '/tokens': typeof TokensRoute
+  '/token/$id': typeof TokenIdRoute
   '/feed': typeof FeedRoute
   '/leaderboard': typeof LeaderboardRoute
   '/search': typeof SearchRoute
@@ -102,7 +103,8 @@ export interface FileRoutesByTo {
   '/bookmarks': typeof BookmarksRoute
   '/dashboard': typeof DashboardRoute
   '/explorer': typeof ExplorerRoute
-  '/explorer/tokens': typeof ExplorerTokensRoute
+  '/tokens': typeof TokensRoute
+  '/token/$id': typeof TokenIdRoute
   '/feed': typeof FeedRoute
   '/leaderboard': typeof LeaderboardRoute
   '/search': typeof SearchRoute
@@ -116,7 +118,8 @@ export interface FileRoutesById {
   '/bookmarks': typeof BookmarksRoute
   '/dashboard': typeof DashboardRoute
   '/explorer': typeof ExplorerRoute
-  '/explorer/tokens': typeof ExplorerTokensRoute
+  '/tokens': typeof TokensRoute
+  '/token/$id': typeof TokenIdRoute
   '/feed': typeof FeedRoute
   '/leaderboard': typeof LeaderboardRoute
   '/search': typeof SearchRoute
@@ -131,7 +134,8 @@ export interface FileRouteTypes {
     | '/bookmarks'
     | '/dashboard'
     | '/explorer'
-    | '/explorer/tokens'
+    | '/tokens'
+    | '/token/$id'
     | '/feed'
     | '/leaderboard'
     | '/search'
@@ -144,7 +148,8 @@ export interface FileRouteTypes {
     | '/bookmarks'
     | '/dashboard'
     | '/explorer'
-    | '/explorer/tokens'
+    | '/tokens'
+    | '/token/$id'
     | '/feed'
     | '/leaderboard'
     | '/search'
@@ -157,7 +162,8 @@ export interface FileRouteTypes {
     | '/bookmarks'
     | '/dashboard'
     | '/explorer'
-    | '/explorer/tokens'
+    | '/tokens'
+    | '/token/$id'
     | '/feed'
     | '/leaderboard'
     | '/search'
@@ -171,7 +177,8 @@ export interface RootRouteChildren {
   BookmarksRoute: typeof BookmarksRoute
   DashboardRoute: typeof DashboardRoute
   ExplorerRoute: typeof ExplorerRoute
-  ExplorerTokensRoute: typeof ExplorerTokensRoute
+  TokensRoute: typeof TokensRoute
+  TokenIdRoute: typeof TokenIdRoute
   FeedRoute: typeof FeedRoute
   LeaderboardRoute: typeof LeaderboardRoute
   SearchRoute: typeof SearchRoute
@@ -209,11 +216,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ExplorerRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/explorer/tokens': {
-      id: '/explorer/tokens'
-      path: '/explorer/tokens'
-      fullPath: '/explorer/tokens'
-      preLoaderRoute: typeof ExplorerTokensRouteImport
+    '/tokens': {
+      id: '/tokens'
+      path: '/tokens'
+      fullPath: '/tokens'
+      preLoaderRoute: typeof TokensRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/token/$id': {
+      id: '/token/$id'
+      path: '/token/$id'
+      fullPath: '/token/$id'
+      preLoaderRoute: typeof TokenIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -267,7 +281,8 @@ const rootRouteChildren: RootRouteChildren = {
   BookmarksRoute: BookmarksRoute,
   DashboardRoute: DashboardRoute,
   ExplorerRoute: ExplorerRoute,
-  ExplorerTokensRoute: ExplorerTokensRoute,
+  TokensRoute: TokensRoute,
+  TokenIdRoute: TokenIdRoute,
   FeedRoute: FeedRoute,
   LeaderboardRoute: LeaderboardRoute,
   SearchRoute: SearchRoute,
