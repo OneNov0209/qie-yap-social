@@ -13,7 +13,7 @@ import { Route as SearchRouteImport } from './routes/search'
 import { Route as LeaderboardRouteImport } from './routes/leaderboard'
 import { Route as FeedRouteImport } from './routes/feed'
 import { Route as ExplorerRouteImport } from './routes/explorer'
-import { Route as ExplorerTokensRouteImport } from './routes/explorer.tokens'
+import { Route as TokensRouteImport } from './routes/tokens'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as BookmarksRouteImport } from './routes/bookmarks'
 import { Route as AddQieNetworkRouteImport } from './routes/add-qie-network'
@@ -41,9 +41,9 @@ const ExplorerRoute = ExplorerRouteImport.update({
   path: '/explorer',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ExplorerTokensRoute = ExplorerTokensRouteImport.update({
-  id: '/explorer/tokens',
-  path: '/explorer/tokens',
+const TokensRoute = TokensRouteImport.update({
+  id: '/tokens',
+  path: '/tokens',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
