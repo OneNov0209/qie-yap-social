@@ -1,8 +1,8 @@
-import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Header } from "@/components/header";
 import { shortAddr, API_BASE, fetchFeed, relativeTime } from "@/lib/posts";
-import { ArrowLeft, Coins, Sparkles, Zap, ExternalLink, MessageCircle, Loader2, Hash, Clock, TrendingUp } from "lucide-react";
+import { ArrowLeft, Coins, Sparkles, Zap, ExternalLink, MessageCircle, Loader2, Hash, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-store";
 
@@ -29,13 +29,6 @@ interface ExplorerTx {
   recipient_display_name?: string;
 }
 
-interface QIEDexToken {
-  id: string;
-  symbol: string;
-  name: string;
-  totalSupply: string;
-}
-
 function ExplorerPage() {
   const { user } = useAuth();
   const router = useRouter();
@@ -49,30 +42,10 @@ function ExplorerPage() {
     totalYaps: 0,
     totalQIE: 0,
   });
-  
-  const [qiedexTokens, setQIEDexTokens] = useState<QIEDexToken[]>([]);
-  const [qiedexLoading, setQIEDexLoading] = useState(false);
-  const [view, setView] = useState<"activity" | "tokens">("activity");
 
   useEffect(() => {
     loadExplorer();
-    fetchQIEDexTokens();
   }, []);
-
-  const fetchQIEDexTokens = async () => {
-    setQIEDexLoading(true);
-    try {
-      const res = await fetch(`${API_BASE}/qiedex/tokens`);
-      if (res.ok) {
-        const data = await res.json();
-        setQIEDexTokens(data);
-      }
-    } catch (err) {
-      console.error("Error fetching QIEDex tokens:", err);
-    } finally {
-      setQIEDexLoading(false);
-    }
-  };
 
   const loadExplorer = async () => {
     setLoading(true);
@@ -179,14 +152,6 @@ function ExplorerPage() {
     return relativeTime(dateString);
   };
 
-  const formatSupply = (supply: string) => {
-    const num = Number(supply);
-    if (num >= 1_000_000_000_000_000_000) {
-      return (num / 1_000_000_000_000_000_000).toFixed(2) + " QIE";
-    }
-    return num.toLocaleString();
-  };
-
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-12">
       <Header />
@@ -201,7 +166,6 @@ function ExplorerPage() {
           </div>
         </div>
 
-        {/* Stat Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
           <StatCard 
             icon={<Coins className="size-4 text-emerald-500" />}
@@ -229,193 +193,128 @@ function ExplorerPage() {
           />
         </div>
 
-        {/* Toggle View */}
-        <div className="flex gap-2 mb-6">
-          <button
-            onClick={() => setView("activity")}
-            className={cn(
-              "rounded-full px-4 py-1.5 text-xs font-medium transition-all",
-              view === "activity" ? "bg-foreground text-background" : "bg-muted text-muted-foreground"
-            )}
-          >
-            Activity
-          </button>
-          <button
-            onClick={() => setView("tokens")}
-            className={cn(
-              "rounded-full px-4 py-1.5 text-xs font-medium transition-all",
-              view === "tokens" ? "bg-foreground text-background" : "bg-muted text-muted-foreground"
-            )}
-          >
-            Tokens
-          </button>
+        <div className="flex flex-wrap gap-2 mb-6">
+          {[
+            { value: "all", label: "All Activity" },
+            { value: "tip", label: "Tips" },
+            { value: "yap", label: "Yaps" },
+            { value: "super_yap", label: "Super Yaps" },
+            { value: "boost", label: "Boosts" },
+          ].map((f) => (
+            <button
+              key={f.value}
+              onClick={() => setFilter(f.value as any)}
+              className={cn(
+                "rounded-full px-4 py-1.5 text-xs font-medium transition-all duration-200",
+                filter === f.value 
+                  ? "bg-foreground text-background shadow-sm" 
+                  : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
+              )}
+            >
+              {f.label}
+            </button>
+          ))}
         </div>
 
-        {view === "activity" ? (
-          <>
-            <div className="flex flex-wrap gap-2 mb-6">
-              {[
-                { value: "all", label: "All Activity" },
-                { value: "tip", label: "Tips" },
-                { value: "yap", label: "Yaps" },
-                { value: "super_yap", label: "Super Yaps" },
-                { value: "boost", label: "Boosts" },
-              ].map((f) => (
-                <button
-                  key={f.value}
-                  onClick={() => setFilter(f.value as any)}
-                  className={cn(
-                    "rounded-full px-4 py-1.5 text-xs font-medium transition-all duration-200",
-                    filter === f.value 
-                      ? "bg-foreground text-background shadow-sm" 
-                      : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
-                  )}
-                >
-                  {f.label}
-                </button>
-              ))}
-            </div>
-
-            {loading ? (
-              <div className="space-y-3">
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <div key={i} className="animate-pulse rounded-xl border border-border/50 bg-card/50 p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="size-8 rounded-full bg-muted" />
-                        <div className="space-y-2">
-                          <div className="h-4 w-48 rounded bg-muted" />
-                          <div className="h-3 w-24 rounded bg-muted" />
-                        </div>
-                      </div>
-                      <div className="h-4 w-20 rounded bg-muted" />
+        {loading ? (
+          <div className="space-y-3">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="animate-pulse rounded-xl border border-border/50 bg-card/50 p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="size-8 rounded-full bg-muted" />
+                    <div className="space-y-2">
+                      <div className="h-4 w-48 rounded bg-muted" />
+                      <div className="h-3 w-24 rounded bg-muted" />
                     </div>
                   </div>
-                ))}
+                  <div className="h-4 w-20 rounded bg-muted" />
+                </div>
               </div>
-            ) : filteredTxs.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-border bg-card p-12 text-center">
-                <div className="mx-auto mb-3 grid size-12 place-items-center rounded-full bg-muted text-2xl">🔍</div>
-                <h3 className="font-display text-lg font-semibold">No transactions found</h3>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Be the first to make an on-chain transaction on QIE Mainnet!
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {filteredTxs.map((tx, index) => {
-                  const meta = getTxMeta(tx.type);
-                  const Icon = meta.icon;
-                  
-                  return (
-                    <div 
-                      key={`${tx.id}-${index}`} 
-                      className="group rounded-xl border border-border/50 bg-card/50 p-4 transition-all hover:bg-card/80 hover:border-border"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-start gap-3 min-w-0">
-                          <div className={cn("rounded-full p-2 shrink-0", meta.bg)}>
-                            <Icon className={cn("size-4", meta.color)} />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className={cn("text-xs font-semibold uppercase tracking-wider", meta.color)}>
-                                {meta.label}
-                              </span>
-                              {tx.tx_hash && (
-                                <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-mono text-muted-foreground">
-                                  <Hash className="size-2.5" />
-                                  {tx.tx_hash.slice(0, 6)}...{tx.tx_hash.slice(-4)}
-                                </span>
-                              )}
-                            </div>
-                            
-                            <p className="text-sm font-medium mt-0.5 truncate">
-                              {tx.type === "tip" 
-                                ? `💎 ${tx.from_user_id ? shortAddr(tx.from_user_id) : 'Unknown'} → ${tx.to_user_id ? shortAddr(tx.to_user_id) : 'Unknown'}`
-                                : `✍️ ${tx.author_display_name || shortAddr(tx.from_user_id)}`
-                              }
-                            </p>
-                            
-                            {tx.content && (
-                              <p className="text-xs text-muted-foreground truncate max-w-md mt-0.5">
-                                "{tx.content.slice(0, 60)}..."
-                              </p>
-                            )}
-                            
-                            <div className="flex items-center gap-3 mt-1 text-[10px] text-muted-foreground">
-                              <span className="flex items-center gap-1">
-                                <Clock className="size-3" />
-                                {formatTime(tx.created_at)}
-                              </span>
-                              {tx.amount && tx.amount > 0 && (
-                                <span className="flex items-center gap-1 text-emerald-500 font-medium">
-                                  <Coins className="size-3" />
-                                  +{tx.amount.toFixed(4)} QIE
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2 shrink-0">
+            ))}
+          </div>
+        ) : filteredTxs.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-border bg-card p-12 text-center">
+            <div className="mx-auto mb-3 grid size-12 place-items-center rounded-full bg-muted text-2xl">🔍</div>
+            <h3 className="font-display text-lg font-semibold">No transactions found</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Be the first to make an on-chain transaction on QIE Mainnet!
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {filteredTxs.map((tx, index) => {
+              const meta = getTxMeta(tx.type);
+              const Icon = meta.icon;
+              
+              return (
+                <div 
+                  key={`${tx.id}-${index}`} 
+                  className="group rounded-xl border border-border/50 bg-card/50 p-4 transition-all hover:bg-card/80 hover:border-border"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3 min-w-0">
+                      <div className={cn("rounded-full p-2 shrink-0", meta.bg)}>
+                        <Icon className={cn("size-4", meta.color)} />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className={cn("text-xs font-semibold uppercase tracking-wider", meta.color)}>
+                            {meta.label}
+                          </span>
                           {tx.tx_hash && (
-                            <a
-                              href={`https://mainnet.qie.digital/tx/${tx.tx_hash}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="rounded-full p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-all"
-                              title="View on QIE Explorer"
-                            >
-                              <ExternalLink className="size-4" />
-                            </a>
+                            <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-mono text-muted-foreground">
+                              <Hash className="size-2.5" />
+                              {tx.tx_hash.slice(0, 6)}...{tx.tx_hash.slice(-4)}
+                            </span>
+                          )}
+                        </div>
+                        
+                        <p className="text-sm font-medium mt-0.5 truncate">
+                          {tx.type === "tip" 
+                            ? `💎 ${tx.from_user_id ? shortAddr(tx.from_user_id) : 'Unknown'} → ${tx.to_user_id ? shortAddr(tx.to_user_id) : 'Unknown'}`
+                            : `✍️ ${tx.author_display_name || shortAddr(tx.from_user_id)}`
+                          }
+                        </p>
+                        
+                        {tx.content && (
+                          <p className="text-xs text-muted-foreground truncate max-w-md mt-0.5">
+                            "{tx.content.slice(0, 60)}..."
+                          </p>
+                        )}
+                        
+                        <div className="flex items-center gap-3 mt-1 text-[10px] text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <Clock className="size-3" />
+                            {formatTime(tx.created_at)}
+                          </span>
+                          {tx.amount && tx.amount > 0 && (
+                            <span className="flex items-center gap-1 text-emerald-500 font-medium">
+                              <Coins className="size-3" />
+                              +{tx.amount.toFixed(4)} QIE
+                            </span>
                           )}
                         </div>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-            )}
-          </>
-        ) : (
-          <div className="mb-6">
-            <div className="flex items-center gap-2 mb-3">
-              <TrendingUp className="size-5 text-brand" />
-              <h2 className="font-semibold text-sm">QIEDex Token List</h2>
-            </div>
 
-            {qiedexLoading ? (
-              <div className="flex justify-center py-20">
-                <Loader2 className="size-8 animate-spin text-brand" />
-              </div>
-            ) : qiedexTokens.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-border bg-card p-12 text-center">
-                <Coins className="mx-auto size-12 text-muted-foreground mb-3" />
-                <h3 className="text-lg font-semibold">No tokens found</h3>
-                <p className="text-sm text-muted-foreground">Try refreshing the page</p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {qiedexTokens.map((token) => (
-                  <div key={token.id} className="flex items-center justify-between rounded-xl border border-border/50 bg-card/50 p-3">
-                    <div className="flex items-center gap-3">
-                      <div className="rounded-full bg-muted p-2">
-                        <Coins className="size-4 text-brand" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold">{token.symbol}</p>
-                        <p className="text-xs text-muted-foreground">{token.name}</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-medium">{formatSupply(token.totalSupply)}</p>
-                      <p className="text-[10px] text-muted-foreground">Supply</p>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {tx.tx_hash && (
+                        <a
+                          href={`https://mainnet.qie.digital/tx/${tx.tx_hash}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="rounded-full p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-all"
+                          title="View on QIE Explorer"
+                        >
+                          <ExternalLink className="size-4" />
+                        </a>
+                      )}
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
