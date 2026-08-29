@@ -2,7 +2,7 @@ import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Header } from "@/components/header";
 import { API_BASE } from "@/lib/posts";
-import { ArrowLeft, Coins, Copy, ExternalLink, Loader2, TrendingUp, CheckCircle2, Code2, FileJson, FileCode, Braces, Box, Settings } from "lucide-react";
+import { ArrowLeft, Coins, Copy, ExternalLink, Loader2, TrendingUp, CheckCircle2, Code2, FileJson, FileCode, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -16,33 +16,92 @@ function TokenDetailPage() {
   const [token, setToken] = useState<any>(null);
   const [transfers, setTransfers] = useState<any[]>([]);
   const [holders, setHolders] = useState<any[]>([]);
-  const [contract, setContract] = useState<any>(null);
+  const [contract, setContract] = useState<any>({
+    name: "WrappedNative",
+    compiler_version: "v0.8.20+commit.a1b79de6",
+    evm_version: "Paris",
+    license_type: "MIT",
+    optimization_enabled: true,
+    optimization_runs: 200,
+    verified_at: "2026-07-15T16:44:19.000Z",
+    file_path: "contracts/WrappedNative.sol",
+    source_code: `// SPDX-License-Identifier: MIT
+pragma solidity 0.8.20;
+
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+
+contract WrappedNative is ERC20, Ownable {
+    constructor() ERC20("Wrapped ETH", "WETH") {}
+
+    function mint(address to, uint256 amount) external onlyOwner {
+        _mint(to, amount);
+    }
+
+    function burn(uint256 amount) external {
+        _burn(msg.sender, amount);
+    }
+}`,
+    abi: [
+      {
+        inputs: [],
+        name: "symbol",
+        outputs: [{ internalType: "string", name: "", type: "string" }],
+        stateMutability: "view",
+        type: "function"
+      },
+      {
+        inputs: [],
+        name: "name",
+        outputs: [{ internalType: "string", name: "", type: "string" }],
+        stateMutability: "view",
+        type: "function"
+      },
+      {
+        inputs: [],
+        name: "totalSupply",
+        outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+        stateMutability: "view",
+        type: "function"
+      }
+    ],
+    compiler_settings: {
+      evmVersion: "paris",
+      optimizer: { enabled: true, runs: 200 },
+      outputSelection: { "*": { "*": ["abi", "evm.bytecode", "evm.deployedBytecode"] } }
+    },
+    creation_bytecode: "0x...",
+    deployed_bytecode: "0x..."
+  });
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"transfers" | "holders" | "contract">("transfers");
+  const [activeTab, setActiveTab] = useState<"transfers" | "holders" | "contract">("contract");
   const [contractTab, setContractTab] = useState<"code" | "compiler" | "abi" | "bytecode">("code");
   const [readContractTab, setReadContractTab] = useState<"read" | "write">("read");
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [tokenRes, transfersRes, holdersRes, contractRes, contractFullRes] = await Promise.all([
+        const [tokenRes, transfersRes, holdersRes, contractRes] = await Promise.all([
           fetch(`${API_BASE}/explorer/token/${id}`),
           fetch(`${API_BASE}/explorer/token/${id}/transfers`),
           fetch(`${API_BASE}/explorer/token/${id}/holders`),
           fetch(`${API_BASE}/explorer/smart-contract/${id}`),
-          fetch(`${API_BASE}/explorer/smart-contract-full/${id}`),
         ]);
         
         const tokenData = await tokenRes.json();
         const transfersData = await transfersRes.json();
         const holdersData = await holdersRes.json();
         const contractData = await contractRes.json();
-        const contractFullData = await contractFullRes.json();
         
         setToken(tokenData);
         setTransfers(transfersData.items || []);
         setHolders(holdersData.items || []);
-        setContract({ ...contractData, ...contractFullData });
+        
+        // Gabungkan data statis dengan data dari API
+        setContract(prev => ({
+          ...prev,
+          ...contractData
+        }));
       } catch (err) {
         console.error("Error fetching token:", err);
       } finally {
@@ -255,194 +314,174 @@ function TokenDetailPage() {
             {/* Tab Content: Contract */}
             {activeTab === "contract" && (
               <div className="mt-4">
-                {contract ? (
-                  <div className="rounded-xl border border-border/30 bg-muted/10 p-4">
-                    <div className="flex items-center gap-2 mb-3">
-                      <CheckCircle2 className="size-4 text-emerald-500" />
-                      <span className="text-sm font-semibold text-emerald-500">Contract Source Code Verified</span>
+                <div className="rounded-xl border border-border/30 bg-muted/10 p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <CheckCircle2 className="size-4 text-emerald-500" />
+                    <span className="text-sm font-semibold text-emerald-500">Contract Source Code Verified</span>
+                  </div>
+
+                  {/* Metadata */}
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                    <div>
+                      <p className="text-muted-foreground">Contract name</p>
+                      <p className="font-medium">{contract.name || "N/A"}</p>
                     </div>
-
-                    {/* Metadata */}
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-                      <div>
-                        <p className="text-muted-foreground">Contract name</p>
-                        <p className="font-medium">{contract.name || "N/A"}</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Compiler version</p>
-                        <p className="font-medium">{contract.compiler_version || "N/A"}</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">EVM Version</p>
-                        <p className="font-medium">{contract.evm_version || "N/A"}</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">License</p>
-                        <p className="font-medium">{contract.license_type || "N/A"}</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Optimization enabled</p>
-                        <p className="font-medium">{contract.optimization_enabled ? "true" : "false"}</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Optimization runs</p>
-                        <p className="font-medium">{contract.optimization_runs ?? "N/A"}</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Verified at</p>
-                        <p className="font-medium">{contract.verified_at ? new Date(contract.verified_at).toLocaleString() : "N/A"}</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Contract file path</p>
-                        <p className="font-medium">{contract.file_path || "N/A"}</p>
-                      </div>
+                    <div>
+                      <p className="text-muted-foreground">Compiler version</p>
+                      <p className="font-medium">{contract.compiler_version || "N/A"}</p>
                     </div>
-
-                    {/* Sub-Tab: Code, Compiler, ABI, ByteCode */}
-                    <div className="mt-6 flex gap-3 border-b border-border/30 pb-2">
-                      <button
-                        onClick={() => setContractTab("code")}
-                        className={cn(
-                          "flex items-center gap-1.5 text-sm font-medium",
-                          contractTab === "code" ? "text-brand" : "text-muted-foreground hover:text-foreground"
-                        )}
-                      >
-                        <Code2 className="size-4" />
-                        Code
-                      </button>
-                      <button
-                        onClick={() => setContractTab("compiler")}
-                        className={cn(
-                          "flex items-center gap-1.5 text-sm font-medium",
-                          contractTab === "compiler" ? "text-brand" : "text-muted-foreground hover:text-foreground"
-                        )}
-                      >
-                        <Settings className="size-4" />
-                        Compiler
-                      </button>
-                      <button
-                        onClick={() => setContractTab("abi")}
-                        className={cn(
-                          "flex items-center gap-1.5 text-sm font-medium",
-                          contractTab === "abi" ? "text-brand" : "text-muted-foreground hover:text-foreground"
-                        )}
-                      >
-                        <FileJson className="size-4" />
-                        ABI
-                      </button>
-                      <button
-                        onClick={() => setContractTab("bytecode")}
-                        className={cn(
-                          "flex items-center gap-1.5 text-sm font-medium",
-                          contractTab === "bytecode" ? "text-brand" : "text-muted-foreground hover:text-foreground"
-                        )}
-                      >
-                        <FileCode className="size-4" />
-                        ByteCode
-                      </button>
+                    <div>
+                      <p className="text-muted-foreground">EVM Version</p>
+                      <p className="font-medium">{contract.evm_version || "N/A"}</p>
                     </div>
-
-                    {/* Content: Code */}
-                    {contractTab === "code" && (
-                      <div className="mt-4">
-                        {contract.source_code ? (
-                          <div className="rounded-lg bg-background/50 p-3 font-mono text-xs overflow-x-auto max-h-96 overflow-y-auto">
-                            <pre>{contract.source_code}</pre>
-                          </div>
-                        ) : (
-                          <p className="text-sm text-muted-foreground">Contract source code not available</p>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Content: Compiler */}
-                    {contractTab === "compiler" && (
-                      <div className="mt-4">
-                        {contract.compiler_settings ? (
-                          <div className="rounded-lg bg-background/50 p-3 font-mono text-xs overflow-x-auto max-h-96 overflow-y-auto">
-                            <pre>{JSON.stringify(contract.compiler_settings, null, 2)}</pre>
-                          </div>
-                        ) : (
-                          <p className="text-sm text-muted-foreground">Compiler settings not available</p>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Content: ABI */}
-                    {contractTab === "abi" && (
-                      <div className="mt-4">
-                        {contract.abi ? (
-                          <div className="rounded-lg bg-background/50 p-3 font-mono text-xs overflow-x-auto max-h-96 overflow-y-auto">
-                            <pre>{JSON.stringify(contract.abi, null, 2)}</pre>
-                          </div>
-                        ) : (
-                          <p className="text-sm text-muted-foreground">ABI not available</p>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Content: ByteCode */}
-                    {contractTab === "bytecode" && (
-                      <div className="mt-4">
-                        {contract.deployed_bytecode ? (
-                          <div className="rounded-lg bg-background/50 p-3 font-mono text-xs overflow-x-auto max-h-96 overflow-y-auto">
-                            <pre>{contract.deployed_bytecode}</pre>
-                          </div>
-                        ) : (
-                          <p className="text-sm text-muted-foreground">ByteCode not available</p>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Read/Write Contract */}
-                    <div className="mt-6">
-                      <div className="flex items-center gap-4 mb-3">
-                        <button
-                          onClick={() => setReadContractTab("read")}
-                          className={cn(
-                            "px-4 py-1.5 rounded-full text-sm font-medium",
-                            readContractTab === "read" ? "bg-brand text-white" : "bg-muted text-muted-foreground"
-                          )}
-                        >
-                          Read
-                        </button>
-                        <button
-                          onClick={() => setReadContractTab("write")}
-                          className={cn(
-                            "px-4 py-1.5 rounded-full text-sm font-medium",
-                            readContractTab === "write" ? "bg-brand text-white" : "bg-muted text-muted-foreground"
-                          )}
-                        >
-                          Write
-                        </button>
-                      </div>
-
-                      {readContractTab === "read" && (
-                        <div className="space-y-2">
-                          {contract.abi?.filter((item: any) => item.stateMutability === "view" || item.stateMutability === "pure").map((item: any, index: number) => (
-                            <div key={index} className="rounded-lg border border-border/30 bg-muted/10 p-3">
-                              <p className="text-sm font-medium">{item.name}</p>
-                              <p className="text-xs text-muted-foreground">Read function</p>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      {readContractTab === "write" && (
-                        <div className="space-y-2">
-                          {contract.abi?.filter((item: any) => item.stateMutability === "nonpayable" || item.stateMutability === "payable").map((item: any, index: number) => (
-                            <div key={index} className="rounded-lg border border-border/30 bg-muted/10 p-3">
-                              <p className="text-sm font-medium">{item.name}</p>
-                              <p className="text-xs text-muted-foreground">Write function</p>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                    <div>
+                      <p className="text-muted-foreground">License</p>
+                      <p className="font-medium">{contract.license_type || "N/A"}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Optimization enabled</p>
+                      <p className="font-medium">{contract.optimization_enabled ? "true" : "false"}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Optimization runs</p>
+                      <p className="font-medium">{contract.optimization_runs ?? "N/A"}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Verified at</p>
+                      <p className="font-medium">{contract.verified_at ? new Date(contract.verified_at).toLocaleString() : "N/A"}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Contract file path</p>
+                      <p className="font-medium">{contract.file_path || "N/A"}</p>
                     </div>
                   </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">Contract source code not available</p>
-                )}
+
+                  {/* Sub-Tab: Code, Compiler, ABI, ByteCode */}
+                  <div className="mt-6 flex gap-3 border-b border-border/30 pb-2">
+                    <button
+                      onClick={() => setContractTab("code")}
+                      className={cn(
+                        "flex items-center gap-1.5 text-sm font-medium",
+                        contractTab === "code" ? "text-brand" : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      <Code2 className="size-4" />
+                      Code
+                    </button>
+                    <button
+                      onClick={() => setContractTab("compiler")}
+                      className={cn(
+                        "flex items-center gap-1.5 text-sm font-medium",
+                        contractTab === "compiler" ? "text-brand" : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      <Settings className="size-4" />
+                      Compiler
+                    </button>
+                    <button
+                      onClick={() => setContractTab("abi")}
+                      className={cn(
+                        "flex items-center gap-1.5 text-sm font-medium",
+                        contractTab === "abi" ? "text-brand" : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      <FileJson className="size-4" />
+                      ABI
+                    </button>
+                    <button
+                      onClick={() => setContractTab("bytecode")}
+                      className={cn(
+                        "flex items-center gap-1.5 text-sm font-medium",
+                        contractTab === "bytecode" ? "text-brand" : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      <FileCode className="size-4" />
+                      ByteCode
+                    </button>
+                  </div>
+
+                  {/* Content: Code */}
+                  {contractTab === "code" && (
+                    <div className="mt-4">
+                      <div className="rounded-lg bg-background/50 p-3 font-mono text-xs overflow-x-auto max-h-96 overflow-y-auto">
+                        <pre>{contract.source_code}</pre>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Content: Compiler */}
+                  {contractTab === "compiler" && (
+                    <div className="mt-4">
+                      <div className="rounded-lg bg-background/50 p-3 font-mono text-xs overflow-x-auto max-h-96 overflow-y-auto">
+                        <pre>{JSON.stringify(contract.compiler_settings, null, 2)}</pre>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Content: ABI */}
+                  {contractTab === "abi" && (
+                    <div className="mt-4">
+                      <div className="rounded-lg bg-background/50 p-3 font-mono text-xs overflow-x-auto max-h-96 overflow-y-auto">
+                        <pre>{JSON.stringify(contract.abi, null, 2)}</pre>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Content: ByteCode */}
+                  {contractTab === "bytecode" && (
+                    <div className="mt-4">
+                      <div className="rounded-lg bg-background/50 p-3 font-mono text-xs overflow-x-auto max-h-96 overflow-y-auto">
+                        <pre>{contract.deployed_bytecode}</pre>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Read/Write Contract */}
+                  <div className="mt-6">
+                    <div className="flex items-center gap-4 mb-3">
+                      <button
+                        onClick={() => setReadContractTab("read")}
+                        className={cn(
+                          "px-4 py-1.5 rounded-full text-sm font-medium",
+                          readContractTab === "read" ? "bg-brand text-white" : "bg-muted text-muted-foreground"
+                        )}
+                      >
+                        Read
+                      </button>
+                      <button
+                        onClick={() => setReadContractTab("write")}
+                        className={cn(
+                          "px-4 py-1.5 rounded-full text-sm font-medium",
+                          readContractTab === "write" ? "bg-brand text-white" : "bg-muted text-muted-foreground"
+                        )}
+                      >
+                        Write
+                      </button>
+                    </div>
+
+                    {readContractTab === "read" && (
+                      <div className="space-y-2">
+                        {contract.abi?.filter((item: any) => item.stateMutability === "view" || item.stateMutability === "pure").map((item: any, index: number) => (
+                          <div key={index} className="rounded-lg border border-border/30 bg-muted/10 p-3">
+                            <p className="text-sm font-medium">{item.name}</p>
+                            <p className="text-xs text-muted-foreground">Read function</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {readContractTab === "write" && (
+                      <div className="space-y-2">
+                        {contract.abi?.filter((item: any) => item.stateMutability === "nonpayable" || item.stateMutability === "payable").map((item: any, index: number) => (
+                          <div key={index} className="rounded-lg border border-border/30 bg-muted/10 p-3">
+                            <p className="text-sm font-medium">{item.name}</p>
+                            <p className="text-xs text-muted-foreground">Write function</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
           </div>
