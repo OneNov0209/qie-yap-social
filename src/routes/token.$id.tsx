@@ -2,7 +2,7 @@ import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Header } from "@/components/header";
 import { API_BASE } from "@/lib/posts";
-import { ArrowLeft, Coins, Copy, ExternalLink, Loader2, TrendingUp } from "lucide-react";
+import { ArrowLeft, Coins, Copy, ExternalLink, Loader2, TrendingUp, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -24,6 +24,7 @@ function TokenDetailPage() {
   const router = useRouter();
   const [token, setToken] = useState<TokenDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<"transfers" | "holders" | "contract">("transfers");
 
   useEffect(() => {
     const fetchToken = async () => {
@@ -152,39 +153,168 @@ function TokenDetailPage() {
 
           {/* Tab */}
           <div className="mt-6 border-t border-border/30 pt-4">
-            <div className="flex gap-4">
-              <button className="text-sm font-semibold text-brand border-b-2 border-brand pb-2">Token transfers</button>
-              <button className="text-sm text-muted-foreground pb-2 hover:text-foreground">Holders</button>
-              <button className="text-sm text-muted-foreground pb-2 hover:text-foreground">Contract</button>
+            <div className="flex gap-4 border-b border-border/30">
+              <button
+                onClick={() => setActiveTab("transfers")}
+                className={cn(
+                  "text-sm font-semibold pb-3",
+                  activeTab === "transfers" ? "text-brand border-b-2 border-brand" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                Token transfers
+              </button>
+              <button
+                onClick={() => setActiveTab("holders")}
+                className={cn(
+                  "text-sm font-semibold pb-3",
+                  activeTab === "holders" ? "text-brand border-b-2 border-brand" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                Holders
+              </button>
+              <button
+                onClick={() => setActiveTab("contract")}
+                className={cn(
+                  "text-sm font-semibold pb-3",
+                  activeTab === "contract" ? "text-brand border-b-2 border-brand" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                Contract
+              </button>
             </div>
 
-            {/* Transfer List */}
-            <div className="mt-4 space-y-2">
-              <div className="flex items-center justify-between rounded-xl border border-border/30 bg-muted/10 p-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">0x193...5cf0</span>
-                  <span className="text-xs text-muted-foreground">1mo ago</span>
-                  <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-xs text-red-500">burn</span>
+            {/* Tab Content: Transfers */}
+            {activeTab === "transfers" && (
+              <div className="mt-4 space-y-2">
+                <div className="flex items-center justify-between rounded-xl border border-border/30 bg-muted/10 p-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">0x193...5cf0</span>
+                    <span className="text-xs text-muted-foreground">1mo ago</span>
+                    <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-xs text-red-500">burn</span>
+                  </div>
+                  <span className="text-sm font-medium">0.0000299</span>
                 </div>
-                <span className="text-sm font-medium">0.0000299</span>
-              </div>
-              <div className="flex items-center justify-between rounded-xl border border-border/30 bg-muted/10 p-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">0x193...5cf0</span>
-                  <span className="text-xs text-muted-foreground">1mo ago</span>
-                  <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-xs text-red-500">burn</span>
+                <div className="flex items-center justify-between rounded-xl border border-border/30 bg-muted/10 p-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">0x193...5cf0</span>
+                    <span className="text-xs text-muted-foreground">1mo ago</span>
+                    <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-xs text-red-500">burn</span>
+                  </div>
+                  <span className="text-sm font-medium">0.0299</span>
                 </div>
-                <span className="text-sm font-medium">0.0299</span>
-              </div>
-              <div className="flex items-center justify-between rounded-xl border border-border/30 bg-muted/10 p-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">0x090...a232</span>
-                  <span className="text-xs text-muted-foreground">1mo ago</span>
-                  <span className="rounded-full bg-green-500/10 px-2 py-0.5 text-xs text-green-500">mint</span>
+                <div className="flex items-center justify-between rounded-xl border border-border/30 bg-muted/10 p-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">0x090...a232</span>
+                    <span className="text-xs text-muted-foreground">1mo ago</span>
+                    <span className="rounded-full bg-green-500/10 px-2 py-0.5 text-xs text-green-500">mint</span>
+                  </div>
+                  <span className="text-sm font-medium">0.02997</span>
                 </div>
-                <span className="text-sm font-medium">0.02997</span>
               </div>
-            </div>
+            )}
+
+            {/* Tab Content: Holders */}
+            {activeTab === "holders" && (
+              <div className="mt-4">
+                <div className="rounded-xl border border-border/30 bg-muted/10 p-4">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-muted-foreground">
+                        <th className="pb-2">Address</th>
+                        <th className="pb-2 text-right">Balance</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="border-t border-border/20">
+                        <td className="py-2 font-mono">0x193...5cf0</td>
+                        <td className="py-2 text-right">0.0000299</td>
+                      </tr>
+                      <tr className="border-t border-border/20">
+                        <td className="py-2 font-mono">0x090...a232</td>
+                        <td className="py-2 text-right">0.02997</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Tab Content: Contract */}
+            {activeTab === "contract" && (
+              <div className="mt-4">
+                <div className="rounded-xl border border-border/30 bg-muted/10 p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <CheckCircle2 className="size-4 text-emerald-500" />
+                    <span className="text-sm font-semibold text-emerald-500">Contract Source Code Verified</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-muted-foreground">Contract name</p>
+                      <p className="font-medium">WrappedNative</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Compiler version</p>
+                      <p className="font-medium">v0.8.20+commit.a1b79de6</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">EVM Version</p>
+                      <p className="font-medium">Paris</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">License</p>
+                      <p className="font-medium">MIT</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Optimization enabled</p>
+                      <p className="font-medium">true</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Optimization runs</p>
+                      <p className="font-medium">200</p>
+                    </div>
+                  </div>
+
+                  {/* Constructor Arguments */}
+                  <div className="mt-4">
+                    <p className="text-sm font-semibold mb-2">Constructor Arguments</p>
+                    <div className="rounded-lg bg-background/50 p-3 font-mono text-xs">
+                      <p>0x0000000000000000000000000000000000000000000000000000000000000000</p>
+                      <p>0x0000000000000000000000000000000000000000000000000000000000000000</p>
+                      <p>0000000000000000000000000000000000000000000000000000000000000000</p>
+                      <p>0000000000000000000000000000000000000000000000000000000000000000</p>
+                    </div>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Arg [0] name (string): Wrapped ETH
+                      Arg [1] symbol (string): WETH
+                    </p>
+                  </div>
+
+                  {/* Contract Source Code */}
+                  <div className="mt-4">
+                    <p className="text-sm font-semibold mb-2">Contract Source Code (Solidity)</p>
+                    <div className="rounded-lg bg-background/50 p-3 font-mono text-xs overflow-x-auto">
+                      <pre>{`// SPDX-License-Identifier: MIT
+pragma solidity 0.8.20;
+
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+
+contract WrappedNative is ERC20, Ownable {
+    constructor() ERC20("Wrapped ETH", "WETH") {}
+
+    function mint(address to, uint256 amount) external onlyOwner {
+        _mint(to, amount);
+    }
+
+    function burn(uint256 amount) external {
+        _burn(msg.sender, amount);
+    }
+}`}</pre>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
