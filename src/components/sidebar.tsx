@@ -23,6 +23,7 @@ export function Sidebar() {
     { to: "/search", label: "Search", icon: Search },
     { to: "/explorer", label: "Explorer", icon: Activity },
     { to: "/tokens", label: "Tokens", icon: Coins },
+    { to: "/hackathon", label: "Hackathon", icon: Trophy },
     { to: "/dashboard", label: "Dashboard", icon: Wallet },
     { to: "/leaderboard", label: "Leaderboard", icon: Trophy },
     { to: `/profile/${profilePath}`, label: "Profile", icon: User },
