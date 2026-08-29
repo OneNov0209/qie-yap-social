@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Home, Search, Activity, Wallet, User } from "lucide-react";
+import { Home, Search, Activity, Wallet, User, Trophy } from "lucide-react";
 import { ConnectWalletButton } from "./connect-wallet-button";
 import { ThemeToggle } from "./theme-toggle";
 import { useAuth } from "@/lib/auth-store";
@@ -42,10 +42,10 @@ export function MobileBottomNav() {
   const profilePath = user?.address ?? "0x0000000000000000000000000000000000000000";
 
   const items = [
-    // âœ… Ubah route Feed dari "/" menjadi "/feed"
     { to: "/feed", label: "Feed", icon: Home },
     { to: "/search", label: "Search", icon: Search },
     { to: "/explorer", label: "Explorer", icon: Activity },
+    { to: "/hackathon", label: "Hackathon", icon: Trophy },
     { to: "/dashboard", label: "Dashboard", icon: Wallet },
     { to: `/profile/${profilePath}`, label: "Profile", icon: User },
   ];
