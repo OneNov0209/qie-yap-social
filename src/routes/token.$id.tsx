@@ -18,29 +18,33 @@ function TokenDetailPage() {
   const [transfers, setTransfers] = useState<any[]>([]);
   const [holders, setHolders] = useState<any[]>([]);
   const [contract, setContract] = useState<any>(null);
+  const [tokenIcon, setTokenIcon] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"transfers" | "holders" | "contract">("transfers");
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [tokenRes, transfersRes, holdersRes, contractRes] = await Promise.all([
+        const [tokenRes, transfersRes, holdersRes, contractRes, metaRes] = await Promise.all([
           fetch(`${API_BASE}/explorer/token/${id}`),
           fetch(`${API_BASE}/explorer/token/${id}/transfers`),
           fetch(`${API_BASE}/explorer/token/${id}/holders`),
           fetch(`${API_BASE}/explorer/smart-contract/${id}`),
+          fetch(`${API_BASE}/explorer/token-meta/${id}`),
         ]);
         
         const tokenData = await tokenRes.json();
         const transfersData = await transfersRes.json();
         const holdersData = await holdersRes.json();
         const contractData = await contractRes.json();
+        const metaData = await metaRes.json();
         
         setToken(tokenData.token);
         setCounters(tokenData.counters);
         setTransfers(transfersData.items || []);
         setHolders(holdersData.items || []);
         setContract(contractData);
+        setTokenIcon(metaData?.icon_url || null);
       } catch (err) {
         console.error("Error fetching token:", err);
       } finally {
@@ -110,7 +114,11 @@ function TokenDetailPage() {
           <div className="flex items-start justify-between">
             <div className="flex items-start gap-4">
               <div className="rounded-full bg-muted p-3">
-                <Coins className="size-8 text-brand" />
+                {tokenIcon ? (
+                  <img src={tokenIcon} alt={token.name} className="size-8 rounded-full" />
+                ) : (
+                  <Coins className="size-8 text-brand" />
+                )}
               </div>
               <div>
                 <div className="flex items-center gap-2">
