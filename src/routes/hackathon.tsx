@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Header } from "@/components/header";
 import { API_BASE } from "@/lib/posts";
 import { toast } from "sonner";
-import { Trophy, Users, Rocket, Loader2, CheckCircle2, Wallet, Link2, Share2, FileText } from "lucide-react";
+import { Trophy, Users, Rocket, Loader2, CheckCircle2, Wallet, Link2, Share2, FileText, Github, Globe, Youtube, Twitter, MessageCircle, Send, MapPin, Calendar, Tag } from "lucide-react";
 import { useAuth } from "@/lib/auth-store";
 import { cn } from "@/lib/utils";
 
@@ -22,12 +22,21 @@ interface Participant {
 }
 
 const CATEGORIES = [
-  { id: "defi", title: "DeFi & Financial Infrastructure", icon: "💰", desc: "Build lending, savings, payments, treasury, remittance, and tokenized finance tools that move real value on-chain." },
-  { id: "ai", title: "AI + Autonomous Agents", icon: "🤖", desc: "Build autonomous agents that transact, coordinate wallets, and execute real commerce workflows." },
-  { id: "consumer", title: "Consumer Apps & Social", icon: "👥", desc: "Create consumer products that deliver daily utility and engagement across communities, creators, and identity flows." },
-  { id: "commerce", title: "Commerce & Real World", icon: "🛒", desc: "Bring blockchain into real business operations for merchants, subscriptions, invoicing, ticketing, and supply chains." },
-  { id: "dev", title: "Developer Infrastructure & Tooling", icon: "🏗️", desc: "Build tooling that improves the entire QIE ecosystem across wallets, SDKs, APIs, analytics, and security." },
+  { id: "defi", title: "DeFi & Financial Infrastructure", icon: "💰" },
+  { id: "ai", title: "AI + Autonomous Agents", icon: "🤖" },
+  { id: "consumer", title: "Consumer Apps & Social", icon: "👥" },
+  { id: "commerce", title: "Commerce & Real World", icon: "🛒" },
+  { id: "dev", title: "Developer Infrastructure & Tooling", icon: "🏗️" },
 ];
+
+const DEMO_LINKS = {
+  github: "https://github.com/OneNov0209/Qie-yap",
+  website: "https://qie.yap.onenov.xyz",
+  video: "https://youtube.com/shorts/Bu_M9nzvndM?si=fyX6Iq8vnlJ6IQt2",
+  twitter: "@Surya021282",
+  discord: "SuryaOne#6296",
+  telegram: "@OneNov02",
+};
 
 function HackathonPage() {
   const { user } = useAuth();
@@ -133,26 +142,75 @@ function HackathonPage() {
             <p className="text-sm text-muted-foreground">Be the first to register!</p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-6">
             {participants.map((p) => (
-              <div key={p.id} className="rounded-xl border border-border/50 bg-card/50 p-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex size-10 items-center justify-center rounded-full bg-brand-soft">
-                    <Users className="size-5 text-brand" />
+              <div key={p.id} className="rounded-2xl border border-border/50 bg-card/50 p-6">
+                {/* Header */}
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="flex size-12 items-center justify-center rounded-full bg-brand-soft">
+                    <Users className="size-6 text-brand" />
                   </div>
                   <div>
-                    <h3 className="font-semibold">{p.project_name}</h3>
-                    <p className="text-xs text-muted-foreground">
-                      {p.wallet_address.slice(0, 6)}...{p.wallet_address.slice(-4)}
-                    </p>
+                    <h3 className="text-xl font-bold">{p.project_name}</h3>
+                    <p className="text-sm text-muted-foreground">{p.team_members || "Solo Developer"}</p>
                   </div>
                 </div>
+
+                {/* Description */}
                 {p.description && (
-                  <p className="text-sm text-foreground/80 mt-2">{p.description}</p>
+                  <div className="mb-4">
+                    <p className="text-sm font-semibold text-muted-foreground mb-1">Project Description</p>
+                    <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">{p.description}</p>
+                  </div>
                 )}
-                {p.team_members && (
-                  <p className="text-xs text-muted-foreground mt-1">Team: {p.team_members}</p>
-                )}
+
+                {/* Project Links & Social */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <p className="text-sm font-semibold text-muted-foreground mb-2">Project Links</p>
+                    <div className="space-y-2">
+                      <a href={DEMO_LINKS.github} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-brand hover:underline">
+                        <Github className="size-4" /> GitHub Repository
+                      </a>
+                      <a href={DEMO_LINKS.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-brand hover:underline">
+                        <Globe className="size-4" /> Project Website
+                      </a>
+                      <a href={DEMO_LINKS.video} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-brand hover:underline">
+                        <Youtube className="size-4" /> Demo Video
+                      </a>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-muted-foreground mb-2">Social & Contact</p>
+                    <div className="space-y-2">
+                      <p className="flex items-center gap-2 text-sm">
+                        <Twitter className="size-4 text-muted-foreground" /> {DEMO_LINKS.twitter}
+                      </p>
+                      <p className="flex items-center gap-2 text-sm">
+                        <MessageCircle className="size-4 text-muted-foreground" /> {DEMO_LINKS.discord}
+                      </p>
+                      <p className="flex items-center gap-2 text-sm">
+                        <Send className="size-4 text-muted-foreground" /> {DEMO_LINKS.telegram}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Footer Info */}
+                <div className="flex flex-wrap items-center gap-4 pt-4 border-t border-border/30">
+                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <Calendar className="size-3.5" />
+                    Submitted: {new Date(p.created_at).toLocaleString()}
+                  </span>
+                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <Tag className="size-3.5" />
+                    Category: {p.track || "N/A"}
+                  </span>
+                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <Wallet className="size-3.5" />
+                    Wallet: {p.wallet_address.slice(0, 6)}...{p.wallet_address.slice(-4)}
+                  </span>
+                </div>
               </div>
             ))}
           </div>
