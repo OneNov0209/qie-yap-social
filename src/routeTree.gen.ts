@@ -14,6 +14,7 @@ import { Route as LeaderboardRouteImport } from './routes/leaderboard'
 import { Route as FeedRouteImport } from './routes/feed'
 import { Route as ExplorerRouteImport } from './routes/explorer'
 import { Route as TokensRouteImport } from './routes/tokens'
+import { Route as TokenIdRouteImport } from './routes/token.$id'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as BookmarksRouteImport } from './routes/bookmarks'
 import { Route as AddQieNetworkRouteImport } from './routes/add-qie-network'
@@ -44,6 +45,11 @@ const ExplorerRoute = ExplorerRouteImport.update({
 const TokensRoute = TokensRouteImport.update({
   id: '/tokens',
   path: '/tokens',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TokenIdRoute = TokenIdRouteImport.update({
+  id: '/token/$id',
+  path: '/token/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
