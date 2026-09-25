@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { getQieBalance } from '@/lib/qie-chain';
+import { getReferredBy, clearReferralFromUrl } from '@/lib/posts';
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://api.yap.onenov.xyz/api";
 
@@ -42,11 +43,17 @@ export const useAuth = create<AuthState>()(
           const address = (accounts as string[])[0];
           if (!address) throw new Error('Tidak ada akun yang ditemukan di QIE Wallet.');
 
-          // 2. Kirim ke backend untuk register/login
+          // 2. Ambil referral code dari URL (jika ada)
+          const referredBy = getReferredBy();
+
+          // 3. Kirim ke backend untuk register/login
           const res = await fetch(`${API_BASE}/profiles`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ address }),
+            body: JSON.stringify({ 
+              address,
+              referred_by: referredBy || null,
+            }),
           });
 
           if (!res.ok) {
@@ -54,7 +61,12 @@ export const useAuth = create<AuthState>()(
             throw new Error(`Gagal register/login: ${res.status} ${text}`);
           }
 
-          // 3. Ambil data profil dari backend
+          // 4. Bersihkan URL setelah register berhasil
+          if (referredBy) {
+            clearReferralFromUrl();
+          }
+
+          // 5. Ambil data profil dari backend
           const profile = await res.json();
           const balance = await getQieBalance(address as `0x${string}`).catch(() => 0);
 
