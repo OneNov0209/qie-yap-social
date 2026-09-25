@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Home, Search, Activity, Wallet, Trophy, User, Coins, PlusCircle, X, Menu, Code } from "lucide-react";
+import { Home, Search, Activity, Wallet, Trophy, User, Coins, PlusCircle, X, Menu, Code, Users } from "lucide-react";
 import { useAuth } from "@/lib/auth-store";
 import { cn } from "@/lib/utils";
 import { useEffect } from "react";
@@ -24,6 +24,7 @@ export function Sidebar() {
     { to: "/explorer", label: "Explorer", icon: Activity },
     { to: "/tokens", label: "Tokens", icon: Coins },
     { to: "/hackathon", label: "Hackathon", icon: Trophy },
+    { to: "/referrals", label: "Referrals", icon: Users },
     { to: "/dashboard", label: "Dashboard", icon: Wallet },
     { to: "/leaderboard", label: "Leaderboard", icon: Trophy },
     { to: `/profile/${profilePath}`, label: "Profile", icon: User },
