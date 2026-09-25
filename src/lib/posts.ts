@@ -244,3 +244,25 @@ export async function uploadToIPFS(file: File): Promise<string | null> {
     return null;
   }
 }
+
+// ============================================
+// ✅ REFERRAL HELPERS
+// ============================================
+
+// Ambil parameter ?ref= dari URL
+export function getReferredBy(): string | null {
+  if (typeof window === 'undefined') return null;
+  const params = new URLSearchParams(window.location.search);
+  const ref = params.get('ref');
+  return ref && ref.startsWith('0x') ? ref : null;
+}
+
+// Bersihkan parameter ?ref= setelah disimpan
+export function clearReferralFromUrl() {
+  if (typeof window === 'undefined') return;
+  const url = new URL(window.location.href);
+  if (url.searchParams.has('ref')) {
+    url.searchParams.delete('ref');
+    window.history.replaceState({}, '', url.toString());
+  }
+}
