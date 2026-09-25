@@ -4,12 +4,12 @@ import {
   Sparkles, MessageCircle, Heart, Coins, Zap, 
   TrendingUp, Shield, Globe, Wallet, ArrowRight, 
   Users, Rocket, Loader2, BarChart2, HelpCircle, ChevronDown, ChevronUp,
-  CheckCircle, Send, Award, Star, Zap as ZapIcon, Activity
+  CheckCircle, Send, Award, Star, Zap as ZapIcon, Activity, Gift, X
 } from "lucide-react";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { Avatar } from "@/components/avatar-img";
-import { API_BASE } from "@/lib/posts";
+import { API_BASE, getReferredBy, shortAddr } from "@/lib/posts";
 import { cn } from "@/lib/utils";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
@@ -67,15 +67,12 @@ function LiveActivityTicker() {
   useEffect(() => {
     const fetchActivity = async () => {
       try {
-        // Ambil data tips terbaru
         const tipsRes = await fetch(`${API_BASE}/tips?limit=5`);
         const tips = tipsRes.ok ? await tipsRes.json() : [];
         
-        // Ambil feed terbaru
         const feedRes = await fetch(`${API_BASE}/feed?limit=3`);
         const feed = feedRes.ok ? await feedRes.json() : [];
 
-        // Gabung menjadi array aktivitas
         const items: string[] = [];
         
         tips.forEach((tip: any) => {
@@ -101,7 +98,7 @@ function LiveActivityTicker() {
     };
 
     fetchActivity();
-    const interval = setInterval(fetchActivity, 15000); // Refresh setiap 15 detik
+    const interval = setInterval(fetchActivity, 15000);
     return () => clearInterval(interval);
   }, []);
 
@@ -109,7 +106,7 @@ function LiveActivityTicker() {
     if (activities.length === 0) return;
     const ticker = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % activities.length);
-    }, 3500); // Ganti pesan setiap 3.5 detik
+    }, 3500);
     return () => clearInterval(ticker);
   }, [activities]);
 
@@ -124,6 +121,42 @@ function LiveActivityTicker() {
           className="animate-in fade-in slide-in-from-bottom-2 duration-500"
         >
           {activities[currentIndex]}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================
+// 2.5 REFERRAL BANNER (TAMBAHAN BARU)
+// ============================================
+function ReferralBanner({ referrer }: { referrer: string }) {
+  const [visible, setVisible] = useState(true);
+
+  if (!visible) return null;
+
+  return (
+    <div className="relative z-20 mx-auto max-w-4xl px-4 pt-6">
+      <div className="relative overflow-hidden rounded-2xl border border-brand-start/30 bg-gradient-to-r from-[#FF0A6C]/10 to-[#0040FF]/10 p-4 backdrop-blur-sm shadow-lg shadow-brand-start/10">
+        <div className="flex items-center gap-4">
+          <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-[#FF0A6C] to-[#0040FF]">
+            <Gift className="size-6 text-white" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-sm md:text-base">
+              🎁 You've been referred by <span className="text-brand font-mono">{shortAddr(referrer)}</span>!
+            </p>
+            <p className="text-xs md:text-sm text-muted-foreground mt-0.5">
+              Connect your wallet & register to join QIE Yap — your referral will automatically be recorded.
+            </p>
+          </div>
+          <button
+            onClick={() => setVisible(false)}
+            className="shrink-0 rounded-full p-2 text-muted-foreground hover:bg-white/10 hover:text-foreground transition-colors"
+            aria-label="Close"
+          >
+            <X className="size-4" />
+          </button>
         </div>
       </div>
     </div>
@@ -222,9 +255,19 @@ function LandingPage() {
   const [loading, setLoading] = useState(true);
   const [chartLoading, setChartLoading] = useState(true);
   
-  // ✅ TAMBAHAN BARU: Trending Builders State
   const [trending, setTrending] = useState<any[]>([]);
   const [trendingLoading, setTrendingLoading] = useState(true);
+
+  // ✅ REFERRAL: Ambil referrer dari URL
+  const [referrer, setReferrer] = useState<string | null>(null);
+
+  useEffect(() => {
+    // ✅ Cek apakah ada referral di URL
+    const ref = getReferredBy();
+    if (ref) {
+      setReferrer(ref);
+    }
+  }, []);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -265,7 +308,6 @@ function LandingPage() {
     fetchChart();
   }, []);
 
-  // ✅ TAMBAHAN BARU: Fetch Trending Builders
   useEffect(() => {
     const fetchTrending = async () => {
       try {
@@ -311,12 +353,19 @@ function LandingPage() {
     {
       question: "Can I upload images?",
       answer: "Yes! Images are uploaded via IPFS (powered by Pinata)."
+    },
+    {
+      question: "How does the referral system work?",
+      answer: "Share your unique referral link from the /referrals page. Each new user who registers through your link earns you +10 Contributor Score automatically."
     }
   ];
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
       <Header />
+
+      {/* === REFERRAL BANNER (Muncul jika ada ?ref=) === */}
+      {referrer && <ReferralBanner referrer={referrer} />}
 
       {/* === HERO SECTION === */}
       <section className="relative mx-auto max-w-6xl px-4 pt-24 pb-20 text-center md:pt-32 md:pb-28">
@@ -455,7 +504,7 @@ function LandingPage() {
         </ScrollReveal>
       </section>
 
-      {/* === TRENDING BUILDERS (DARI DEV'S REQUEST) === */}
+      {/* === TRENDING BUILDERS === */}
       <section className="mx-auto max-w-6xl px-4 pb-20">
         <ScrollReveal>
           <div className="mb-10 text-center">
@@ -519,7 +568,7 @@ function LandingPage() {
             { icon: Rocket, title: "Boost Posts", desc: "Promote your content to the top of the feed." },
             { icon: Sparkles, title: "Super Yaps", desc: "Premium content with a unique gold border." },
             { icon: TrendingUp, title: "Leaderboard", desc: "Climb the ranks based on tips received and engagement." },
-            { icon: Shield, title: "On-Chain Identity", desc: "Your wallet is your identity. No email, no KYC." },
+            { icon: Gift, title: "Referral Rewards", desc: "Invite friends and earn +10 Contributor Score per referral." },
             { icon: Globe, title: "QIE Ecosystem", desc: "Fully integrated with QIE ID, QIE Pass, and the entire QIE blockchain." },
           ].map((feat, i) => (
             <ScrollReveal key={i} delay={i * 150}>
