@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SearchRouteImport } from './routes/search'
+import { Route as ReferralsRouteImport } from './routes/referrals'
 import { Route as LeaderboardRouteImport } from './routes/leaderboard'
 import { Route as FeedRouteImport } from './routes/feed'
 import { Route as ExplorerRouteImport } from './routes/explorer'
@@ -25,6 +26,11 @@ import { Route as ProfileAddressRouteImport } from './routes/profile.$address'
 const SearchRoute = SearchRouteImport.update({
   id: '/search',
   path: '/search',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReferralsRoute = ReferralsRouteImport.update({
+  id: '/referrals',
+  path: '/referrals',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LeaderboardRoute = LeaderboardRouteImport.update({
@@ -93,6 +99,7 @@ export interface FileRoutesByFullPath {
   '/token/$id': typeof TokenIdRoute
   '/feed': typeof FeedRoute
   '/leaderboard': typeof LeaderboardRoute
+  '/referrals': typeof ReferralsRoute
   '/search': typeof SearchRoute
   '/profile/$address': typeof ProfileAddressRoute
   '/yap/$id': typeof YapIdRoute
@@ -107,6 +114,7 @@ export interface FileRoutesByTo {
   '/token/$id': typeof TokenIdRoute
   '/feed': typeof FeedRoute
   '/leaderboard': typeof LeaderboardRoute
+  '/referrals': typeof ReferralsRoute
   '/search': typeof SearchRoute
   '/profile/$address': typeof ProfileAddressRoute
   '/yap/$id': typeof YapIdRoute
@@ -122,6 +130,7 @@ export interface FileRoutesById {
   '/token/$id': typeof TokenIdRoute
   '/feed': typeof FeedRoute
   '/leaderboard': typeof LeaderboardRoute
+  '/referrals': typeof ReferralsRoute
   '/search': typeof SearchRoute
   '/profile/$address': typeof ProfileAddressRoute
   '/yap/$id': typeof YapIdRoute
@@ -138,6 +147,7 @@ export interface FileRouteTypes {
     | '/token/$id'
     | '/feed'
     | '/leaderboard'
+    | '/referrals'
     | '/search'
     | '/profile/$address'
     | '/yap/$id'
@@ -152,6 +162,7 @@ export interface FileRouteTypes {
     | '/token/$id'
     | '/feed'
     | '/leaderboard'
+    | '/referrals'
     | '/search'
     | '/profile/$address'
     | '/yap/$id'
@@ -166,6 +177,7 @@ export interface FileRouteTypes {
     | '/token/$id'
     | '/feed'
     | '/leaderboard'
+    | '/referrals'
     | '/search'
     | '/profile/$address'
     | '/yap/$id'
@@ -181,6 +193,7 @@ export interface RootRouteChildren {
   TokenIdRoute: typeof TokenIdRoute
   FeedRoute: typeof FeedRoute
   LeaderboardRoute: typeof LeaderboardRoute
+  ReferralsRoute: typeof ReferralsRoute
   SearchRoute: typeof SearchRoute
   ProfileAddressRoute: typeof ProfileAddressRoute
   YapIdRoute: typeof YapIdRoute
@@ -193,6 +206,13 @@ declare module '@tanstack/react-router' {
       path: '/search'
       fullPath: '/search'
       preLoaderRoute: typeof SearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/referrals': {
+      id: '/referrals'
+      path: '/referrals'
+      fullPath: '/referrals'
+      preLoaderRoute: typeof ReferralsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/leaderboard': {
@@ -285,6 +305,7 @@ const rootRouteChildren: RootRouteChildren = {
   TokenIdRoute: TokenIdRoute,
   FeedRoute: FeedRoute,
   LeaderboardRoute: LeaderboardRoute,
+  ReferralsRoute: ReferralsRoute,
   SearchRoute: SearchRoute,
   ProfileAddressRoute: ProfileAddressRoute,
   YapIdRoute: YapIdRoute,
