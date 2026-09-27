@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { Heart, MessageCircle, Pin, Sparkles, BadgeCheck, Flame, Zap, Link as LinkIcon, Repeat, Bookmark, Trash2, Loader2, X } from "lucide-react";
+import { Heart, MessageCircle, Pin, Sparkles, BadgeCheck, Flame, Zap, Link as LinkIcon, Repeat, Bookmark, Trash2, Loader2, X, Download } from "lucide-react";
 import { StakingBadgeChip } from "./staking-badge";
 import { Avatar } from "./avatar-img";
 import { cn } from "@/lib/utils";
@@ -23,12 +23,13 @@ export function PostCard({ post }: { post: FeedPost }) {
   const [bookmarked, setBookmarked] = useState(post?.bookmarked ?? false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  // ✅ TAMBAHAN: State untuk lightbox modal
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
   const { user } = useAuth();
 
   const contractAddress = import.meta.env.VITE_QIE_YAP_CONTRACT as `0x${string}`;
   const isOwner = user?.address?.toLowerCase() === post.author?.address?.toLowerCase();
 
-  // ✅ Ambil data reposters (backend sudah mengirim array)
   const reposters = (post as any).reposters || [];
 
   const onToggleLike = async () => {
@@ -264,7 +265,7 @@ export function PostCard({ post }: { post: FeedPost }) {
         post.isBoosted && "border-2 border-brand-start/20",
       )}
     >
-      {/* === Repost Indicator (Jika ada reposters) === */}
+      {/* === Repost Indicator === */}
       {reposters.length > 0 && (
         <div className="absolute -top-3 left-5 inline-flex items-center gap-1.5 rounded-full bg-muted/80 backdrop-blur-sm px-2.5 py-0.5 text-[10px] font-medium text-muted-foreground border border-border/30 z-10">
           <Repeat className="size-3" />
@@ -274,7 +275,7 @@ export function PostCard({ post }: { post: FeedPost }) {
         </div>
       )}
 
-      {/* === Header: Avatar & Identity === */}
+      {/* === Header === */}
       <div className="flex items-start gap-3 pt-2">
         <Link to="/profile/$address" params={{ address: post.author?.address || "" }}>
           <Avatar seed={post.author?.avatarSeed || "default"} size={48} className="ring-2 ring-border/50" />
@@ -322,7 +323,6 @@ export function PostCard({ post }: { post: FeedPost }) {
           </div>
         </div>
 
-        {/* Tombol Delete (Hanya untuk pemilik post) */}
         {isOwner && (
           <button
             onClick={handleDelete}
@@ -334,7 +334,6 @@ export function PostCard({ post }: { post: FeedPost }) {
           </button>
         )}
 
-        {/* Badge Super Yap (Pojok Kanan Atas) */}
         {post.isSuperYap && (
           <span className="flex items-center gap-1.5 rounded-full bg-gold/90 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-white shadow-sm">
             <Sparkles className="size-3" />
@@ -349,18 +348,18 @@ export function PostCard({ post }: { post: FeedPost }) {
           {post.content}
         </div>
 
-        {/* Tampilkan Gambar jika ada */}
+        {/* ✅ GAMBAR DENGAN LIGHTBOX */}
         {post.mediaUrl && (
           <div className="mt-3 w-full max-w-md rounded-xl overflow-hidden border border-border/50 shadow-sm">
             <img 
               src={post.mediaUrl} 
               alt="Post media" 
-              className="w-full h-auto object-cover max-h-96 hover:scale-[1.01] transition-transform" 
+              className="w-full h-auto object-cover max-h-96 cursor-zoom-in hover:scale-[1.02] transition-transform" 
+              onClick={() => setLightboxImage(post.mediaUrl!)}
             />
           </div>
         )}
 
-        {/* Link Preview Card */}
         {post.linkPreview && (
           <div className="mt-3 rounded-xl overflow-hidden border border-border/50 bg-card/80 hover:border-brand-start/50 transition-colors">
             <a href={post.linkPreview.url} target="_blank" rel="noopener noreferrer" className="block">
@@ -470,6 +469,48 @@ export function PostCard({ post }: { post: FeedPost }) {
           Boost
         </button>
       </div>
+
+      {/* ✅ LIGHTBOX MODAL */}
+      {lightboxImage && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-sm p-4 cursor-zoom-out"
+          onClick={() => setLightboxImage(null)}
+        >
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setLightboxImage(null);
+            }}
+            className="absolute top-4 right-4 z-10 rounded-full bg-white/10 backdrop-blur-md p-3 text-white hover:bg-white/20 transition-colors"
+            aria-label="Close"
+          >
+            <X className="size-6" />
+          </button>
+
+          <a
+            href={lightboxImage}
+            download
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="absolute top-4 right-20 z-10 rounded-full bg-white/10 backdrop-blur-md p-3 text-white hover:bg-white/20 transition-colors"
+            aria-label="Download"
+          >
+            <Download className="size-6" />
+          </a>
+
+          <img
+            src={lightboxImage}
+            alt="Full view"
+            className="max-h-[90vh] max-w-[90vw] object-contain rounded-lg shadow-2xl cursor-default"
+            onClick={(e) => e.stopPropagation()}
+          />
+
+          <p className="absolute bottom-6 left-1/2 -translate-x-1/2 text-xs text-white/60">
+            Click anywhere to close
+          </p>
+        </div>
+      )}
     </article>
   );
 }
