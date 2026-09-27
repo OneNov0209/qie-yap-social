@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/lib/auth-store";
-import { shortAddr, type FeedPost, fetchFeed, API_BASE } from "@/lib/posts";
+import { shortAddr, type FeedPost, fetchFeed, fetchUserPosts, API_BASE } from "@/lib/posts";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
@@ -129,8 +129,8 @@ function ProfilePage() {
           setIsFollowing(data.isFollowing || false);
         }
 
-        const feed = await fetchFeed("latest", user?.id || null);
-        const userYaps = feed.filter((p) => p.author.address.toLowerCase() === address.toLowerCase());
+        // ✅ AMBIL SEMUA POST MILIK USER INI (bukan lagi filter dari feed global)
+        const userYaps = await fetchUserPosts(profileData.id);
         setYaps(userYaps);
         setCounts(prev => ({ ...prev, yaps: userYaps.length }));
 
