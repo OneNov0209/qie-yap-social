@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { BadgeCheck, X, BarChart2, Coins, Box, Users, Award, Code, Star, Briefcase } from "lucide-react";
+import { useEffect, useState, useCallback } from "react";
+import { BadgeCheck, X, BarChart2, Coins, Box, Users, Award, Code, Star, Briefcase, Loader2 } from "lucide-react";
 import { Header } from "@/components/header";
 import { PostCard } from "@/components/post-card";
 import { StakingBadgeChip } from "@/components/staking-badge";
@@ -41,11 +41,16 @@ interface FeedProfile {
   qie_id?: string;
 }
 
+const POSTS_PER_PAGE = 20;
+
 function ProfilePage() {
   const { address } = Route.useParams();
   const { user, updateProfile } = useAuth();
   const [profile, setProfile] = useState<FeedProfile | null>(null);
   const [yaps, setYaps] = useState<FeedPost[]>([]);
+  const [totalYaps, setTotalYaps] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   const [counts, setCounts] = useState({ 
     followers: 0, 
     following: 0, 
@@ -65,9 +70,33 @@ function ProfilePage() {
 
   const isOwn = user?.address?.toLowerCase() === address?.toLowerCase();
 
+  // ✅ LOAD MORE HANDLER
+  const loadMorePosts = useCallback(async (profileId: string) => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    try {
+      const newPosts = await fetchUserPosts(profileId, POSTS_PER_PAGE, yaps.length);
+      if (newPosts.length < POSTS_PER_PAGE) {
+        setHasMore(false);
+      }
+      if (newPosts.length > 0) {
+        setYaps(prev => [...prev, ...newPosts]);
+      } else {
+        setHasMore(false);
+      }
+    } catch (err) {
+      console.error("Load more error:", err);
+      toast.error("Failed to load more posts");
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [loadingMore, hasMore, yaps.length]);
+
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
+      setYaps([]);
+      setHasMore(true);
       try {
         let profileData: any = null;
         if (user && user.address === address) {
@@ -129,10 +158,28 @@ function ProfilePage() {
           setIsFollowing(data.isFollowing || false);
         }
 
-        // ✅ AMBIL SEMUA POST MILIK USER INI (bukan lagi filter dari feed global)
-        const userYaps = await fetchUserPosts(profileData.id);
-        setYaps(userYaps);
-        setCounts(prev => ({ ...prev, yaps: userYaps.length }));
+        // ✅ LOAD POST PERTAMA (20 saja)
+        const firstBatch = await fetchUserPosts(profileData.id, POSTS_PER_PAGE, 0);
+        setYaps(firstBatch);
+        if (firstBatch.length < POSTS_PER_PAGE) {
+          setHasMore(false);
+        }
+
+        // Ambil total post untuk counter
+        try {
+          const countRes = await fetch(`${API_BASE}/profiles/${profileData.id}/posts?limit=1`);
+          // Endpoint tidak return total, jadi kita biarkan sementara pakai firstBatch
+          // Untuk akurat, kita hit total via tips atau skip
+        } catch {}
+
+        setCounts(prev => ({ 
+          ...prev, 
+          yaps: firstBatch.length  // akan diupdate saat load more
+        }));
+
+        // Ambil total post via endpoint leaderboard atau query alternatif
+        // Karena endpoint posts tidak return total, kita ambil dari profile
+        // (skip untuk sekarang, atau bisa hit endpoint terpisah)
 
         const tipsRes = await fetch(`${API_BASE}/tips/user/${profileData.id}?limit=100`);
         if (tipsRes.ok) {
@@ -304,7 +351,7 @@ function ProfilePage() {
             </div>
 
             <div className="mt-4 grid grid-cols-4 gap-2 rounded-2xl border border-border bg-card p-3 text-center">
-              <Stat label="Yaps" value={String(counts.yaps)} />
+              <Stat label="Yaps" value={String(yaps.length)} />
               <Stat label="Followers" value={String(counts.followers)} />
               <Stat label="Following" value={String(counts.following)} />
               <Stat label="QIE Received" value={counts.totalTipsReceived.toFixed(4)} accent />
@@ -351,6 +398,34 @@ function ProfilePage() {
             {yaps.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-border bg-card p-10 text-center text-sm text-muted-foreground">No yaps yet.</div>
             ) : yaps.map((p) => <PostCard key={p.id} post={p} />)}
+
+            {/* ✅ TOMBOL LOAD MORE */}
+            {hasMore && yaps.length > 0 && (
+              <div className="flex justify-center pt-2">
+                <Button
+                  onClick={() => profile && loadMorePosts(profile.id)}
+                  disabled={loadingMore}
+                  variant="outline"
+                  className="rounded-full border-brand/40 text-brand hover:bg-brand-soft"
+                >
+                  {loadingMore ? (
+                    <>
+                      <Loader2 className="mr-2 size-4 animate-spin" />
+                      Loading...
+                    </>
+                  ) : (
+                    "Load More"
+                  )}
+                </Button>
+              </div>
+            )}
+
+            {/* ✅ INDIKATOR HABIS */}
+            {!hasMore && yaps.length > 0 && (
+              <div className="text-center text-xs text-muted-foreground py-4">
+                — Semua post sudah ditampilkan ({yaps.length}) —
+              </div>
+            )}
           </div>
         </div>
       </div>
