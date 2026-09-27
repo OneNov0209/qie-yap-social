@@ -183,6 +183,16 @@ export async function fetchFeed(tab: string, userId: string | null, offset: numb
   return posts.map(mapPost);
 }
 
+// ✅ FUNGSI BARU: Ambil semua post milik user tertentu (untuk halaman profil)
+export async function fetchUserPosts(userIdOrAddress: string): Promise<FeedPost[]> {
+  const url = `${API_BASE}/profiles/${userIdOrAddress}/posts?limit=100`;
+  console.log("🔍 Fetching user posts from:", url);
+  const res = await fetch(url);
+  if (!res.ok) return [];
+  const data = await res.json();
+  return data.map(mapPost);
+}
+
 export function relativeTime(dateString: string): string {
   if (!dateString) return "Just now";
   let date: Date;
