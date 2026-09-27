@@ -11,7 +11,10 @@ import { Footer } from "@/components/footer";
 import { Avatar } from "@/components/avatar-img";
 import { API_BASE, getReferredBy, shortAddr } from "@/lib/posts";
 import { cn } from "@/lib/utils";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { 
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  LineChart, Line 
+} from "recharts";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -128,7 +131,7 @@ function LiveActivityTicker() {
 }
 
 // ============================================
-// 2.5 REFERRAL BANNER (TAMBAHAN BARU)
+// 2.5 REFERRAL BANNER
 // ============================================
 function ReferralBanner({ referrer }: { referrer: string }) {
   const [visible, setVisible] = useState(true);
@@ -160,6 +163,178 @@ function ReferralBanner({ referrer }: { referrer: string }) {
         </div>
       </div>
     </div>
+  );
+}
+
+// ============================================
+// 2.6 QIE PRICE CARD (COINGECKO LIVE)
+// ============================================
+function QiePriceCard() {
+  const [price, setPrice] = useState<number | null>(null);
+  const [change24h, setChange24h] = useState<number | null>(null);
+  const [marketCap, setMarketCap] = useState<number | null>(null);
+  const [volume, setVolume] = useState<number | null>(null);
+  const [chartData, setChartData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchPrice = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/qie-price`);
+      if (res.ok) {
+        const data = await res.json();
+        setPrice(data.usd || null);
+        setChange24h(data.usd_24h_change || null);
+        setMarketCap(data.usd_market_cap || null);
+        setVolume(data.usd_24h_vol || null);
+      }
+    } catch (err) {
+      console.error("Price fetch error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchChart = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/qie-chart?days=1`);
+      if (res.ok) {
+        const data = await res.json();
+        const formatted = (data.prices || []).map(([timestamp, price]: [number, number]) => ({
+          time: new Date(timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+          price: parseFloat(price.toFixed(6)),
+        }));
+        setChartData(formatted);
+      }
+    } catch (err) {
+      console.error("Chart fetch error:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchPrice();
+    fetchChart();
+    const interval = setInterval(() => {
+      fetchPrice();
+      fetchChart();
+    }, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const formatNumber = (n: number | null, digits = 2) => {
+    if (n === null) return "—";
+    if (n >= 1_000_000_000) return `$${(n / 1_000_000_000).toFixed(2)}B`;
+    if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}M`;
+    if (n >= 1_000) return `$${(n / 1_000).toFixed(2)}K`;
+    return `$${n.toFixed(digits)}`;
+  };
+
+  const isPositive = change24h !== null && change24h >= 0;
+
+  if (loading) {
+    return (
+      <section className="mx-auto max-w-6xl px-4 pb-20">
+        <div className="rounded-3xl border border-border/40 bg-card/50 p-6 backdrop-blur-sm animate-pulse">
+          <div className="h-6 w-32 bg-muted rounded mb-3" />
+          <div className="h-10 w-48 bg-muted rounded" />
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="mx-auto max-w-6xl px-4 pb-20">
+      <ScrollReveal>
+        <div className="rounded-3xl border border-border/40 bg-card/50 p-6 backdrop-blur-sm shadow-lg shadow-brand-start/5">
+          <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
+            <div className="flex items-center gap-3">
+              <div className="flex size-12 items-center justify-center rounded-full bg-gradient-to-br from-[#FF0A6C] to-[#0040FF]">
+                <Coins className="size-6 text-white" />
+              </div>
+              <div>
+                <h2 className="font-display text-xl font-bold">QIE / USD</h2>
+                <p className="text-xs text-muted-foreground">Live price from CoinGecko</p>
+              </div>
+            </div>
+            <a
+              href="https://www.coingecko.com/en/coins/qi-blockchain"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 rounded-full border border-border/40 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted/50 transition-colors"
+            >
+              View on CoinGecko
+              <ArrowRight className="size-3" />
+            </a>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div className="rounded-xl border border-border/30 bg-muted/10 p-4">
+              <p className="text-xs text-muted-foreground mb-1">Price</p>
+              <p className="text-2xl font-bold">
+                {price !== null ? `$${price.toFixed(6)}` : "—"}
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-border/30 bg-muted/10 p-4">
+              <p className="text-xs text-muted-foreground mb-1">24h Change</p>
+              <p className={cn(
+                "text-2xl font-bold",
+                isPositive ? "text-emerald-500" : "text-red-500"
+              )}>
+                {change24h !== null ? `${isPositive ? "+" : ""}${change24h.toFixed(2)}%` : "—"}
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-border/30 bg-muted/10 p-4">
+              <p className="text-xs text-muted-foreground mb-1">Market Cap</p>
+              <p className="text-2xl font-bold">{formatNumber(marketCap)}</p>
+            </div>
+
+            <div className="rounded-xl border border-border/30 bg-muted/10 p-4">
+              <p className="text-xs text-muted-foreground mb-1">24h Volume</p>
+              <p className="text-2xl font-bold">{formatNumber(volume)}</p>
+            </div>
+          </div>
+
+          {chartData.length > 0 && (
+            <div className="h-48 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData}>
+                  <defs>
+                    <linearGradient id="priceGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={isPositive ? "#10b981" : "#ef4444"} stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor={isPositive ? "#10b981" : "#ef4444"} stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <YAxis 
+                    domain={['auto', 'auto']} 
+                    tick={{ fill: '#6b7280', fontSize: 10 }} 
+                    axisLine={false} 
+                    tickLine={false}
+                    tickFormatter={(value) => `$${Number(value).toFixed(6)}`}
+                  />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'rgba(0,0,0,0.8)', 
+                      border: '1px solid rgba(255,10,108,0.3)', 
+                      borderRadius: '12px', 
+                      color: '#fff' 
+                    }}
+                    formatter={(value: any) => [`$${Number(value).toFixed(6)}`, 'Price']}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="price" 
+                    stroke={isPositive ? "#10b981" : "#ef4444"} 
+                    strokeWidth={2} 
+                    dot={false}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </div>
+      </ScrollReveal>
+    </section>
   );
 }
 
@@ -258,11 +433,9 @@ function LandingPage() {
   const [trending, setTrending] = useState<any[]>([]);
   const [trendingLoading, setTrendingLoading] = useState(true);
 
-  // ✅ REFERRAL: Ambil referrer dari URL
   const [referrer, setReferrer] = useState<string | null>(null);
 
   useEffect(() => {
-    // ✅ Cek apakah ada referral di URL
     const ref = getReferredBy();
     if (ref) {
       setReferrer(ref);
@@ -364,7 +537,6 @@ function LandingPage() {
     <div className="min-h-screen bg-background overflow-x-hidden">
       <Header />
 
-      {/* === REFERRAL BANNER (Muncul jika ada ?ref=) === */}
       {referrer && <ReferralBanner referrer={referrer} />}
 
       {/* === HERO SECTION === */}
@@ -413,6 +585,9 @@ function LandingPage() {
         </div>
       </section>
 
+      {/* === QIE PRICE CARD === */}
+      <QiePriceCard />
+
       {/* === STATISTICS === */}
       <section className="mx-auto max-w-6xl px-4 pb-20">
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
@@ -437,7 +612,7 @@ function LandingPage() {
         </div>
       </section>
 
-      {/* === HOW IT WORKS (TIMELINE) === */}
+      {/* === HOW IT WORKS === */}
       <section className="relative mx-auto max-w-5xl px-4 pb-20">
         <ScrollReveal>
           <div className="mb-10 text-center">
