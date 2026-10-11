@@ -279,3 +279,43 @@ export function clearReferralFromUrl() {
     window.history.replaceState({}, '', url.toString());
   }
 }
+
+// ============================================
+// TIP HELPERS (Support QIE + BROQ)
+// ============================================
+
+export async function sendTipToBackend(params: {
+  post_id: string;
+  from_user_id: string;
+  to_user_id: string;
+  amount: number;
+  tx_hash: string;
+  token_type: 'QIE' | 'BROQ';
+  token_address?: string | null;
+}) {
+  const res = await fetch(`${API_BASE}/tips`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      post_id: params.post_id,
+      from_user_id: params.from_user_id,
+      to_user_id: params.to_user_id,
+      amount: params.amount,
+      tx_hash: params.tx_hash,
+      token_type: params.token_type,
+      token_address: params.token_address || null,
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(err);
+  }
+  return res.json();
+}
+
+export async function fetchBroqBalance(address: string): Promise<string> {
+  const res = await fetch(`${API_BASE}/tokens/broq/balance/${address}`);
+  if (!res.ok) return '0';
+  const data = await res.json();
+  return data.formatted || '0';
+}
