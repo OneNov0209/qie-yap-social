@@ -8,6 +8,24 @@ import { toast } from "sonner";
 import { useAuth } from "@/lib/auth-store";
 import { toggleLike, toggleRepost, toggleBookmark, type FeedPost, relativeTime, shortAddr, API_BASE } from "@/lib/posts";
 import { sendTip, boostPost, createSuperYap, checkWalletConnection } from "@/lib/qie-chain";
+import { BROQ_TOKEN, ERC20_ABI } from "@/lib/tokens";
+import { createWalletClient, custom, parseUnits, defineChain } from "viem";
+
+// QIE Chain definition untuk walletClient
+const QIE_CHAIN_FOR_WALLET = defineChain({
+  id: 1990,
+  name: "QIE Mainnet",
+  nativeCurrency: { name: "QIE", symbol: "QIE", decimals: 18 },
+  rpcUrls: { 
+    default: { 
+      http: [
+        "https://rpc-evm.qie.onenov.xyz",
+        "https://rpc2mainnet.qie.digital",
+        "https://rpc3mainnet.qie.digital"
+      ] 
+    } 
+  },
+});
 
 function compact(n: number) {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -23,8 +41,15 @@ export function PostCard({ post }: { post: FeedPost }) {
   const [bookmarked, setBookmarked] = useState(post?.bookmarked ?? false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  // ✅ TAMBAHAN: State untuk lightbox modal
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+
+  // ✅ State untuk Tip Modal (QIE / BROQ)
+  const [isTipModalOpen, setIsTipModalOpen] = useState(false);
+  const [tipToken, setTipToken] = useState<'QIE' | 'BROQ'>('QIE');
+  const [tipAmount, setTipAmount] = useState('');
+  const [tipSending, setTipSending] = useState(false);
+  const [broqBalance, setBroqBalance] = useState<string>('0');
+
   const { user } = useAuth();
 
   const contractAddress = import.meta.env.VITE_QIE_YAP_CONTRACT as `0x${string}`;
@@ -107,41 +132,81 @@ export function PostCard({ post }: { post: FeedPost }) {
     }
   };
 
-  const handleTip = async () => {
+  // ✅ Buka Tip Modal
+  const handleOpenTipModal = async () => {
     if (!user) return toast.error("Connect your wallet to tip");
-    if (!contractAddress) return toast.error("Contract not deployed yet");
-    if (isProcessing) return;
-
     const isConnected = await checkWalletConnection();
     if (!isConnected) {
       toast.error("Please connect your QIE Wallet first");
       return;
     }
+    setTipAmount('');
+    setTipToken('QIE');
+    setIsTipModalOpen(true);
 
-    const amount = window.prompt("Enter tip amount in QIE (e.g. 0.1):", "0.1");
-    if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
-      toast.error("Invalid amount");
-      return;
+    // Fetch BROQ balance
+    try {
+      const res = await fetch(`${API_BASE}/tokens/broq/balance/${user.address}`);
+      if (res.ok) {
+        const data = await res.json();
+        setBroqBalance(data.formatted || '0');
+      }
+    } catch {}
+  };
+
+  // ✅ Kirim Tip (QIE atau BROQ)
+  const handleSendTip = async () => {
+    if (!user) return;
+    if (!contractAddress) return toast.error("Contract not deployed yet");
+
+    const amount = parseFloat(tipAmount);
+    if (!amount || isNaN(amount) || amount <= 0) {
+      return toast.error("Enter a valid amount");
     }
 
     const recipientUUID = post.author?.id || post.author?.address;
     if (!recipientUUID) {
-      console.error("❌ recipientUUID is null or undefined. post.author:", post.author);
-      toast.error("Invalid recipient UUID");
-      return;
+      return toast.error("Invalid recipient");
     }
 
-    setIsProcessing(true);
-    try {
-      toast.loading("Waiting for wallet confirmation...");
-      
-      const hash = await sendTip(
-        contractAddress,
-        String(post.author.address) as `0x${string}`,
-        amount,
-        `Tip for post ${post.id}`
-      );
+    setTipSending(true);
+    const toastId = toast.loading("Waiting for wallet confirmation...");
 
+    try {
+      let hash = '';
+
+      if (tipToken === 'QIE') {
+        // === QIE TIP via QieYap contract ===
+        hash = await sendTip(
+          contractAddress,
+          String(post.author.address) as `0x${string}`,
+          tipAmount,
+          `Tip for post ${post.id}`
+        );
+      } else {
+        // === BROQ TIP via ERC-20 transfer ===
+        if (!window.ethereum) {
+          throw new Error("No wallet detected");
+        }
+
+        const walletClient = createWalletClient({
+          chain: QIE_CHAIN_FOR_WALLET,
+          transport: custom(window.ethereum),
+        });
+
+        const [account] = await walletClient.getAddresses();
+        const amountWei = parseUnits(tipAmount, 18);
+
+        hash = await walletClient.writeContract({
+          address: BROQ_TOKEN.address as `0x${string}`,
+          abi: ERC20_ABI,
+          functionName: 'transfer',
+          args: [post.author.address as `0x${string}`, amountWei],
+          account,
+        });
+      }
+
+      // Simpan ke backend
       const backendRes = await fetch(`${API_BASE}/tips`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -149,24 +214,28 @@ export function PostCard({ post }: { post: FeedPost }) {
           post_id: post.id,
           from_user_id: user.id,
           to_user_id: recipientUUID,
-          amount: parseFloat(amount),
-          tx_hash: hash
-        })
+          amount: amount,
+          tx_hash: hash,
+          token_type: tipToken,
+          token_address: tipToken === 'BROQ' ? BROQ_TOKEN.address : null,
+        }),
       });
 
       if (!backendRes.ok) {
         const errText = await backendRes.text();
-        throw new Error(`Backend save failed: ${backendRes.status} - ${errText}`);
+        throw new Error(`Backend save failed: ${errText}`);
       }
 
-      toast.dismiss();
-      toast.success(`Tip sent! Tx: ${hash.slice(0, 10)}...`);
+      toast.dismiss(toastId);
+      toast.success(`${tipToken} tip sent! Tx: ${hash.slice(0, 10)}...`);
+      setIsTipModalOpen(false);
+      setTipAmount('');
     } catch (error: any) {
-      toast.dismiss();
+      toast.dismiss(toastId);
       console.error("❌ Tip error:", error);
       toast.error(error.message || "Tip failed");
     } finally {
-      setIsProcessing(false);
+      setTipSending(false);
     }
   };
 
@@ -348,7 +417,6 @@ export function PostCard({ post }: { post: FeedPost }) {
           {post.content}
         </div>
 
-        {/* ✅ GAMBAR DENGAN LIGHTBOX */}
         {post.mediaUrl && (
           <div className="mt-3 w-full max-w-md rounded-xl overflow-hidden border border-border/50 shadow-sm">
             <img 
@@ -442,11 +510,11 @@ export function PostCard({ post }: { post: FeedPost }) {
       {/* === Bottom: Premium Actions === */}
       <div className="ml-[60px] mt-1 flex flex-wrap items-center gap-2 border-t border-border/20 pt-3">
         <button
-          onClick={handleTip}
+          onClick={handleOpenTipModal}
           disabled={isProcessing}
           className="flex items-center gap-1.5 rounded-full bg-gradient-to-r from-[#FF0A6C] to-[#0040FF] px-4 py-1.5 text-xs font-semibold text-white shadow-md shadow-brand-start/25 transition-all hover:scale-105 hover:shadow-lg disabled:opacity-50 disabled:hover:scale-100"
         >
-          💎 {post.tipTotal > 0 ? `${post.tipTotal} QIE` : "Tip"}
+          💎 {post.tipTotal > 0 ? `${post.tipTotal}` : "Tip"}
         </button>
 
         {isOwner && (
@@ -509,6 +577,123 @@ export function PostCard({ post }: { post: FeedPost }) {
           <p className="absolute bottom-6 left-1/2 -translate-x-1/2 text-xs text-white/60">
             Click anywhere to close
           </p>
+        </div>
+      )}
+
+      {/* ✅ TIP MODAL (QIE / BROQ) */}
+      {isTipModalOpen && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+          onClick={() => !tipSending && setIsTipModalOpen(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl bg-card border border-border p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold">Send Tip</h3>
+              <button
+                onClick={() => !tipSending && setIsTipModalOpen(false)}
+                className="p-1 rounded-full hover:bg-muted"
+                disabled={tipSending}
+              >
+                <X className="size-5" />
+              </button>
+            </div>
+
+            {/* Pilihan Token */}
+            <div className="mb-4">
+              <label className="text-xs font-medium text-muted-foreground mb-2 block">
+                Choose token
+              </label>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setTipToken('QIE')}
+                  className={cn(
+                    "flex-1 flex items-center justify-center gap-2 rounded-xl border-2 py-3 font-semibold transition-all",
+                    tipToken === 'QIE'
+                      ? "border-brand bg-brand/10 text-brand"
+                      : "border-border text-muted-foreground hover:border-brand/50"
+                  )}
+                  disabled={tipSending}
+                >
+                  💰 QIE
+                </button>
+                <button
+                  onClick={() => setTipToken('BROQ')}
+                  className={cn(
+                    "flex-1 flex items-center justify-center gap-2 rounded-xl border-2 py-3 font-semibold transition-all",
+                    tipToken === 'BROQ'
+                      ? "border-brand bg-brand/10 text-brand"
+                      : "border-border text-muted-foreground hover:border-brand/50"
+                  )}
+                  disabled={tipSending}
+                >
+                  🪙 BROQ
+                </button>
+              </div>
+            </div>
+
+            {/* Balance Info */}
+            {tipToken === 'BROQ' && (
+              <div className="mb-3 text-xs text-muted-foreground">
+                Your balance: <span className="font-semibold text-foreground">
+                  {Number(broqBalance).toLocaleString('id-ID')} BROQ
+                </span>
+              </div>
+            )}
+
+            {/* Input Amount */}
+            <div className="mb-4">
+              <label className="text-xs font-medium text-muted-foreground mb-2 block">
+                Amount ({tipToken})
+              </label>
+              <input
+                type="number"
+                value={tipAmount}
+                onChange={(e) => setTipAmount(e.target.value)}
+                placeholder={tipToken === 'QIE' ? "0.1" : "1000"}
+                min="0"
+                step="any"
+                disabled={tipSending}
+                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-lg font-semibold outline-none focus:border-brand transition-colors"
+              />
+              <div className="flex gap-2 mt-2">
+                {(tipToken === 'QIE' ? ['0.1', '1', '10'] : ['100', '1000', '10000']).map((v) => (
+                  <button
+                    key={v}
+                    onClick={() => setTipAmount(v)}
+                    disabled={tipSending}
+                    className="text-xs px-3 py-1 rounded-full border border-border hover:border-brand hover:text-brand transition-colors"
+                  >
+                    {v}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Send Button */}
+            <button
+              onClick={handleSendTip}
+              disabled={tipSending || !tipAmount || parseFloat(tipAmount) <= 0}
+              className="w-full rounded-xl bg-gradient-to-r from-[#FF0A6C] to-[#0040FF] py-3 font-bold text-white shadow-md transition-all hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100"
+            >
+              {tipSending ? (
+                <>
+                  <Loader2 className="inline size-5 mr-2 animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                <>Send {tipToken} Tip</>
+              )}
+            </button>
+
+            <p className="text-[11px] text-muted-foreground text-center mt-3">
+              {tipToken === 'QIE'
+                ? '2% platform fee applies'
+                : 'BROQ tip goes 100% to recipient'}
+            </p>
+          </div>
         </div>
       )}
     </article>
