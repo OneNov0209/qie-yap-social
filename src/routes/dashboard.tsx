@@ -4,11 +4,11 @@ import { Header } from "@/components/header";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth-store";
 import { getQieBalance } from "@/lib/qie-chain";
-import { API_BASE, fetchFeed } from "@/lib/posts";
+import { API_BASE } from "@/lib/posts";
 import { ArrowLeft, Coins, TrendingUp, Users, Wallet, History, Percent, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { BROQ_TOKEN } from "@/lib/tokens";
 
-// ✅ BACA ALAMAT DEVELOPER DARI .ENV
 const DEV_WALLET = import.meta.env.VITE_DEV_WALLET || "";
 
 export const Route = createFileRoute("/dashboard")({
@@ -21,28 +21,35 @@ export const Route = createFileRoute("/dashboard")({
   component: DashboardPage,
 });
 
-interface TipRecord {
+interface RecentTip {
   id: string;
   amount: number;
-  from_user_id: string;
-  to_user_id: string;
+  token_type: 'QIE' | 'BROQ';
   tx_hash: string | null;
   created_at: string;
+  from_user: {
+    id: string;
+    address: string;
+    display_name: string;
+    avatar_seed: string;
+  } | null;
+}
+
+interface DashboardStats {
+  qie: { total_received: number; count: number };
+  broq: { total_received: number; count: number };
+  posts: { total: number };
+  followers: number;
+  following: number;
+  recent_tips: RecentTip[];
 }
 
 function DashboardPage() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({
-    totalTipsReceived: 0,
-    totalYaps: 0,
-    totalFollowers: 0,
-    walletBalance: 0,
-    platformFeeEarned: 0,
-    tipsReceivedList: [] as TipRecord[],
-  });
+  const [walletBalance, setWalletBalance] = useState(0);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
 
-  // ✅ Cek apakah user yang login adalah Developer (dari .env)
   const isDev = user?.address?.toLowerCase() === DEV_WALLET.toLowerCase();
 
   useEffect(() => {
@@ -54,51 +61,15 @@ function DashboardPage() {
     if (!user) return;
     setLoading(true);
     try {
-      // ✅ 1. Ambil data tips yang diterima user dari endpoint
-      let tipsData: TipRecord[] = [];
-      try {
-        const tipsRes = await fetch(`${API_BASE}/tips/user/${user.id}?limit=50`);
-        if (tipsRes.ok) {
-          tipsData = await tipsRes.json();
-          console.log("📦 Tips data from VPS:", tipsData);
-        } else {
-          console.warn("Tips endpoint returned status:", tipsRes.status);
-        }
-      } catch (err) {
-        console.warn("Failed to fetch tips from VPS:", err);
-      }
+      // ✅ Stats dari backend (QIE + BROQ + posts + followers)
+      const res = await fetch(`${API_BASE}/dashboard/${user.id}`);
+      if (!res.ok) throw new Error(`Dashboard API error: ${res.status}`);
+      const data = await res.json();
+      setStats(data);
 
-      // Hitung total amount
-      const totalAmount = tipsData.reduce((sum, t) => sum + Number(t.amount), 0);
-      const feeEarned = isDev ? totalAmount * 0.02 : 0;
-
-      // ✅ 2. Ambil jumlah Yaps user (dari feed yang difilter)
-      const allPosts = await fetchFeed("latest", user.id);
-      const userYaps = allPosts.filter((p) => p.author.address === user.address);
-
-      // ✅ 3. Balance on-chain
+      // ✅ Wallet balance on-chain
       const balance = await getQieBalance(user.address as `0x${string}`).catch(() => 0);
-
-      // ✅ 4. Hitung followers (dari VPS)
-      let followersCount = 0;
-      try {
-        const followsRes = await fetch(`${API_BASE}/follows?following_id=${user.id}&count=followers`);
-        if (followsRes.ok) {
-          const data = await followsRes.json();
-          followersCount = data.count || 0;
-        }
-      } catch (err) {
-        console.warn("Failed to fetch followers count");
-      }
-
-      setStats({
-        totalTipsReceived: totalAmount,
-        totalYaps: userYaps.length,
-        totalFollowers: followersCount,
-        walletBalance: balance,
-        platformFeeEarned: feeEarned,
-        tipsReceivedList: tipsData.slice(0, 10),
-      });
+      setWalletBalance(balance);
     } catch (err) {
       console.error("Dashboard error:", err);
       toast.error("Failed to load dashboard data");
@@ -122,6 +93,10 @@ function DashboardPage() {
     );
   }
 
+  // Hitung fee hanya dari tips QIE (BROQ tidak ada fee)
+  const qieTotal = stats?.qie.total_received || 0;
+  const platformFeeEarned = isDev ? qieTotal * 0.02 : 0;
+
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-12">
       <Header />
@@ -144,69 +119,105 @@ function DashboardPage() {
           </div>
         ) : (
           <>
+            {/* === TIPS RECEIVED === */}
+            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+              Tips Received
+            </h2>
             <div className="grid grid-cols-2 gap-4 mb-6">
-              <StatCard 
+              <StatCard
                 icon={<Coins className="size-6 text-brand" />}
-                label="Tips Received"
-                value={`${stats.totalTipsReceived.toFixed(4)} QIE`}
+                label="QIE Tips"
+                value={`${qieTotal.toFixed(4)} QIE`}
+                sub={`${stats?.qie.count || 0} tips`}
               />
-              {isDev && (
-                <StatCard 
-                  icon={<Percent className="size-6 text-gold" />}
-                  label="Platform Fee (2%)"
-                  value={`${stats.platformFeeEarned.toFixed(4)} QIE`}
-                />
-              )}
-            </div>
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              <StatCard 
-                icon={<TrendingUp className="size-6 text-brand" />}
-                label="Total Yaps"
-                value={`${stats.totalYaps}`}
-              />
-              <StatCard 
-                icon={<Wallet className="size-6 text-brand" />}
-                label="Wallet Balance"
-                value={`${stats.walletBalance.toFixed(4)} QIE`}
+              <StatCard
+                icon={<Coins className="size-6 text-purple-500" />}
+                label="BROQ Tips"
+                value={`${(stats?.broq.total_received || 0).toLocaleString('id-ID')} BROQ`}
+                sub={`${stats?.broq.count || 0} tips`}
               />
             </div>
 
-            {/* ✅ TOMBOL WITHDRAW DIHAPUS KARENA TIPS LANGSUNG MASUK WALLET */}
-            <div className="mb-6 rounded-xl border border-border bg-card/50 p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-semibold">Total Tips Received</p>
-                  <p className="text-xl font-bold text-brand">{stats.totalTipsReceived.toFixed(4)} QIE</p>
+            {/* === DEV FEE (hanya untuk dev wallet) === */}
+            {isDev && (
+              <>
+                <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                  Platform Earnings
+                </h2>
+                <div className="grid grid-cols-2 gap-4 mb-6">
+                  <StatCard
+                    icon={<Percent className="size-6 text-gold" />}
+                    label="Platform Fee (2% QIE)"
+                    value={`${platformFeeEarned.toFixed(4)} QIE`}
+                    sub="Only from QIE tips"
+                  />
+                  <StatCard
+                    icon={<Wallet className="size-6 text-brand" />}
+                    label="Wallet Balance"
+                    value={`${walletBalance.toFixed(4)} QIE`}
+                    sub="On-chain balance"
+                  />
                 </div>
-                <div className="text-xs text-muted-foreground">
-                  ✅ Tips are automatically credited to your wallet
-                </div>
-              </div>
+              </>
+            )}
+
+            {/* === ACTIVITY === */}
+            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+              Activity
+            </h2>
+            <div className="grid grid-cols-3 gap-4 mb-6">
+              <StatCard
+                icon={<TrendingUp className="size-5 text-brand" />}
+                label="Yaps"
+                value={`${stats?.posts.total || 0}`}
+              />
+              <StatCard
+                icon={<Users className="size-5 text-brand" />}
+                label="Followers"
+                value={`${stats?.followers || 0}`}
+              />
+              <StatCard
+                icon={<Users className="size-5 text-brand" />}
+                label="Following"
+                value={`${stats?.following || 0}`}
+              />
             </div>
 
-            {/* Recent Tips History */}
+            {/* === RECENT TIPS === */}
             <div className="rounded-xl border border-border bg-card/50 p-4">
               <div className="flex items-center gap-2 mb-4">
                 <History className="size-5 text-muted-foreground" />
                 <h3 className="font-semibold">Recent Tips Received</h3>
               </div>
-              {stats.tipsReceivedList.length === 0 ? (
+              {!stats?.recent_tips || stats.recent_tips.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">
                   No tips received yet. Start yapping and sharing!
                 </p>
               ) : (
                 <div className="space-y-3">
-                  {stats.tipsReceivedList.map((tip: TipRecord, index: number) => (
-                    <div key={index} className="flex items-center justify-between border-b border-border/30 pb-2 last:border-0">
-                      <div>
-                        <p className="text-sm font-medium">
-                          From: {tip.from_user_id ? `${tip.from_user_id.slice(0, 8)}...` : 'Anonymous'}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(tip.created_at).toLocaleDateString()} · {tip.tx_hash?.slice(0, 10)}...
+                  {stats.recent_tips.map((tip) => (
+                    <div
+                      key={tip.id}
+                      className="flex items-center justify-between border-b border-border/30 pb-2 last:border-0"
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className="size-8 rounded-full bg-gradient-to-br from-brand to-purple-500 flex items-center justify-center text-xs font-bold text-white">
+                          {tip.from_user?.display_name?.slice(0, 2).toUpperCase() || '??'}
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">
+                            {tip.from_user?.display_name || 'Anonymous'}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(tip.created_at).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className={`text-sm font-bold ${tip.token_type === 'BROQ' ? 'text-purple-500' : 'text-brand'}`}>
+                          +{Number(tip.amount).toLocaleString('id-ID', { maximumFractionDigits: 4 })} {tip.token_type}
                         </p>
                       </div>
-                      <p className="text-sm font-bold text-brand">+{tip.amount} QIE</p>
                     </div>
                   ))}
                 </div>
@@ -219,7 +230,17 @@ function DashboardPage() {
   );
 }
 
-function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+function StatCard({
+  icon,
+  label,
+  value,
+  sub,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  sub?: string;
+}) {
   return (
     <div className="rounded-xl border border-border bg-card/50 p-4">
       <div className="flex items-center justify-between">
@@ -227,6 +248,7 @@ function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string
         {icon}
       </div>
       <p className="mt-2 text-xl font-bold">{value}</p>
+      {sub && <p className="text-[11px] text-muted-foreground mt-1">{sub}</p>}
     </div>
   );
 }
