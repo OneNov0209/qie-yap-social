@@ -83,7 +83,8 @@ function LiveActivityTicker() {
         tips.forEach((tip: any) => {
           const from = tip.from_user_id?.slice(0, 6) || 'Someone';
           const to = tip.to_user_id?.slice(0, 6) || 'someone';
-          items.push(`💸 ${from} tipped ${to} ${tip.amount} QIE`);
+          const token = tip.token_type === 'BROQ' ? 'BROQ' : 'QIE';
+          items.push(`💸 ${from} tipped ${to} ${tip.amount} ${token}`);
         });
 
         feed.forEach((post: any) => {
@@ -184,7 +185,6 @@ function QiePriceCard() {
       const res = await fetch(`${API_BASE}/qie-price`);
       if (res.ok) {
         const data = await res.json();
-        // Data structure dari CoinGecko: { usd: 0.1252, usd_24h_change: 1.5, ... }
         if (data.usd) {
           setPrice(data.usd);
           setChange24h(data.usd_24h_change || 0);
@@ -223,7 +223,7 @@ function QiePriceCard() {
     const interval = setInterval(() => {
       fetchPrice();
       fetchChart();
-    }, 60000); // Refresh setiap 1 menit
+    }, 60000);
     return () => clearInterval(interval);
   }, []);
 
@@ -241,7 +241,6 @@ function QiePriceCard() {
     <section className="mx-auto max-w-6xl px-4 pb-20">
       <ScrollReveal>
         <div className="rounded-3xl border border-border/40 bg-card/50 p-6 backdrop-blur-sm shadow-lg shadow-brand-start/5">
-          {/* Header dengan Logo QIE */}
           <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
             <div className="flex items-center gap-3">
               <img 
@@ -265,7 +264,6 @@ function QiePriceCard() {
             </a>
           </div>
 
-          {/* Stats */}
           {loading ? (
             <div className="flex h-32 items-center justify-center">
               <Loader2 className="size-8 animate-spin text-brand" />
@@ -425,7 +423,9 @@ function LandingPage() {
   const [stats, setStats] = useState({
     totalYaps: 0,
     totalQie: "0",
+    totalBroq: "0",
     activeUsers: 0,
+    totalUsers: 0,
     totalTx: 0
   });
   const [chartData, setChartData] = useState<any[]>([]);
@@ -453,7 +453,9 @@ function LandingPage() {
           setStats({
             totalYaps: data.totalYaps || 0,
             totalQie: data.totalQie || "0",
+            totalBroq: data.totalBroq || "0",
             activeUsers: data.activeUsers || 0,
+            totalUsers: data.totalUsers || 0,
             totalTx: data.totalTx || 0
           });
         }
@@ -515,7 +517,7 @@ function LandingPage() {
     },
     {
       question: "How do Tips work?",
-      answer: "Click 'Tip', enter QIE amount. 98% goes directly to the creator, 2% supports the ecosystem."
+      answer: "Click 'Tip', enter QIE or BROQ amount. 98% goes directly to the creator, 2% supports the ecosystem."
     },
     {
       question: "What is a Super Yap?",
@@ -590,19 +592,24 @@ function LandingPage() {
       {/* === QIE PRICE CARD === */}
       <QiePriceCard />
 
-      {/* === STATISTICS === */}
+      {/* === STATISTICS (LIVE + QIE & BROQ SEPARATE) === */}
       <section className="mx-auto max-w-6xl px-4 pb-20">
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
           {[
-            { label: "Yaps Posted", value: loading ? "..." : stats.totalYaps.toLocaleString(), icon: MessageCircle },
-            { label: "QIE Tipped", value: loading ? "..." : `${stats.totalQie} QIE`, icon: Coins },
-            { label: "Active Builders", value: loading ? "..." : stats.activeUsers.toLocaleString(), icon: Users },
-            { label: "On-Chain Tx", value: loading ? "..." : stats.totalTx.toLocaleString(), icon: Zap },
+            { label: "Yaps Posted", value: loading ? "..." : stats.totalYaps.toLocaleString(), icon: MessageCircle, purple: false },
+            { label: "QIE Tipped", value: loading ? "..." : `${Number(stats.totalQie).toFixed(2)} QIE`, icon: Coins, purple: false },
+            { label: "BROQ Tipped", value: loading ? "..." : Number(stats.totalBroq).toLocaleString('id-ID', { maximumFractionDigits: 0 }), icon: Coins, purple: true },
+            { label: "Active Builders", value: loading ? "..." : stats.activeUsers.toLocaleString(), icon: Users, purple: false },
+            { label: "Total Users", value: loading ? "..." : stats.totalUsers.toLocaleString(), icon: Users, purple: false },
+            { label: "On-Chain Tx", value: loading ? "..." : stats.totalTx.toLocaleString(), icon: Zap, purple: false },
           ].map((stat, i) => (
             <ScrollReveal key={i} delay={i * 100}>
               <div className="rounded-2xl border border-border/40 bg-card/50 p-6 text-center backdrop-blur-sm">
-                <div className="mx-auto mb-2 flex size-12 items-center justify-center rounded-full bg-brand-soft">
-                  <stat.icon className="size-5 text-brand" />
+                <div className={cn(
+                  "mx-auto mb-2 flex size-12 items-center justify-center rounded-full",
+                  stat.purple ? "bg-purple-500/10" : "bg-brand-soft"
+                )}>
+                  <stat.icon className={cn("size-5", stat.purple ? "text-purple-500" : "text-brand")} />
                 </div>
                 <div className="text-2xl font-bold">
                   {loading ? <Loader2 className="mx-auto size-5 animate-spin text-muted-foreground" /> : stat.value}
@@ -630,7 +637,7 @@ function LandingPage() {
             <div className="absolute left-1/2 top-0 h-full w-[2px] -translate-x-1/2 bg-gradient-to-b from-brand-start via-brand-end to-transparent opacity-30" />
 
             <TimelineCard step={1} title="Creator Posts a Yap" description="User writes a post and selects 'Super Yap' or 'Boost' options." icon={MessageCircle} type="sell" isLeft={true} />
-            <TimelineCard step={2} title="Supporter Sends Tip" description="Fans click 'Tip', enter amount in QIE, and confirm via wallet." icon={Coins} type="buy" isLeft={false} />
+            <TimelineCard step={2} title="Supporter Sends Tip" description="Fans click 'Tip', choose QIE or BROQ, and confirm via wallet." icon={Coins} type="buy" isLeft={false} />
             <TimelineCard step={3} title="Smart Contract Processes" description="2% platform fee is deducted. 98% of QIE is sent instantly to creator's wallet." icon={ZapIcon} type="sell" isLeft={true} />
             <TimelineCard step={4} title="Boost or Super Yap Activated" description="If selected, the post gets a gold border or 'Promoted' badge instantly." icon={Award} type="buy" isLeft={false} />
             <TimelineCard step={5} title="On-Chain Verified" description="Transaction is recorded on QIE Explorer. Full transparency." icon={CheckCircle} type="sell" isLeft={true} />
@@ -716,9 +723,12 @@ function LandingPage() {
                       </Link>
                       {builder.isValidator && <Shield className="size-3.5 text-brand" />}
                     </div>
-                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
                       <span>👥 {builder.followerCount}</span>
-                      <span>💎 {builder.totalTipsReceived.toFixed(2)} QIE</span>
+                      <span>💎 {(builder.totalQieReceived || builder.totalTipsReceived || 0).toFixed(2)} QIE</span>
+                      {(builder.totalBroqReceived || 0) > 0 && (
+                        <span className="text-purple-500">🪙 {Number(builder.totalBroqReceived).toLocaleString('id-ID', { maximumFractionDigits: 0 })} BROQ</span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -741,7 +751,7 @@ function LandingPage() {
 
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
           {[
-            { icon: Heart, title: "On-Chain Tips", desc: "Send QIE directly to creators. No middleman, instant settlement." },
+            { icon: Heart, title: "On-Chain Tips", desc: "Send QIE or BROQ directly to creators. No middleman, instant settlement." },
             { icon: Rocket, title: "Boost Posts", desc: "Promote your content to the top of the feed." },
             { icon: Sparkles, title: "Super Yaps", desc: "Premium content with a unique gold border." },
             { icon: TrendingUp, title: "Leaderboard", desc: "Climb the ranks based on tips received and engagement." },
