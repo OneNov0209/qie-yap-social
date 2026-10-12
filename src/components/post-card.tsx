@@ -567,10 +567,10 @@ export function PostCard({ post }: { post: FeedPost }) {
         </button>
       </div>
 
-      {/* ✅ LIGHTBOX MODAL */}
+      {/* ✅ LIGHTBOX MODAL — FIXED: no flicker */}
       {lightboxImage && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-sm p-4 cursor-zoom-out"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 p-4"
           onClick={() => setLightboxImage(null)}
         >
           <button
@@ -578,7 +578,7 @@ export function PostCard({ post }: { post: FeedPost }) {
               e.stopPropagation();
               setLightboxImage(null);
             }}
-            className="absolute top-4 right-4 z-10 rounded-full bg-white/10 backdrop-blur-md p-3 text-white hover:bg-white/20 transition-colors"
+            className="absolute top-4 right-4 z-10 rounded-full bg-white/10 p-3 text-white hover:bg-white/20 transition-colors"
             aria-label="Close"
           >
             <X className="size-6" />
@@ -590,20 +590,26 @@ export function PostCard({ post }: { post: FeedPost }) {
             target="_blank"
             rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
-            className="absolute top-4 right-20 z-10 rounded-full bg-white/10 backdrop-blur-md p-3 text-white hover:bg-white/20 transition-colors"
+            className="absolute top-4 right-20 z-10 rounded-full bg-white/10 p-3 text-white hover:bg-white/20 transition-colors"
             aria-label="Download"
           >
             <Download className="size-6" />
           </a>
 
-          <img
-            src={lightboxImage}
-            alt="Full view"
-            className="max-h-[90vh] max-w-[90vw] object-contain rounded-lg shadow-2xl cursor-default"
+          {/* ✅ Wrapper dengan stopPropagation — area klik aman, tidak flicker */}
+          <div
+            className="max-h-[90vh] max-w-[90vw] flex items-center justify-center"
             onClick={(e) => e.stopPropagation()}
-          />
+          >
+            <img
+              src={lightboxImage}
+              alt="Full view"
+              className="max-h-[90vh] max-w-[90vw] object-contain rounded-lg shadow-2xl select-none"
+              draggable={false}
+            />
+          </div>
 
-          <p className="absolute bottom-6 left-1/2 -translate-x-1/2 text-xs text-white/60">
+          <p className="absolute bottom-6 left-1/2 -translate-x-1/2 text-xs text-white/60 pointer-events-none">
             Click anywhere to close
           </p>
         </div>
