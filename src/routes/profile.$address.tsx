@@ -55,7 +55,8 @@ function ProfilePage() {
     followers: 0, 
     following: 0, 
     yaps: 0, 
-    totalTipsReceived: 0
+    totalQieReceived: 0,
+    totalBroqReceived: 0,
   });
   const [isFollowing, setIsFollowing] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -165,27 +166,26 @@ function ProfilePage() {
           setHasMore(false);
         }
 
-        // Ambil total post untuk counter
+        // ✅ Ambil dashboard stats (QIE + BROQ + posts + followers akurat)
         try {
-          const countRes = await fetch(`${API_BASE}/profiles/${profileData.id}/posts?limit=1`);
-          // Endpoint tidak return total, jadi kita biarkan sementara pakai firstBatch
-          // Untuk akurat, kita hit total via tips atau skip
-        } catch {}
-
-        setCounts(prev => ({ 
-          ...prev, 
-          yaps: firstBatch.length  // akan diupdate saat load more
-        }));
-
-        // Ambil total post via endpoint leaderboard atau query alternatif
-        // Karena endpoint posts tidak return total, kita ambil dari profile
-        // (skip untuk sekarang, atau bisa hit endpoint terpisah)
-
-        const tipsRes = await fetch(`${API_BASE}/tips/user/${profileData.id}?limit=100`);
-        if (tipsRes.ok) {
-          const tipsData = await tipsRes.json();
-          const totalTips = tipsData.reduce((sum: number, t: any) => sum + Number(t.amount), 0);
-          setCounts(prev => ({ ...prev, totalTipsReceived: totalTips }));
+          const dashRes = await fetch(`${API_BASE}/dashboard/${profileData.id}`);
+          if (dashRes.ok) {
+            const dash = await dashRes.json();
+            setCounts(prev => ({
+              ...prev,
+              totalQieReceived: dash.qie?.total_received || 0,
+              totalBroqReceived: dash.broq?.total_received || 0,
+              yaps: dash.posts?.total ?? firstBatch.length,
+              followers: dash.followers ?? prev.followers,
+              following: dash.following ?? prev.following,
+            }));
+          } else {
+            // Fallback ke firstBatch kalau dashboard gagal
+            setCounts(prev => ({ ...prev, yaps: firstBatch.length }));
+          }
+        } catch (err) {
+          console.warn("Dashboard stats fetch failed:", err);
+          setCounts(prev => ({ ...prev, yaps: firstBatch.length }));
         }
 
         const chartRes = await fetch(`${API_BASE}/stats/chart?days=7`);
@@ -350,11 +350,31 @@ function ProfilePage() {
               />
             </div>
 
-            <div className="mt-4 grid grid-cols-4 gap-2 rounded-2xl border border-border bg-card p-3 text-center">
-              <Stat label="Yaps" value={String(yaps.length)} />
+            {/* ✅ STATS: YAPS / FOLLOWERS / FOLLOWING */}
+            <div className="mt-4 grid grid-cols-3 gap-2 rounded-2xl border border-border bg-card p-3 text-center">
+              <Stat label="Yaps" value={String(counts.yaps || yaps.length)} />
               <Stat label="Followers" value={String(counts.followers)} />
               <Stat label="Following" value={String(counts.following)} />
-              <Stat label="QIE Received" value={counts.totalTipsReceived.toFixed(4)} accent />
+            </div>
+
+            {/* ✅ TIPS RECEIVED: QIE + BROQ (2 kolom) */}
+            <div className="mt-2 grid grid-cols-2 gap-2 rounded-2xl border border-border bg-card p-3 text-center">
+              <div>
+                <div className="font-display font-bold text-brand">
+                  {counts.totalQieReceived.toFixed(4)}
+                </div>
+                <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                  QIE Received
+                </div>
+              </div>
+              <div>
+                <div className="font-display font-bold text-purple-500">
+                  {Number(counts.totalBroqReceived).toLocaleString('id-ID', { maximumFractionDigits: 2 })}
+                </div>
+                <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                  BROQ Received
+                </div>
+              </div>
             </div>
           </div>
 
