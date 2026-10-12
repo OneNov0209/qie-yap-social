@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Bell } from "lucide-react";
+import { Bell, AtSign } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,7 @@ import { toast } from "sonner";
 
 interface NotificationRow {
   id: string;
-  type: "follow" | "like" | "reply" | "tip";
+  type: "follow" | "like" | "reply" | "tip" | "mention";
   amount: number | null;
   read: boolean;
   created_at: string;
@@ -21,8 +21,7 @@ interface NotificationRow {
     avatar_seed: string; 
     address: string;
   } | null;
-  post: { content: string } | null;
-  // ✅ Tambahkan field ini agar kita bisa tahu ID postingan yang sebenarnya
+  post: { content: string; id?: string } | null;
   post_id?: string | null;
 }
 
@@ -32,6 +31,7 @@ function label(n: NotificationRow): string {
     case "like":   return "liked your yap";
     case "reply":  return "replied to your yap";
     case "tip":    return `tipped you ${n.amount ?? 0} QIE`;
+    case "mention": return "mentioned you";
   }
 }
 
@@ -121,25 +121,28 @@ export function NotificationsPopover() {
         ) : (
           <ul className="max-h-96 divide-y divide-border overflow-auto">
             {items.map((n) => {
-              // ✅ LOGIKA LINK YANG BENAR
+              // ✅ Link destination
               let linkTo = "#";
               if (n.type === "follow") {
-                // Follow: arahkan ke profil pengirim
+                // Follow → profil pengirim
                 linkTo = n.from ? `/profile/${n.from.address}` : "#";
               } else {
-                // Like, Reply, Tip: arahkan ke postingan
-                // Gunakan n.post_id jika ada, atau fallback ke n.id
-                // Tapi kita harus pastikan ini adalah ID post yang benar
-                // Untuk saat ini, kita asumsikan n.id adalah ID post (karena backend kita mengirim ID post)
-                // Tapi kita akan coba ambil dari n.post_id jika ada
-                const postId = n.post_id || (n.type === 'tip' ? null : n.id);
-                linkTo = postId ? `/yap/${postId}` : '#';
+                // Like, Reply, Tip, Mention → ke postingan
+                const postId = n.post?.id || n.post_id || (n.type === 'tip' || n.type === 'mention' ? null : n.id);
+                linkTo = postId ? `/yap/${postId}` : "#";
               }
 
               return (
                 <li key={n.id} className={cn("flex gap-3 px-4 py-3 transition-colors hover:bg-muted/40", !n.read && "bg-brand-soft/40")}>
                   <Link to={linkTo} className="flex gap-3 w-full min-w-0">
-                    <Avatar seed={n.from?.avatar_seed ?? n.from?.address ?? "x"} size={36} />
+                    <div className="relative shrink-0">
+                      <Avatar seed={n.from?.avatar_seed ?? n.from?.address ?? "x"} size={36} />
+                      {n.type === "mention" && (
+                        <span className="absolute -bottom-1 -right-1 flex size-5 items-center justify-center rounded-full bg-brand text-white ring-2 ring-background">
+                          <AtSign className="size-3" />
+                        </span>
+                      )}
+                    </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm leading-snug">
                         <span className="font-semibold">{n.from?.display_name ?? "Someone"}</span>{" "}
