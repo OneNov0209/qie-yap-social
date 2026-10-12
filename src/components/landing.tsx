@@ -3,11 +3,12 @@ import { useEffect, useRef, useState } from "react";
 import { 
   Sparkles, MessageCircle, Heart, Coins, Zap, 
   TrendingUp, Shield, Globe, Wallet, ArrowRight, 
-  Users, Award, Star, Rocket 
+  Users, Award, Star, Rocket, Loader2 
 } from "lucide-react";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { cn } from "@/lib/utils";
+import { API_BASE } from "@/lib/posts";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -51,9 +52,46 @@ function ScrollReveal({ children, delay = 0 }: { children: React.ReactNode; dela
   );
 }
 
+interface Stats {
+  totalYaps: number;
+  totalQie: string;
+  totalBroq: string;
+  activeUsers: number;
+  totalUsers: number;
+  totalTx: number;
+}
+
+function formatCompact(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1000) return `${(n / 1000).toFixed(n >= 10_000 ? 0 : 1)}k`;
+  return n.toString();
+}
+
 function LandingPage() {
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadStats = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/stats`);
+        if (res.ok) {
+          const data = await res.json();
+          setStats(data);
+        }
+      } catch (err) {
+        console.error("Failed to load stats:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadStats();
+    // Refresh setiap 60 detik
+    const interval = setInterval(loadStats, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
-    // ✅ Tambahkan class "landing-page" agar Sidebar & Mobile Nav tidak terlihat
     <div className="min-h-screen bg-background overflow-x-hidden landing-page">
       <Header />
 
@@ -99,25 +137,50 @@ function LandingPage() {
         </div>
       </section>
 
-      {/* === STATISTICS === */}
+      {/* === STATISTICS (LIVE FROM BACKEND) === */}
       <section className="mx-auto max-w-6xl px-4 pb-20">
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-          {[
-            { label: "Yaps Posted", value: "1.2k+", icon: MessageCircle },
-            { label: "QIE Tipped", value: "342 QIE", icon: Coins },
-            { label: "Active Users", value: "250+", icon: Users },
-            { label: "On-Chain Tx", value: "890+", icon: Zap },
-          ].map((stat, i) => (
-            <ScrollReveal key={i} delay={i * 100}>
-              <div className="rounded-2xl border border-border/40 bg-card/50 p-6 text-center backdrop-blur-sm">
-                <div className="mx-auto mb-2 flex size-12 items-center justify-center rounded-full bg-brand-soft">
-                  <stat.icon className="size-5 text-brand" />
-                </div>
-                <div className="text-2xl font-bold">{stat.value}</div>
-                <div className="text-xs text-muted-foreground">{stat.label}</div>
-              </div>
-            </ScrollReveal>
-          ))}
+          <StatCard
+            icon={MessageCircle}
+            label="Yaps Posted"
+            value={loading ? "..." : formatCompact(stats?.totalYaps || 0)}
+            delay={0}
+          />
+          <StatCard
+            icon={Coins}
+            label="QIE Tipped"
+            value={loading ? "..." : `${Number(stats?.totalQie || 0).toFixed(2)}`}
+            delay={100}
+          />
+          <StatCard
+            icon={Coins}
+            label="BROQ Tipped"
+            value={loading ? "..." : Number(stats?.totalBroq || 0).toLocaleString('id-ID', { maximumFractionDigits: 0 })}
+            delay={200}
+            purple
+          />
+          <StatCard
+            icon={Users}
+            label="Total Users"
+            value={loading ? "..." : formatCompact(stats?.totalUsers || 0)}
+            delay={300}
+          />
+        </div>
+
+        {/* Baris kedua: Active + TX */}
+        <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-4">
+          <StatCard
+            icon={Zap}
+            label="Active Users"
+            value={loading ? "..." : formatCompact(stats?.activeUsers || 0)}
+            delay={0}
+          />
+          <StatCard
+            icon={TrendingUp}
+            label="On-Chain Tx"
+            value={loading ? "..." : formatCompact(stats?.totalTx || 0)}
+            delay={100}
+          />
         </div>
       </section>
 
@@ -139,7 +202,7 @@ function LandingPage() {
             {
               icon: Heart,
               title: "On-Chain Tips",
-              desc: "Send QIE directly to your favorite creators. No middleman, instant settlement."
+              desc: "Send QIE or BROQ directly to your favorite creators. No middleman, instant settlement."
             },
             {
               icon: Rocket,
@@ -203,5 +266,35 @@ function LandingPage() {
       {/* === FOOTER === */}
       <Footer />
     </div>
+  );
+}
+
+// StatCard Component
+function StatCard({
+  icon: Icon,
+  label,
+  value,
+  delay = 0,
+  purple = false,
+}: {
+  icon: any;
+  label: string;
+  value: string;
+  delay?: number;
+  purple?: boolean;
+}) {
+  return (
+    <ScrollReveal delay={delay}>
+      <div className="rounded-2xl border border-border/40 bg-card/50 p-6 text-center backdrop-blur-sm">
+        <div className={cn(
+          "mx-auto mb-2 flex size-12 items-center justify-center rounded-full",
+          purple ? "bg-purple-500/10" : "bg-brand-soft"
+        )}>
+          <Icon className={cn("size-5", purple ? "text-purple-500" : "text-brand")} />
+        </div>
+        <div className="text-2xl font-bold">{value}</div>
+        <div className="text-xs text-muted-foreground">{label}</div>
+      </div>
+    </ScrollReveal>
   );
 }
