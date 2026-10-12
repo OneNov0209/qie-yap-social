@@ -5,7 +5,7 @@ import { Avatar } from "@/components/avatar-img";
 import { StakingBadgeChip } from "@/components/staking-badge";
 import { shortAddr, API_BASE } from "@/lib/posts";
 import { cn } from "@/lib/utils";
-import { Crown, Medal, TrendingUp, TrendingDown, Minus, Loader2, Coins, MessageSquare, Users, ArrowLeft } from "lucide-react";
+import { Crown, Medal, TrendingUp, TrendingDown, Minus, Coins, MessageSquare, Users, ArrowLeft } from "lucide-react";
 
 export const Route = createFileRoute("/leaderboard")({
   head: () => ({
@@ -25,6 +25,8 @@ interface LeaderboardEntry {
   avatarSeed: string;
   badge: string;
   totalTipsReceived: number;
+  totalQieReceived: number;
+  totalBroqReceived: number;
   yapCount: number;
   followerCount: number;
   isValidator: boolean;
@@ -42,78 +44,7 @@ function LeaderboardPage() {
     try {
       const res = await fetch(`${API_BASE}/leaderboard?timeframe=${timeframe}&limit=50`);
       if (!res.ok) throw new Error("Failed to fetch leaderboard");
-      
       const data = await res.json();
-      
-      if (!data || data.length === 0) {
-        let profiles: any[] = [];
-        try {
-          const profileRes = await fetch(`${API_BASE}/profiles?limit=100`);
-          if (profileRes.ok) profiles = await profileRes.json();
-        } catch {}
-
-        let allTips: any[] = [];
-        try {
-          const tipsRes = await fetch(`${API_BASE}/tips?limit=500`);
-          if (tipsRes.ok) allTips = await tipsRes.json();
-        } catch {}
-
-        let allPosts: any[] = [];
-        try {
-          const postsRes = await fetch(`${API_BASE}/feed?limit=200`);
-          if (postsRes.ok) allPosts = await postsRes.json();
-        } catch {}
-
-        let allFollows: any[] = [];
-        try {
-          const followsRes = await fetch(`${API_BASE}/follows?limit=500`);
-          if (followsRes.ok) allFollows = await followsRes.json();
-        } catch {}
-
-        const userStats: Record<string, any> = {};
-        profiles.forEach((p: any) => {
-          userStats[p.id] = {
-            id: p.id,
-            address: p.address,
-            displayName: p.display_name || p.address.slice(0, 8),
-            username: p.username || p.address.slice(0, 8),
-            avatarSeed: p.avatar_seed || p.address,
-            badge: "shrimp",
-            isValidator: Boolean(p.is_validator),
-            totalTipsReceived: 0,
-            yapCount: 0,
-            followerCount: 0,
-          };
-        });
-
-        allTips.forEach((tip: any) => {
-          if (userStats[tip.to_user_id]) {
-            userStats[tip.to_user_id].totalTipsReceived += Number(tip.amount || 0);
-          }
-        });
-
-        allPosts.forEach((post: any) => {
-          let authorId = post.author_id;
-          if (post.author && post.author.id) authorId = post.author.id;
-          if (!post.reply_to && userStats[authorId]) {
-            userStats[authorId].yapCount += 1;
-          }
-        });
-
-        allFollows.forEach((follow: any) => {
-          if (userStats[follow.following_id]) {
-            userStats[follow.following_id].followerCount += 1;
-          }
-        });
-
-        let leaderboard = Object.values(userStats) as LeaderboardEntry[];
-        // ✅ Tampilkan semua user tanpa filter
-        leaderboard.sort((a, b) => b.totalTipsReceived - a.totalTipsReceived);
-        setUsers(leaderboard.slice(0, 50));
-        setLoading(false);
-        return;
-      }
-
       setUsers(data);
     } catch (err) {
       console.error("Leaderboard error:", err);
@@ -238,11 +169,18 @@ function LeaderboardPage() {
                   </div>
                 </div>
 
-                <div className="text-right">
+                {/* ✅ 2 KOLOM: QIE + BROQ */}
+                <div className="text-right flex flex-col gap-1">
                   <div className="flex items-center justify-end gap-1 text-sm font-bold text-brand">
                     <Coins className="size-4" />
-                    {user.totalTipsReceived.toFixed(4)} QIE
+                    {(user.totalQieReceived || user.totalTipsReceived || 0).toFixed(4)} QIE
                   </div>
+                  {(user.totalBroqReceived || 0) > 0 && (
+                    <div className="flex items-center justify-end gap-1 text-xs font-bold text-purple-500">
+                      <Coins className="size-3" />
+                      {(user.totalBroqReceived || 0).toLocaleString('id-ID', { maximumFractionDigits: 2 })} BROQ
+                    </div>
+                  )}
                   <div className="text-[10px] text-muted-foreground">Tips Received</div>
                 </div>
               </Link>
