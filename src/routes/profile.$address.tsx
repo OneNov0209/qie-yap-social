@@ -41,6 +41,15 @@ interface FeedProfile {
   qie_id?: string;
 }
 
+interface FollowUser {
+  id: string;
+  address: string;
+  username: string;
+  display_name: string;
+  avatar_seed: string;
+  is_validator?: boolean;
+}
+
 const POSTS_PER_PAGE = 20;
 
 function ProfilePage() {
@@ -65,6 +74,11 @@ function ProfilePage() {
   const [editBio, setEditBio] = useState("");
   const [editAvatarSeed, setEditAvatarSeed] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+
+  // ✅ State untuk Followers/Following Modal
+  const [followModalOpen, setFollowModalOpen] = useState<false | 'followers' | 'following'>(false);
+  const [followList, setFollowList] = useState<FollowUser[]>([]);
+  const [followListLoading, setFollowListLoading] = useState(false);
 
   const [chartData, setChartData] = useState<any[]>([]);
   const [chartLoading, setChartLoading] = useState(true);
@@ -92,6 +106,47 @@ function ProfilePage() {
       setLoadingMore(false);
     }
   }, [loadingMore, hasMore, yaps.length]);
+
+  // ✅ Buka modal followers/following
+  const openFollowModal = async (type: 'followers' | 'following') => {
+    if (!profile) return;
+    setFollowModalOpen(type);
+    setFollowListLoading(true);
+    setFollowList([]);
+
+    try {
+      let url = '';
+      if (type === 'followers') {
+        // Ambil list user yang FOLLOW profile ini
+        url = `${API_BASE}/follows?following_id=${profile.id}`;
+      } else {
+        // Ambil list user yang DI-FOLLOW profile ini
+        url = `${API_BASE}/follows?follower_id=${profile.id}`;
+      }
+
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        // Backend return row from `follows` table + profile data dari JOIN
+        // Untuk followers: `display_name`, `username`, `avatar_seed` milik follower
+        // Untuk following: `display_name`, `username`, `avatar_seed` milik following
+        const list: FollowUser[] = data.map((item: any) => ({
+          id: item.id,
+          address: item.address || '',
+          username: item.username || '',
+          display_name: item.display_name || '',
+          avatar_seed: item.avatar_seed || '',
+          is_validator: item.is_validator || false,
+        }));
+        setFollowList(list);
+      }
+    } catch (err) {
+      console.error(`Failed to load ${type}:`, err);
+      toast.error(`Failed to load ${type}`);
+    } finally {
+      setFollowListLoading(false);
+    }
+  };
 
   useEffect(() => {
     const loadData = async () => {
@@ -159,14 +214,12 @@ function ProfilePage() {
           setIsFollowing(data.isFollowing || false);
         }
 
-        // ✅ LOAD POST PERTAMA (20 saja)
         const firstBatch = await fetchUserPosts(profileData.id, POSTS_PER_PAGE, 0);
         setYaps(firstBatch);
         if (firstBatch.length < POSTS_PER_PAGE) {
           setHasMore(false);
         }
 
-        // ✅ Ambil dashboard stats (QIE + BROQ + posts + followers akurat)
         try {
           const dashRes = await fetch(`${API_BASE}/dashboard/${profileData.id}`);
           if (dashRes.ok) {
@@ -180,7 +233,6 @@ function ProfilePage() {
               following: dash.following ?? prev.following,
             }));
           } else {
-            // Fallback ke firstBatch kalau dashboard gagal
             setCounts(prev => ({ ...prev, yaps: firstBatch.length }));
           }
         } catch (err) {
@@ -326,38 +378,32 @@ function ProfilePage() {
             </div>
             {profile.bio && <p className="mt-3 text-foreground/90">{profile.bio}</p>}
 
-            {/* ON-CHAIN RÉSUMÉ (SKOR REPUTASI) */}
+            {/* ON-CHAIN RÉSUMÉ */}
             <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-2">
-              <ScoreCard 
-                icon={<Code className="size-4 text-brand" />}
-                label="Builder Score"
-                value={profile.builder_score || 0}
-              />
-              <ScoreCard 
-                icon={<Users className="size-4 text-brand" />}
-                label="Contributor Score"
-                value={profile.contributor_score || 0}
-              />
-              <ScoreCard 
-                icon={<Star className="size-4 text-gold" />}
-                label="Reputation Score"
-                value={profile.reputation_score || 0}
-              />
-              <ScoreCard 
-                icon={<Briefcase className="size-4 text-brand" />}
-                label="Merchant Score"
-                value={profile.merchant_score || 0}
-              />
+              <ScoreCard icon={<Code className="size-4 text-brand" />} label="Builder Score" value={profile.builder_score || 0} />
+              <ScoreCard icon={<Users className="size-4 text-brand" />} label="Contributor Score" value={profile.contributor_score || 0} />
+              <ScoreCard icon={<Star className="size-4 text-gold" />} label="Reputation Score" value={profile.reputation_score || 0} />
+              <ScoreCard icon={<Briefcase className="size-4 text-brand" />} label="Merchant Score" value={profile.merchant_score || 0} />
             </div>
 
-            {/* ✅ STATS: YAPS / FOLLOWERS / FOLLOWING */}
+            {/* ✅ STATS: YAPS / FOLLOWERS / FOLLOWING — Clickable! */}
             <div className="mt-4 grid grid-cols-3 gap-2 rounded-2xl border border-border bg-card p-3 text-center">
               <Stat label="Yaps" value={String(counts.yaps || yaps.length)} />
-              <Stat label="Followers" value={String(counts.followers)} />
-              <Stat label="Following" value={String(counts.following)} />
+              <button 
+                onClick={() => openFollowModal('followers')}
+                className="cursor-pointer transition-opacity hover:opacity-70"
+              >
+                <Stat label="Followers" value={String(counts.followers)} />
+              </button>
+              <button 
+                onClick={() => openFollowModal('following')}
+                className="cursor-pointer transition-opacity hover:opacity-70"
+              >
+                <Stat label="Following" value={String(counts.following)} />
+              </button>
             </div>
 
-            {/* ✅ TIPS RECEIVED: QIE + BROQ (2 kolom) */}
+            {/* TIPS RECEIVED */}
             <div className="mt-2 grid grid-cols-2 gap-2 rounded-2xl border border-border bg-card p-3 text-center">
               <div>
                 <div className="font-display font-bold text-brand">
@@ -419,7 +465,6 @@ function ProfilePage() {
               <div className="rounded-2xl border border-dashed border-border bg-card p-10 text-center text-sm text-muted-foreground">No yaps yet.</div>
             ) : yaps.map((p) => <PostCard key={p.id} post={p} />)}
 
-            {/* ✅ TOMBOL LOAD MORE */}
             {hasMore && yaps.length > 0 && (
               <div className="flex justify-center pt-2">
                 <Button
@@ -440,7 +485,6 @@ function ProfilePage() {
               </div>
             )}
 
-            {/* ✅ INDIKATOR HABIS */}
             {!hasMore && yaps.length > 0 && (
               <div className="text-center text-xs text-muted-foreground py-4">
                 — Semua post sudah ditampilkan ({yaps.length}) —
@@ -449,6 +493,68 @@ function ProfilePage() {
           </div>
         </div>
       </div>
+
+      {/* ✅ FOLLOWERS/FOLLOWING MODAL */}
+      {followModalOpen && (
+        <div 
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4"
+          onClick={() => setFollowModalOpen(false)}
+        >
+          <div 
+            className="w-full max-w-md rounded-2xl bg-card border border-border shadow-2xl max-h-[80vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-4 border-b border-border">
+              <h3 className="text-lg font-bold">
+                {followModalOpen === 'followers' ? 'Followers' : 'Following'}
+              </h3>
+              <button
+                onClick={() => setFollowModalOpen(false)}
+                className="p-1 rounded-full hover:bg-muted"
+              >
+                <X className="size-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto">
+              {followListLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="size-6 animate-spin text-brand" />
+                </div>
+              ) : followList.length === 0 ? (
+                <div className="py-12 text-center text-sm text-muted-foreground">
+                  {followModalOpen === 'followers' ? 'No followers yet' : 'Not following anyone yet'}
+                </div>
+              ) : (
+                <div className="divide-y divide-border">
+                  {followList.map((u) => (
+                    <Link
+                      key={u.id}
+                      to="/profile/$address"
+                      params={{ address: u.address }}
+                      onClick={() => setFollowModalOpen(false)}
+                      className="flex items-center gap-3 p-4 hover:bg-muted/40 transition-colors"
+                    >
+                      <Avatar seed={u.avatar_seed || u.address} size={44} />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold truncate">
+                            {u.display_name || shortAddr(u.address)}
+                          </span>
+                          {u.is_validator && <BadgeCheck className="size-4 text-brand shrink-0" />}
+                        </div>
+                        <div className="text-xs text-muted-foreground truncate">
+                          @{u.username || shortAddr(u.address)}
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Edit Profile Modal */}
       {isEditModalOpen && (
@@ -478,7 +584,6 @@ function ProfilePage() {
   );
 }
 
-// ScoreCard Component
 function ScoreCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) {
   return (
     <div className="rounded-xl border border-border/40 bg-card/50 p-3 text-center backdrop-blur-sm transition-colors hover:bg-card/80">
