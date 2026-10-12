@@ -9,7 +9,8 @@ export interface FeedPost {
   createdAt: string;
   txHash?: string | null;
   onChain?: boolean;
-  tipTotal: number;
+  tipTotalQie: number;
+  tipTotalBroq: number;
   likes: number;
   liked: boolean;
   replies: number;
@@ -59,7 +60,8 @@ export function mapPost(item: any): FeedPost {
     createdAt: item.created_at || item.createdAt || new Date().toISOString(),
     txHash: item.tx_hash || item.txHash || null,
     onChain: Boolean(item.on_chain || item.onChain || false),
-    tipTotal: Number(item.tip_total || item.tipTotal || 0),
+    tipTotalQie: Number(item.tip_total_qie || 0),
+    tipTotalBroq: Number(item.tip_total_broq || 0),
     likes: Number(item.likes || 0),
     liked: Boolean(item.liked || false),
     replies: Number(item.replies || item.reply_count || 0),
