@@ -107,29 +107,23 @@ function ProfilePage() {
     }
   }, [loadingMore, hasMore, yaps.length]);
 
-  // ✅ Buka modal followers/following
-  const openFollowModal = async (type: 'followers' | 'following') => {
+  // ✅ Load followers atau following
+  const loadFollowList = async (type: 'followers' | 'following') => {
     if (!profile) return;
-    setFollowModalOpen(type);
     setFollowListLoading(true);
     setFollowList([]);
 
     try {
       let url = '';
       if (type === 'followers') {
-        // Ambil list user yang FOLLOW profile ini
         url = `${API_BASE}/follows?following_id=${profile.id}`;
       } else {
-        // Ambil list user yang DI-FOLLOW profile ini
         url = `${API_BASE}/follows?follower_id=${profile.id}`;
       }
 
       const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
-        // Backend return row from `follows` table + profile data dari JOIN
-        // Untuk followers: `display_name`, `username`, `avatar_seed` milik follower
-        // Untuk following: `display_name`, `username`, `avatar_seed` milik following
         const list: FollowUser[] = data.map((item: any) => ({
           id: item.id,
           address: item.address || '',
@@ -146,6 +140,19 @@ function ProfilePage() {
     } finally {
       setFollowListLoading(false);
     }
+  };
+
+  // ✅ Buka modal + load list
+  const openFollowModal = (type: 'followers' | 'following') => {
+    setFollowModalOpen(type);
+    loadFollowList(type);
+  };
+
+  // ✅ Switch tab (tanpa tutup modal)
+  const switchFollowTab = (type: 'followers' | 'following') => {
+    if (followModalOpen === type) return;
+    setFollowModalOpen(type);
+    loadFollowList(type);
   };
 
   useEffect(() => {
@@ -494,7 +501,7 @@ function ProfilePage() {
         </div>
       </div>
 
-      {/* ✅ FOLLOWERS/FOLLOWING MODAL */}
+      {/* ✅ FOLLOWERS/FOLLOWING MODAL — dengan TABS */}
       {followModalOpen && (
         <div 
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4"
@@ -504,18 +511,56 @@ function ProfilePage() {
             className="w-full max-w-md rounded-2xl bg-card border border-border shadow-2xl max-h-[80vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between p-4 border-b border-border">
-              <h3 className="text-lg font-bold">
-                {followModalOpen === 'followers' ? 'Followers' : 'Following'}
-              </h3>
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 pt-4 pb-2">
+              <h3 className="text-lg font-bold">Who's who</h3>
               <button
                 onClick={() => setFollowModalOpen(false)}
-                className="p-1 rounded-full hover:bg-muted"
+                className="p-1 rounded-full hover:bg-muted transition-colors"
               >
                 <X className="size-5" />
               </button>
             </div>
 
+            {/* ✅ TABS */}
+            <div className="flex border-b border-border px-4">
+              <button
+                onClick={() => switchFollowTab('followers')}
+                className={cn(
+                  "flex-1 py-3 text-sm font-semibold transition-colors relative",
+                  followModalOpen === 'followers' 
+                    ? "text-brand" 
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                Followers
+                <span className="ml-1.5 text-xs text-muted-foreground">
+                  {counts.followers}
+                </span>
+                {followModalOpen === 'followers' && (
+                  <span className="absolute bottom-0 left-4 right-4 h-0.5 bg-brand rounded-full" />
+                )}
+              </button>
+              <button
+                onClick={() => switchFollowTab('following')}
+                className={cn(
+                  "flex-1 py-3 text-sm font-semibold transition-colors relative",
+                  followModalOpen === 'following' 
+                    ? "text-brand" 
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                Following
+                <span className="ml-1.5 text-xs text-muted-foreground">
+                  {counts.following}
+                </span>
+                {followModalOpen === 'following' && (
+                  <span className="absolute bottom-0 left-4 right-4 h-0.5 bg-brand rounded-full" />
+                )}
+              </button>
+            </div>
+
+            {/* Content */}
             <div className="flex-1 overflow-y-auto">
               {followListLoading ? (
                 <div className="flex items-center justify-center py-12">
@@ -523,7 +568,9 @@ function ProfilePage() {
                 </div>
               ) : followList.length === 0 ? (
                 <div className="py-12 text-center text-sm text-muted-foreground">
-                  {followModalOpen === 'followers' ? 'No followers yet' : 'Not following anyone yet'}
+                  {followModalOpen === 'followers' 
+                    ? 'No followers yet' 
+                    : 'Not following anyone yet'}
                 </div>
               ) : (
                 <div className="divide-y divide-border">
