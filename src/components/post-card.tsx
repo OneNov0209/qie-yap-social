@@ -50,6 +50,10 @@ export function PostCard({ post }: { post: FeedPost }) {
   const [tipSending, setTipSending] = useState(false);
   const [broqBalance, setBroqBalance] = useState<string>('0');
 
+  // ✅ Local state untuk tips (biar update instan tanpa reload)
+  const [tipQie, setTipQie] = useState<number>(post?.tipTotalQie ?? 0);
+  const [tipBroq, setTipBroq] = useState<number>(post?.tipTotalBroq ?? 0);
+
   const { user } = useAuth();
 
   const contractAddress = import.meta.env.VITE_QIE_YAP_CONTRACT as `0x${string}`;
@@ -226,6 +230,13 @@ export function PostCard({ post }: { post: FeedPost }) {
         throw new Error(`Backend save failed: ${errText}`);
       }
 
+      // ✅ Update local state biar langsung kelihatan
+      if (tipToken === 'QIE') {
+        setTipQie(prev => prev + amount);
+      } else {
+        setTipBroq(prev => prev + amount);
+      }
+
       toast.dismiss(toastId);
       toast.success(`${tipToken} tip sent! Tx: ${hash.slice(0, 10)}...`);
       setIsTipModalOpen(false);
@@ -325,6 +336,8 @@ export function PostCard({ post }: { post: FeedPost }) {
       </div>
     );
   }
+
+  const hasAnyTip = tipQie > 0 || tipBroq > 0;
 
   return (
     <article
@@ -509,12 +522,28 @@ export function PostCard({ post }: { post: FeedPost }) {
 
       {/* === Bottom: Premium Actions === */}
       <div className="ml-[60px] mt-1 flex flex-wrap items-center gap-2 border-t border-border/20 pt-3">
+        {/* ✅ TOMBOL TIP — Pisah QIE & BROQ */}
         <button
           onClick={handleOpenTipModal}
           disabled={isProcessing}
           className="flex items-center gap-1.5 rounded-full bg-gradient-to-r from-[#FF0A6C] to-[#0040FF] px-4 py-1.5 text-xs font-semibold text-white shadow-md shadow-brand-start/25 transition-all hover:scale-105 hover:shadow-lg disabled:opacity-50 disabled:hover:scale-100"
         >
-          💎 {post.tipTotal > 0 ? `${post.tipTotal}` : "Tip"}
+          {hasAnyTip ? (
+            <span className="flex items-center gap-2">
+              {tipQie > 0 && (
+                <span className="flex items-center gap-1">
+                  💎 {tipQie < 1 ? tipQie.toFixed(4) : tipQie.toFixed(2)} QIE
+                </span>
+              )}
+              {tipBroq > 0 && (
+                <span className="flex items-center gap-1 border-l border-white/30 pl-2">
+                  🪙 {tipBroq.toLocaleString('id-ID', { maximumFractionDigits: 2 })} BROQ
+                </span>
+              )}
+            </span>
+          ) : (
+            <span>💎 Tip</span>
+          )}
         </button>
 
         {isOwner && (
