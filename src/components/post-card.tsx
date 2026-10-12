@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Heart, MessageCircle, Pin, Sparkles, BadgeCheck, Flame, Zap, Link as LinkIcon, Repeat, Bookmark, Trash2, Loader2, X, Download } from "lucide-react";
 import { StakingBadgeChip } from "./staking-badge";
 import { Avatar } from "./avatar-img";
@@ -60,6 +61,17 @@ export function PostCard({ post }: { post: FeedPost }) {
   const isOwner = user?.address?.toLowerCase() === post.author?.address?.toLowerCase();
 
   const reposters = (post as any).reposters || [];
+
+  // ✅ Lock body scroll saat lightbox atau tip modal open
+  useEffect(() => {
+    if (lightboxImage || isTipModalOpen) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [lightboxImage, isTipModalOpen]);
 
   const onToggleLike = async () => {
     if (!user) return toast("Connect your wallet to like yaps");
@@ -342,14 +354,14 @@ export function PostCard({ post }: { post: FeedPost }) {
   return (
     <article
       className={cn(
-        "group relative flex flex-col gap-3 rounded-2xl border border-border/50 bg-card p-5 shadow-sm transition-all duration-300 hover:shadow-xl hover:scale-[1.005] hover:border-brand-start/30",
+        "group relative flex flex-col gap-3 rounded-2xl border border-border/50 bg-card p-5 shadow-sm transition-shadow duration-300 hover:shadow-xl hover:border-brand-start/30",
         post.isSuperYap && "border-2 border-gold bg-gold-soft/20 shadow-gold/10",
         post.isBoosted && "border-2 border-brand-start/20",
       )}
     >
       {/* === Repost Indicator === */}
       {reposters.length > 0 && (
-        <div className="absolute -top-3 left-5 inline-flex items-center gap-1.5 rounded-full bg-muted/80 backdrop-blur-sm px-2.5 py-0.5 text-[10px] font-medium text-muted-foreground border border-border/30 z-10">
+        <div className="absolute -top-3 left-5 inline-flex items-center gap-1.5 rounded-full bg-muted/80 px-2.5 py-0.5 text-[10px] font-medium text-muted-foreground border border-border/30 z-10">
           <Repeat className="size-3" />
           <span>
             Reposted by {reposters.map((r: any) => r.display_name || shortAddr(r.address)).join(', ')}
@@ -435,7 +447,7 @@ export function PostCard({ post }: { post: FeedPost }) {
             <img 
               src={post.mediaUrl} 
               alt="Post media" 
-              className="w-full h-auto object-cover max-h-96 cursor-zoom-in hover:scale-[1.02] transition-transform" 
+              className="w-full h-auto object-cover max-h-96 cursor-zoom-in" 
               onClick={() => setLightboxImage(post.mediaUrl!)}
             />
           </div>
@@ -567,10 +579,10 @@ export function PostCard({ post }: { post: FeedPost }) {
         </button>
       </div>
 
-      {/* ✅ LIGHTBOX MODAL — FIXED: no flicker */}
-      {lightboxImage && (
+      {/* ✅ LIGHTBOX MODAL via Portal — anti flicker */}
+      {lightboxImage && typeof document !== "undefined" && createPortal(
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 p-4"
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/95 p-4"
           onClick={() => setLightboxImage(null)}
         >
           <button
@@ -596,7 +608,6 @@ export function PostCard({ post }: { post: FeedPost }) {
             <Download className="size-6" />
           </a>
 
-          {/* ✅ Wrapper dengan stopPropagation — area klik aman, tidak flicker */}
           <div
             className="max-h-[90vh] max-w-[90vw] flex items-center justify-center"
             onClick={(e) => e.stopPropagation()}
@@ -612,13 +623,14 @@ export function PostCard({ post }: { post: FeedPost }) {
           <p className="absolute bottom-6 left-1/2 -translate-x-1/2 text-xs text-white/60 pointer-events-none">
             Click anywhere to close
           </p>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {/* ✅ TIP MODAL (QIE / BROQ) */}
-      {isTipModalOpen && (
+      {/* ✅ TIP MODAL (QIE / BROQ) via Portal */}
+      {isTipModalOpen && typeof document !== "undefined" && createPortal(
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 p-4"
           onClick={() => !tipSending && setIsTipModalOpen(false)}
         >
           <div
@@ -729,7 +741,8 @@ export function PostCard({ post }: { post: FeedPost }) {
                 : 'BROQ tip goes 100% to recipient'}
             </p>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </article>
   );
