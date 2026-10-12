@@ -34,6 +34,32 @@ function compact(n: number) {
   return n.toString();
 }
 
+// ✅ RENDER @MENTION sebagai link
+function renderContentWithMentions(content: string) {
+  if (!content) return null;
+  
+  // Split by @mention pattern
+  const parts = content.split(/(@[a-zA-Z0-9_\.\-]+)/g);
+  
+  return parts.map((part, i) => {
+    if (part.startsWith('@') && part.length > 1) {
+      const username = part.slice(1); // hapus @
+      return (
+        <Link
+          key={i}
+          to="/profile/$address"
+          params={{ address: username }}
+          onClick={(e) => e.stopPropagation()}
+          className="text-brand font-semibold hover:underline transition-colors"
+        >
+          {part}
+        </Link>
+      );
+    }
+    return <span key={i}>{part}</span>;
+  });
+}
+
 export function PostCard({ post }: { post: FeedPost }) {
   const [liked, setLiked] = useState(post?.liked ?? false);
   const [likes, setLikes] = useState(post?.likes ?? 0);
@@ -51,7 +77,7 @@ export function PostCard({ post }: { post: FeedPost }) {
   const [tipSending, setTipSending] = useState(false);
   const [broqBalance, setBroqBalance] = useState<string>('0');
 
-  // ✅ Local state untuk tips (biar update instan tanpa reload)
+  // ✅ Local state untuk tips
   const [tipQie, setTipQie] = useState<number>(post?.tipTotalQie ?? 0);
   const [tipBroq, setTipBroq] = useState<number>(post?.tipTotalBroq ?? 0);
 
@@ -148,7 +174,6 @@ export function PostCard({ post }: { post: FeedPost }) {
     }
   };
 
-  // ✅ Buka Tip Modal
   const handleOpenTipModal = async () => {
     if (!user) return toast.error("Connect your wallet to tip");
     const isConnected = await checkWalletConnection();
@@ -160,7 +185,6 @@ export function PostCard({ post }: { post: FeedPost }) {
     setTipToken('QIE');
     setIsTipModalOpen(true);
 
-    // Fetch BROQ balance
     try {
       const res = await fetch(`${API_BASE}/tokens/broq/balance/${user.address}`);
       if (res.ok) {
@@ -170,7 +194,6 @@ export function PostCard({ post }: { post: FeedPost }) {
     } catch {}
   };
 
-  // ✅ Kirim Tip (QIE atau BROQ)
   const handleSendTip = async () => {
     if (!user) return;
     if (!contractAddress) return toast.error("Contract not deployed yet");
@@ -192,7 +215,6 @@ export function PostCard({ post }: { post: FeedPost }) {
       let hash = '';
 
       if (tipToken === 'QIE') {
-        // === QIE TIP via QieYap contract ===
         hash = await sendTip(
           contractAddress,
           String(post.author.address) as `0x${string}`,
@@ -200,7 +222,6 @@ export function PostCard({ post }: { post: FeedPost }) {
           `Tip for post ${post.id}`
         );
       } else {
-        // === BROQ TIP via ERC-20 transfer ===
         if (!window.ethereum) {
           throw new Error("No wallet detected");
         }
@@ -222,7 +243,6 @@ export function PostCard({ post }: { post: FeedPost }) {
         });
       }
 
-      // Simpan ke backend
       const backendRes = await fetch(`${API_BASE}/tips`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -242,7 +262,6 @@ export function PostCard({ post }: { post: FeedPost }) {
         throw new Error(`Backend save failed: ${errText}`);
       }
 
-      // ✅ Update local state biar langsung kelihatan
       if (tipToken === 'QIE') {
         setTipQie(prev => prev + amount);
       } else {
@@ -439,7 +458,7 @@ export function PostCard({ post }: { post: FeedPost }) {
       {/* === Content === */}
       <div className="ml-[60px] -mt-1">
         <div className="block text-[15px] leading-relaxed text-foreground/90 whitespace-pre-wrap hover:text-foreground transition-colors">
-          {post.content}
+          {renderContentWithMentions(post.content)}
         </div>
 
         {post.mediaUrl && (
@@ -534,7 +553,6 @@ export function PostCard({ post }: { post: FeedPost }) {
 
       {/* === Bottom: Premium Actions === */}
       <div className="ml-[60px] mt-1 flex flex-wrap items-center gap-2 border-t border-border/20 pt-3">
-        {/* ✅ TOMBOL TIP — Pisah QIE & BROQ */}
         <button
           onClick={handleOpenTipModal}
           disabled={isProcessing}
@@ -627,7 +645,7 @@ export function PostCard({ post }: { post: FeedPost }) {
         document.body
       )}
 
-      {/* ✅ TIP MODAL (QIE / BROQ) via Portal */}
+      {/* ✅ TIP MODAL via Portal */}
       {isTipModalOpen && typeof document !== "undefined" && createPortal(
         <div
           className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 p-4"
@@ -648,7 +666,6 @@ export function PostCard({ post }: { post: FeedPost }) {
               </button>
             </div>
 
-            {/* Pilihan Token */}
             <div className="mb-4">
               <label className="text-xs font-medium text-muted-foreground mb-2 block">
                 Choose token
@@ -681,7 +698,6 @@ export function PostCard({ post }: { post: FeedPost }) {
               </div>
             </div>
 
-            {/* Balance Info */}
             {tipToken === 'BROQ' && (
               <div className="mb-3 text-xs text-muted-foreground">
                 Your balance: <span className="font-semibold text-foreground">
@@ -690,7 +706,6 @@ export function PostCard({ post }: { post: FeedPost }) {
               </div>
             )}
 
-            {/* Input Amount */}
             <div className="mb-4">
               <label className="text-xs font-medium text-muted-foreground mb-2 block">
                 Amount ({tipToken})
@@ -719,7 +734,6 @@ export function PostCard({ post }: { post: FeedPost }) {
               </div>
             </div>
 
-            {/* Send Button */}
             <button
               onClick={handleSendTip}
               disabled={tipSending || !tipAmount || parseFloat(tipAmount) <= 0}
