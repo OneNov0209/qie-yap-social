@@ -19,7 +19,6 @@ import { Sidebar } from "@/components/sidebar";
 import { MobileBottomNav } from "@/components/header";
 import { cn } from "@/lib/utils";
 import { useSidebarStore } from "@/lib/sidebar-store";
-// ✅ Import komponen ScrollToTop yang baru dibuat
 import { ScrollToTop } from "@/components/scroll-to-top";
 
 function NotFoundComponent() {
@@ -86,13 +85,20 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "viewport", content: "width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover" },
       { title: "QIE Yap — Yap your way through the QIE ecosystem" },
       { name: "description", content: "QIE Yap is a hybrid on-chain social platform for the QIE blockchain ecosystem. Tip, stake, and yap with validators and whales." },
       { property: "og:title", content: "QIE Yap" },
       { property: "og:description", content: "Yap your way through the QIE ecosystem." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      // ✅ PWA meta tags
+      { name: "theme-color", content: "#ec4899" },
+      { name: "mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
+      { name: "apple-mobile-web-app-title", content: "QIE Yap" },
+      { name: "application-name", content: "QIE Yap" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
@@ -100,6 +106,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" },
+      // ✅ PWA manifest & icons
+      { rel: "manifest", href: "/manifest.json" },
+      { rel: "apple-touch-icon", href: "https://raw.githubusercontent.com/OneNov0209/logo/refs/heads/main/qie-logo.png" },
     ],
   }),
   shellComponent: RootShell,
@@ -128,27 +137,40 @@ function RootComponent() {
   const isLandingPage = path === "/";
   const { isOpen } = useSidebarStore();
 
+  // ✅ Register Service Worker untuk PWA
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!('serviceWorker' in navigator)) return;
+    // Jangan register di dev mode untuk hindari cache saat development
+    if (window.location.hostname === 'localhost') return;
+
+    window.addEventListener('load', () => {
+      navigator.serviceWorker
+        .register('/sw.js', { scope: '/' })
+        .then((reg) => {
+          console.log('✅ PWA Service Worker registered:', reg.scope);
+        })
+        .catch((err) => {
+          console.warn('❌ SW registration failed:', err);
+        });
+    });
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <div className="flex min-h-screen w-full bg-background">
-          {/* Sidebar hanya muncul jika BUKAN Landing Page */}
           {!isLandingPage && <Sidebar />}
           
-          {/* ✅ Konten bergeser jika Sidebar terbuka */}
           <div className={cn(
             "flex-1 pb-20 lg:pb-0 transition-all duration-300",
             !isLandingPage && isOpen ? "lg:ml-64" : "lg:ml-0"
           )}>
-            {/* ✅ Animasi Fade-in saat pindah halaman */}
             <div className="animate-in fade-in duration-300">
               <Outlet />
             </div>
             
-            {/* ✅ Tombol Scroll to Top */}
             {!isLandingPage && <ScrollToTop />}
-            
-            {/* Bottom Nav Mobile */}
             {!isLandingPage && <MobileBottomNav />}
           </div>
         </div>
