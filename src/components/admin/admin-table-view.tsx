@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
-import { Loader2, Search, Download, Trash2, Copy, Check, ExternalLink, ArrowUpDown, ArrowUp, ArrowDown, X, ChevronLeft, ChevronRight, Filter } from "lucide-react";
+import { Loader2, Search, Download, Trash2, Copy, Check, ExternalLink, ArrowUpDown, ArrowUp, ArrowDown, X, ChevronLeft, ChevronRight, Calendar, Filter } from "lucide-react";
 import { API_BASE } from "@/lib/posts";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -10,24 +10,31 @@ interface AdminTableViewProps {
 
 const PAGE_SIZE = 50;
 
+type FilterType = "all" | "today" | "7days" | "30days" | "custom";
+type BooleanFilter = "all" | "true" | "false";
+type SortDir = "asc" | "desc";
+
 export function AdminTableView({ tableName }: AdminTableViewProps) {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<string | null>(null);
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [page, setPage] = useState(0);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [columnFilter, setColumnFilter] = useState<string | null>(null);
 
+  // 🔍 Filter states
+  const [dateFilter, setDateFilter] = useState<FilterType>("all");
+  const [boolFilter, setBoolFilter] = useState<BooleanFilter>("all");
+  const [boolColumn, setBoolColumn] = useState<string>("");
+  const [showFilters, setShowFilters] = useState(false);
+
+  // Load data
   useEffect(() => {
     const load = async () => {
       setLoading(true);
-      setSearch("");
-      setSortKey(null);
-      setPage(0);
-      setSelected(new Set());
+      resetFilters();
       try {
         const res = await fetch(`${API_BASE}/admin/${tableName}?limit=100000`);
         const json = await res.json();
@@ -42,15 +49,45 @@ export function AdminTableView({ tableName }: AdminTableViewProps) {
     load();
   }, [tableName]);
 
+  // Auto-detect boolean columns
+  const booleanColumns = useMemo(() => {
+    if (!data.length) return [];
+    const sample = data[0];
+    return Object.keys(sample).filter(
+      (k) => typeof sample[k] === "boolean"
+    );
+  }, [data]);
+
+  // Auto-detect date columns
+  const hasDateColumn = useMemo(() => {
+    if (!data.length) return false;
+    const sample = data[0];
+    return Object.keys(sample).some(
+      (k) => k === "created_at" || k.endsWith("_at")
+    );
+  }, [data]);
+
+  const resetFilters = () => {
+    setSearch("");
+    setSortKey(null);
+    setSortDir("desc");
+    setPage(0);
+    setSelected(new Set());
+    setDateFilter("all");
+    setBoolFilter("all");
+    setBoolColumn("");
+  };
+
   const columns = useMemo(() => {
     if (!data.length) return [];
     return Object.keys(data[0]);
   }, [data]);
 
+  // Apply filters + sort
   const processed = useMemo(() => {
     let result = [...data];
 
-    // Search
+    // 1. Search
     if (search.trim()) {
       const q = search.toLowerCase();
       result = result.filter((row) =>
@@ -58,13 +95,35 @@ export function AdminTableView({ tableName }: AdminTableViewProps) {
       );
     }
 
-    // Column filter (bisa develop nanti)
-    if (columnFilter) {
-      const [col, val] = columnFilter.split(":");
-      result = result.filter((row) => String(row[col]) === val);
+    // 2. Date filter
+    if (dateFilter !== "all" && hasDateColumn) {
+      const now = new Date();
+      let cutoff: Date | null = null;
+
+      if (dateFilter === "today") {
+        cutoff = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      } else if (dateFilter === "7days") {
+        cutoff = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      } else if (dateFilter === "30days") {
+        cutoff = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      }
+
+      if (cutoff) {
+        result = result.filter((row) => {
+          const dateVal = row.created_at || row.updated_at || row.timestamp;
+          if (!dateVal) return false;
+          return new Date(dateVal) >= cutoff!;
+        });
+      }
     }
 
-    // Sort
+    // 3. Boolean filter
+    if (boolFilter !== "all" && boolColumn) {
+      const targetVal = boolFilter === "true";
+      result = result.filter((row) => Boolean(row[boolColumn]) === targetVal);
+    }
+
+    // 4. Sort
     if (sortKey) {
       result.sort((a, b) => {
         const va = a[sortKey];
@@ -81,10 +140,13 @@ export function AdminTableView({ tableName }: AdminTableViewProps) {
     }
 
     return result;
-  }, [data, search, sortKey, sortDir, columnFilter]);
+  }, [data, search, dateFilter, boolFilter, boolColumn, sortKey, sortDir, hasDateColumn]);
 
   const totalPages = Math.max(1, Math.ceil(processed.length / PAGE_SIZE));
   const pageData = processed.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+
+  const hasActiveFilters =
+    dateFilter !== "all" || boolFilter !== "all" || search.trim().length > 0;
 
   const toggleSort = (key: string) => {
     if (sortKey === key) {
@@ -93,6 +155,7 @@ export function AdminTableView({ tableName }: AdminTableViewProps) {
       setSortKey(key);
       setSortDir("desc");
     }
+    setPage(0);
   };
 
   const toggleSelect = (id: string) => {
@@ -103,7 +166,7 @@ export function AdminTableView({ tableName }: AdminTableViewProps) {
   };
 
   const toggleSelectAll = () => {
-    if (selected.size === pageData.length) {
+    if (selected.size === pageData.length && pageData.length > 0) {
       setSelected(new Set());
     } else {
       setSelected(new Set(pageData.map((r) => r.id)));
@@ -234,6 +297,23 @@ export function AdminTableView({ tableName }: AdminTableViewProps) {
       );
     }
 
+    if (key === "created_at" || key.endsWith("_at")) {
+      try {
+        const d = new Date(val);
+        return (
+          <span className="text-[11px] text-muted-foreground tabular-nums">
+            {d.toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })}
+            {" "}
+            <span className="opacity-60">
+              {d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}
+            </span>
+          </span>
+        );
+      } catch {
+        return <span className="text-[11px]">{String(val)}</span>;
+      }
+    }
+
     if (typeof val === "object") {
       const jsonStr = JSON.stringify(val);
       return (
@@ -283,7 +363,27 @@ export function AdminTableView({ tableName }: AdminTableViewProps) {
             placeholder={`Search in ${tableName}...`}
             className="w-full rounded-xl border border-border bg-card pl-9 pr-3 py-2.5 text-sm outline-none focus:border-brand transition-colors"
           />
+          {search && (
+            <button
+              onClick={() => { setSearch(""); setPage(0); }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-muted-foreground hover:bg-muted"
+            >
+              <X className="size-3.5" />
+            </button>
+          )}
         </div>
+
+        <button
+          onClick={() => setShowFilters((p) => !p)}
+          className={cn(
+            "flex items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-2.5 text-xs font-medium transition-colors",
+            showFilters || hasActiveFilters ? "bg-brand/10 border-brand/40 text-brand" : "hover:bg-muted"
+          )}
+        >
+          <Filter className="size-3.5" />
+          Filters
+          {hasActiveFilters && <span className="size-1.5 rounded-full bg-brand" />}
+        </button>
 
         {selected.size > 0 && (
           <button
@@ -291,7 +391,7 @@ export function AdminTableView({ tableName }: AdminTableViewProps) {
             className="flex items-center gap-1.5 rounded-xl border border-destructive bg-destructive px-3 py-2.5 text-xs font-semibold text-white hover:bg-destructive/90 transition-colors"
           >
             <Trash2 className="size-3.5" />
-            Delete {selected.size} selected
+            Delete {selected.size}
           </button>
         )}
 
@@ -304,22 +404,140 @@ export function AdminTableView({ tableName }: AdminTableViewProps) {
         </button>
       </div>
 
+      {/* Filter Panel */}
+      {showFilters && (
+        <div className="rounded-xl border border-border bg-card p-4 space-y-4">
+          {/* Date Filter */}
+          {hasDateColumn && (
+            <div>
+              <label className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                <Calendar className="size-3" />
+                Date Range
+              </label>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  { key: "all", label: "All" },
+                  { key: "today", label: "Today" },
+                  { key: "7days", label: "7 days" },
+                  { key: "30days", label: "30 days" },
+                ].map((opt) => (
+                  <button
+                    key={opt.key}
+                    onClick={() => { setDateFilter(opt.key as FilterType); setPage(0); }}
+                    className={cn(
+                      "rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",
+                      dateFilter === opt.key
+                        ? "bg-brand text-white border-brand"
+                        : "border-border bg-background hover:bg-muted"
+                    )}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Boolean Filter */}
+          {booleanColumns.length > 0 && (
+            <div>
+              <label className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                <Filter className="size-3" />
+                Boolean Filter
+              </label>
+              <div className="flex flex-wrap gap-2">
+                <select
+                  value={boolColumn}
+                  onChange={(e) => { setBoolColumn(e.target.value); setPage(0); }}
+                  className="rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium outline-none focus:border-brand"
+                >
+                  <option value="">Select column...</option>
+                  {booleanColumns.map((c) => (
+                    <option key={c} value={c}>{c.replace(/_/g, " ")}</option>
+                  ))}
+                </select>
+                {boolColumn && (
+                  <div className="flex gap-1.5">
+                    {[
+                      { key: "all", label: "All" },
+                      { key: "true", label: "True" },
+                      { key: "false", label: "False" },
+                    ].map((opt) => (
+                      <button
+                        key={opt.key}
+                        onClick={() => { setBoolFilter(opt.key as BooleanFilter); setPage(0); }}
+                        className={cn(
+                          "rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",
+                          boolFilter === opt.key
+                            ? "bg-brand text-white border-brand"
+                            : "border-border bg-background hover:bg-muted"
+                        )}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Reset */}
+          {hasActiveFilters && (
+            <button
+              onClick={resetFilters}
+              className="flex items-center gap-1.5 text-xs text-brand hover:underline font-medium"
+            >
+              <X className="size-3.5" />
+              Reset all filters
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Active Filter Chips */}
+      {hasActiveFilters && !showFilters && (
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <span className="text-muted-foreground">Filters:</span>
+          {search && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-brand/10 border border-brand/30 px-2 py-0.5 text-brand">
+              Search: {search.slice(0, 15)}{search.length > 15 && "…"}
+              <button onClick={() => { setSearch(""); setPage(0); }}><X className="size-3" /></button>
+            </span>
+          )}
+          {dateFilter !== "all" && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-brand/10 border border-brand/30 px-2 py-0.5 text-brand">
+              Date: {dateFilter}
+              <button onClick={() => { setDateFilter("all"); setPage(0); }}><X className="size-3" /></button>
+            </span>
+          )}
+          {boolFilter !== "all" && boolColumn && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-brand/10 border border-brand/30 px-2 py-0.5 text-brand">
+              {boolColumn}: {boolFilter}
+              <button onClick={() => { setBoolFilter("all"); setPage(0); }}><X className="size-3" /></button>
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Info */}
       <div className="flex items-center justify-between text-xs text-muted-foreground">
         <span>
           Showing <strong className="text-foreground">{pageData.length}</strong> of{" "}
           <strong className="text-foreground">{processed.length.toLocaleString("id-ID")}</strong> rows
-          {search && ` (filtered from ${data.length.toLocaleString("id-ID")})`}
+          {processed.length !== data.length && (
+            <span className="text-brand"> (filtered from {data.length.toLocaleString("id-ID")})</span>
+          )}
         </span>
         {selected.size > 0 && (
           <button onClick={() => setSelected(new Set())} className="flex items-center gap-1 text-brand hover:underline">
-            <X className="size-3" /> Clear selection
+            <X className="size-3" /> Clear selection ({selected.size})
           </button>
         )}
       </div>
 
       {/* Table */}
-      <div className="overflow-auto rounded-xl border border-border bg-card" style={{ maxHeight: "calc(100vh - 280px)" }}>
+      <div className="overflow-auto rounded-xl border border-border bg-card" style={{ maxHeight: "calc(100vh - 320px)" }}>
         <table className="w-full text-left">
           <thead className="sticky top-0 z-10 bg-muted/80 backdrop-blur-md">
             <tr>
@@ -353,38 +571,48 @@ export function AdminTableView({ tableName }: AdminTableViewProps) {
             </tr>
           </thead>
           <tbody>
-            {pageData.map((row) => (
-              <tr
-                key={row.id}
-                className={cn(
-                  "border-b border-border last:border-0 hover:bg-muted/30 transition-colors",
-                  selected.has(row.id) && "bg-brand/5"
-                )}
-              >
-                <td className="px-3 py-2 align-middle">
-                  <input
-                    type="checkbox"
-                    checked={selected.has(row.id)}
-                    onChange={() => toggleSelect(row.id)}
-                    className="size-3.5 cursor-pointer accent-brand"
-                  />
-                </td>
-                {columns.map((k) => (
-                  <td key={k} className="whitespace-nowrap px-3 py-2 align-middle">
-                    {formatCell(k, row[k], row.id)}
-                  </td>
-                ))}
-                <td className="whitespace-nowrap px-3 py-2 align-middle">
-                  <button
-                    onClick={() => handleDelete(row.id)}
-                    className="flex items-center gap-1 rounded-md border border-destructive/30 bg-destructive/10 px-2 py-1 text-[10px] font-medium text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors"
-                  >
-                    <Trash2 className="size-3" />
-                    Delete
-                  </button>
+            {pageData.length === 0 ? (
+              <tr>
+                <td colSpan={columns.length + 2} className="py-12 text-center text-muted-foreground">
+                  <div className="text-3xl mb-2">🔍</div>
+                  <div className="font-semibold">No results</div>
+                  <div className="text-xs mt-1">Try adjusting your filters</div>
                 </td>
               </tr>
-            ))}
+            ) : (
+              pageData.map((row) => (
+                <tr
+                  key={row.id}
+                  className={cn(
+                    "border-b border-border last:border-0 hover:bg-muted/30 transition-colors",
+                    selected.has(row.id) && "bg-brand/5"
+                  )}
+                >
+                  <td className="px-3 py-2 align-middle">
+                    <input
+                      type="checkbox"
+                      checked={selected.has(row.id)}
+                      onChange={() => toggleSelect(row.id)}
+                      className="size-3.5 cursor-pointer accent-brand"
+                    />
+                  </td>
+                  {columns.map((k) => (
+                    <td key={k} className="whitespace-nowrap px-3 py-2 align-middle">
+                      {formatCell(k, row[k], row.id)}
+                    </td>
+                  ))}
+                  <td className="whitespace-nowrap px-3 py-2 align-middle">
+                    <button
+                      onClick={() => handleDelete(row.id)}
+                      className="flex items-center gap-1 rounded-md border border-destructive/30 bg-destructive/10 px-2 py-1 text-[10px] font-medium text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors"
+                    >
+                      <Trash2 className="size-3" />
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
