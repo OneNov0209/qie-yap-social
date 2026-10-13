@@ -1,4 +1,4 @@
-import { Users, FileText, Heart, MessageCircle, Repeat, Bookmark, Coins, Gift, Rocket, Trophy, Bell, AtSign, LayoutDashboard, ChevronLeft, ChevronRight } from "lucide-react";
+import { Users, FileText, Heart, MessageCircle, Repeat, Bookmark, Coins, Gift, Rocket, Trophy, Bell, AtSign, LayoutDashboard, BarChart3, BadgeCheck, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface AdminSidebarProps {
@@ -14,6 +14,8 @@ const NAV_GROUPS = [
     label: "Overview",
     items: [
       { key: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { key: "charts", label: "Charts", icon: BarChart3 },
+      { key: "qie-pass", label: "QIE Pass", icon: BadgeCheck },
     ],
   },
   {
@@ -54,7 +56,6 @@ export function AdminSidebar({ active, onChange, counts, collapsed, onToggleColl
         collapsed ? "w-[72px]" : "w-64"
       )}
     >
-      {/* Brand */}
       <div className="flex items-center gap-3 border-b border-border p-4">
         <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF0A6C] to-[#0040FF] text-sm font-bold text-white">
           Q
@@ -67,7 +68,6 @@ export function AdminSidebar({ active, onChange, counts, collapsed, onToggleColl
         )}
       </div>
 
-      {/* Nav */}
       <nav className="flex-1 overflow-y-auto p-2">
         {NAV_GROUPS.map((group) => (
           <div key={group.label} className="mb-3">
@@ -115,7 +115,6 @@ export function AdminSidebar({ active, onChange, counts, collapsed, onToggleColl
         ))}
       </nav>
 
-      {/* Collapse toggle */}
       <button
         onClick={onToggleCollapse}
         className="m-2 flex items-center justify-center rounded-lg border border-border bg-card p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
