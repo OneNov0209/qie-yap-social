@@ -4,6 +4,7 @@ import { API_BASE } from "@/lib/posts";
 import { AdminSidebar } from "./admin-sidebar";
 import { AdminTableView } from "./admin-table-view";
 import { AdminCharts } from "./admin-charts";
+import { AdminQiePass } from "./admin-qie-pass";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -102,25 +103,12 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
           ) : view === "charts" ? (
             <AdminCharts />
           ) : view === "qie-pass" ? (
-            <QiePassPlaceholder />
+            <AdminQiePass />
           ) : (
             <AdminTableView tableName={view} />
           )}
         </div>
       </main>
-    </div>
-  );
-}
-
-// Placeholder QIE Pass — ganti nanti dengan component asli
-function QiePassPlaceholder() {
-  return (
-    <div className="rounded-2xl border border-dashed border-border bg-card p-16 text-center max-w-2xl mx-auto">
-      <div className="text-5xl mb-4">✅</div>
-      <h2 className="text-xl font-bold mb-2">QIE Pass Manager</h2>
-      <p className="text-sm text-muted-foreground">
-        Fitur ini akan segera hadir. Stay tuned!
-      </p>
     </div>
   );
 }
