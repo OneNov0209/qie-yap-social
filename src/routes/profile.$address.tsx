@@ -41,15 +41,6 @@ interface FeedProfile {
   qie_id?: string;
 }
 
-interface FollowUser {
-  id: string;
-  address: string;
-  username: string;
-  display_name: string;
-  avatar_seed: string;
-  is_validator?: boolean;
-}
-
 const POSTS_PER_PAGE = 20;
 
 function ProfilePage() {
@@ -57,7 +48,6 @@ function ProfilePage() {
   const { user, updateProfile } = useAuth();
   const [profile, setProfile] = useState<FeedProfile | null>(null);
   const [yaps, setYaps] = useState<FeedPost[]>([]);
-  const [totalYaps, setTotalYaps] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [counts, setCounts] = useState({ 
@@ -75,30 +65,19 @@ function ProfilePage() {
   const [editAvatarSeed, setEditAvatarSeed] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
-  // ✅ State untuk Followers/Following Modal
-  const [followModalOpen, setFollowModalOpen] = useState<false | 'followers' | 'following'>(false);
-  const [followList, setFollowList] = useState<FollowUser[]>([]);
-  const [followListLoading, setFollowListLoading] = useState(false);
-
   const [chartData, setChartData] = useState<any[]>([]);
   const [chartLoading, setChartLoading] = useState(true);
 
   const isOwn = user?.address?.toLowerCase() === address?.toLowerCase();
 
-  // ✅ LOAD MORE HANDLER
   const loadMorePosts = useCallback(async (profileId: string) => {
     if (loadingMore || !hasMore) return;
     setLoadingMore(true);
     try {
       const newPosts = await fetchUserPosts(profileId, POSTS_PER_PAGE, yaps.length);
-      if (newPosts.length < POSTS_PER_PAGE) {
-        setHasMore(false);
-      }
-      if (newPosts.length > 0) {
-        setYaps(prev => [...prev, ...newPosts]);
-      } else {
-        setHasMore(false);
-      }
+      if (newPosts.length < POSTS_PER_PAGE) setHasMore(false);
+      if (newPosts.length > 0) setYaps(prev => [...prev, ...newPosts]);
+      else setHasMore(false);
     } catch (err) {
       console.error("Load more error:", err);
       toast.error("Failed to load more posts");
@@ -106,54 +85,6 @@ function ProfilePage() {
       setLoadingMore(false);
     }
   }, [loadingMore, hasMore, yaps.length]);
-
-  // ✅ Load followers atau following
-  const loadFollowList = async (type: 'followers' | 'following') => {
-    if (!profile) return;
-    setFollowListLoading(true);
-    setFollowList([]);
-
-    try {
-      let url = '';
-      if (type === 'followers') {
-        url = `${API_BASE}/follows?following_id=${profile.id}`;
-      } else {
-        url = `${API_BASE}/follows?follower_id=${profile.id}`;
-      }
-
-      const res = await fetch(url);
-      if (res.ok) {
-        const data = await res.json();
-        const list: FollowUser[] = data.map((item: any) => ({
-          id: item.id,
-          address: item.address || '',
-          username: item.username || '',
-          display_name: item.display_name || '',
-          avatar_seed: item.avatar_seed || '',
-          is_validator: item.is_validator || false,
-        }));
-        setFollowList(list);
-      }
-    } catch (err) {
-      console.error(`Failed to load ${type}:`, err);
-      toast.error(`Failed to load ${type}`);
-    } finally {
-      setFollowListLoading(false);
-    }
-  };
-
-  // ✅ Buka modal + load list
-  const openFollowModal = (type: 'followers' | 'following') => {
-    setFollowModalOpen(type);
-    loadFollowList(type);
-  };
-
-  // ✅ Switch tab (tanpa tutup modal)
-  const switchFollowTab = (type: 'followers' | 'following') => {
-    if (followModalOpen === type) return;
-    setFollowModalOpen(type);
-    loadFollowList(type);
-  };
 
   useEffect(() => {
     const loadData = async () => {
@@ -223,9 +154,7 @@ function ProfilePage() {
 
         const firstBatch = await fetchUserPosts(profileData.id, POSTS_PER_PAGE, 0);
         setYaps(firstBatch);
-        if (firstBatch.length < POSTS_PER_PAGE) {
-          setHasMore(false);
-        }
+        if (firstBatch.length < POSTS_PER_PAGE) setHasMore(false);
 
         try {
           const dashRes = await fetch(`${API_BASE}/dashboard/${profileData.id}`);
@@ -385,7 +314,6 @@ function ProfilePage() {
             </div>
             {profile.bio && <p className="mt-3 text-foreground/90">{profile.bio}</p>}
 
-            {/* ON-CHAIN RÉSUMÉ */}
             <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-2">
               <ScoreCard icon={<Code className="size-4 text-brand" />} label="Builder Score" value={profile.builder_score || 0} />
               <ScoreCard icon={<Users className="size-4 text-brand" />} label="Contributor Score" value={profile.contributor_score || 0} />
@@ -393,24 +321,24 @@ function ProfilePage() {
               <ScoreCard icon={<Briefcase className="size-4 text-brand" />} label="Merchant Score" value={profile.merchant_score || 0} />
             </div>
 
-            {/* ✅ STATS: YAPS / FOLLOWERS / FOLLOWING — Clickable! */}
             <div className="mt-4 grid grid-cols-3 gap-2 rounded-2xl border border-border bg-card p-3 text-center">
               <Stat label="Yaps" value={String(counts.yaps || yaps.length)} />
-              <button 
-                onClick={() => openFollowModal('followers')}
-                className="cursor-pointer transition-opacity hover:opacity-70"
+              <Link 
+                to="/profile/$address/followers"
+                params={{ address: profile.address }}
+                className="cursor-pointer transition-opacity hover:opacity-70 block"
               >
                 <Stat label="Followers" value={String(counts.followers)} />
-              </button>
-              <button 
-                onClick={() => openFollowModal('following')}
-                className="cursor-pointer transition-opacity hover:opacity-70"
+              </Link>
+              <Link 
+                to="/profile/$address/following"
+                params={{ address: profile.address }}
+                className="cursor-pointer transition-opacity hover:opacity-70 block"
               >
                 <Stat label="Following" value={String(counts.following)} />
-              </button>
+              </Link>
             </div>
 
-            {/* TIPS RECEIVED */}
             <div className="mt-2 grid grid-cols-2 gap-2 rounded-2xl border border-border bg-card p-3 text-center">
               <div>
                 <div className="font-display font-bold text-brand">
@@ -431,7 +359,6 @@ function ProfilePage() {
             </div>
           </div>
 
-          {/* Chart Section */}
           <div className="mt-6 rounded-2xl border border-border/40 bg-card/50 p-4 backdrop-blur-sm shadow-sm">
             <div className="flex items-center gap-2 mb-3">
               <BarChart2 className="size-5 text-brand" />
@@ -500,108 +427,6 @@ function ProfilePage() {
           </div>
         </div>
       </div>
-
-      {/* ✅ FOLLOWERS/FOLLOWING MODAL — dengan TABS */}
-      {followModalOpen && (
-        <div 
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4"
-          onClick={() => setFollowModalOpen(false)}
-        >
-          <div 
-            className="w-full max-w-md rounded-2xl bg-card border border-border shadow-2xl max-h-[80vh] flex flex-col"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between px-4 pt-4 pb-2">
-              <h3 className="text-lg font-bold">Who's who</h3>
-              <button
-                onClick={() => setFollowModalOpen(false)}
-                className="p-1 rounded-full hover:bg-muted transition-colors"
-              >
-                <X className="size-5" />
-              </button>
-            </div>
-
-            {/* ✅ TABS */}
-            <div className="flex border-b border-border px-4">
-              <button
-                onClick={() => switchFollowTab('followers')}
-                className={cn(
-                  "flex-1 py-3 text-sm font-semibold transition-colors relative",
-                  followModalOpen === 'followers' 
-                    ? "text-brand" 
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                Followers
-                <span className="ml-1.5 text-xs text-muted-foreground">
-                  {counts.followers}
-                </span>
-                {followModalOpen === 'followers' && (
-                  <span className="absolute bottom-0 left-4 right-4 h-0.5 bg-brand rounded-full" />
-                )}
-              </button>
-              <button
-                onClick={() => switchFollowTab('following')}
-                className={cn(
-                  "flex-1 py-3 text-sm font-semibold transition-colors relative",
-                  followModalOpen === 'following' 
-                    ? "text-brand" 
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                Following
-                <span className="ml-1.5 text-xs text-muted-foreground">
-                  {counts.following}
-                </span>
-                {followModalOpen === 'following' && (
-                  <span className="absolute bottom-0 left-4 right-4 h-0.5 bg-brand rounded-full" />
-                )}
-              </button>
-            </div>
-
-            {/* Content */}
-            <div className="flex-1 overflow-y-auto">
-              {followListLoading ? (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 className="size-6 animate-spin text-brand" />
-                </div>
-              ) : followList.length === 0 ? (
-                <div className="py-12 text-center text-sm text-muted-foreground">
-                  {followModalOpen === 'followers' 
-                    ? 'No followers yet' 
-                    : 'Not following anyone yet'}
-                </div>
-              ) : (
-                <div className="divide-y divide-border">
-                  {followList.map((u) => (
-                    <Link
-                      key={u.id}
-                      to="/profile/$address"
-                      params={{ address: u.address }}
-                      onClick={() => setFollowModalOpen(false)}
-                      className="flex items-center gap-3 p-4 hover:bg-muted/40 transition-colors"
-                    >
-                      <Avatar seed={u.avatar_seed || u.address} size={44} />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold truncate">
-                            {u.display_name || shortAddr(u.address)}
-                          </span>
-                          {u.is_validator && <BadgeCheck className="size-4 text-brand shrink-0" />}
-                        </div>
-                        <div className="text-xs text-muted-foreground truncate">
-                          @{u.username || shortAddr(u.address)}
-                        </div>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Edit Profile Modal */}
       {isEditModalOpen && (
