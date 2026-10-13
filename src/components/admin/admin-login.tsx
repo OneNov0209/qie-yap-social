@@ -15,7 +15,6 @@ export function AdminLogin({ onLogin }: AdminLoginProps) {
     setError("");
     setLoading(true);
 
-    // Simulasi delay
     setTimeout(() => {
       const success = onLogin(password);
       if (!success) {
