@@ -321,18 +321,19 @@ function ProfilePage() {
               <ScoreCard icon={<Briefcase className="size-4 text-brand" />} label="Merchant Score" value={profile.merchant_score || 0} />
             </div>
 
+            {/* ✅ STATS: link ke /followers dengan query param */}
             <div className="mt-4 grid grid-cols-3 gap-2 rounded-2xl border border-border bg-card p-3 text-center">
               <Stat label="Yaps" value={String(counts.yaps || yaps.length)} />
               <Link 
-                to="/profile/$address_/followers"
-                params={{ address_: profile.address }}
+                to="/followers"
+                search={{ address: profile.address, type: "followers" }}
                 className="cursor-pointer transition-opacity hover:opacity-70 block"
               >
                 <Stat label="Followers" value={String(counts.followers)} />
               </Link>
               <Link 
-                to="/profile/$address_/following"
-                params={{ address_: profile.address }}
+                to="/followers"
+                search={{ address: profile.address, type: "following" }}
                 className="cursor-pointer transition-opacity hover:opacity-70 block"
               >
                 <Stat label="Following" value={String(counts.following)} />
