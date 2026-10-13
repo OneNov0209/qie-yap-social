@@ -25,34 +25,55 @@ function FollowingPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!address) return;
+    if (!address) {
+      setLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+
     const load = async () => {
       setLoading(true);
       try {
+        // Step 1: Load profile
         const profileRes = await fetch(`${API_BASE}/profiles/${address}`);
-        if (profileRes.ok) {
-          const p = await profileRes.json();
-          setProfile(p);
-          const url = `${API_BASE}/follows?follower_id=${p.id}${user ? `&viewer_id=${user.id}` : ""}`;
-          const res = await fetch(url);
-          if (res.ok) {
-            const data = await res.json();
-            setFollowing(data);
-          }
+        if (!profileRes.ok) {
+          if (!cancelled) setLoading(false);
+          return;
         }
+        const p = await profileRes.json();
+        if (cancelled) return;
+        setProfile(p);
+
+        // Step 2: Load following
+        const url = `${API_BASE}/follows?follower_id=${p.id}${user ? `&viewer_id=${user.id}` : ""}`;
+        const res = await fetch(url);
+        if (!res.ok) {
+          if (!cancelled) setLoading(false);
+          return;
+        }
+        const data = await res.json();
+        if (cancelled) return;
+
+        console.log("✅ Following loaded:", data?.length || 0);
+        setFollowing(Array.isArray(data) ? data : []);
       } catch (err) {
-        console.error("Failed to load following:", err);
+        console.error("❌ Failed to load following:", err);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
+
     load();
-  }, [address, user]);
+
+    return () => { cancelled = true; };
+  }, [address, user?.id]);
 
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-12">
       <Header />
       <div className="mx-auto max-w-2xl">
+        {/* Header sticky */}
         <div className="sticky top-0 z-20 bg-background/85 backdrop-blur-md border-b border-border">
           <div className="flex items-center gap-4 px-4 py-3">
             <button
@@ -72,6 +93,7 @@ function FollowingPage() {
             </div>
           </div>
 
+          {/* Tabs */}
           <div className="flex px-4">
             <Link
               to="/profile/$address_/followers"
@@ -91,6 +113,7 @@ function FollowingPage() {
           </div>
         </div>
 
+        {/* Content */}
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="size-8 animate-spin text-brand" />
