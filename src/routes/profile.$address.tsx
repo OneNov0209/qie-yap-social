@@ -324,14 +324,14 @@ function ProfilePage() {
             <div className="mt-4 grid grid-cols-3 gap-2 rounded-2xl border border-border bg-card p-3 text-center">
               <Stat label="Yaps" value={String(counts.yaps || yaps.length)} />
               <Link 
-                to="/profile/$address/followers"
+                to="/profile/$address_/followers"
                 params={{ address: profile.address }}
                 className="cursor-pointer transition-opacity hover:opacity-70 block"
               >
                 <Stat label="Followers" value={String(counts.followers)} />
               </Link>
               <Link 
-                to="/profile/$address/following"
+                to="/profile/$address_/following"
                 params={{ address: profile.address }}
                 className="cursor-pointer transition-opacity hover:opacity-70 block"
               >
