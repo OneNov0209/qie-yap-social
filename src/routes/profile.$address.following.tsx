@@ -6,7 +6,7 @@ import { UserCard } from "@/components/user-card";
 import { useAuth } from "@/lib/auth-store";
 import { API_BASE, shortAddr } from "@/lib/posts";
 
-export const Route = createFileRoute("/profile/$address/following")({
+export const Route = createFileRoute("/profile/$address_/following")({
   head: ({ params }) => ({
     meta: [
       { title: `Following of ${shortAddr(params.address)} — QIE Yap` },
@@ -77,14 +77,14 @@ function FollowingPage() {
           {/* Tabs */}
           <div className="flex px-4">
             <Link
-              to="/profile/$address/followers"
+              to="/profile/$address_/followers"
               params={{ address }}
               className="flex-1 py-3 text-center text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors"
             >
               Followers
             </Link>
             <Link
-              to="/profile/$address/following"
+              to="/profile/$address_/following"
               params={{ address }}
               className="flex-1 py-3 text-center text-sm font-semibold text-brand relative"
             >
