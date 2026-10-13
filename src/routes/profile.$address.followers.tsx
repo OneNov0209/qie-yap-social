@@ -9,14 +9,15 @@ import { API_BASE, shortAddr } from "@/lib/posts";
 export const Route = createFileRoute("/profile/$address_/followers")({
   head: ({ params }) => ({
     meta: [
-      { title: `Followers of ${shortAddr(params.address)} — QIE Yap` },
+      { title: `Followers of ${shortAddr(params.address_)} — QIE Yap` },
     ],
   }),
   component: FollowersPage,
 });
 
 function FollowersPage() {
-  const { address } = Route.useParams();
+  const { address_ } = Route.useParams();
+  const address = address_;
   const { user } = useAuth();
   const router = useRouter();
   const [profile, setProfile] = useState<any>(null);
@@ -24,16 +25,14 @@ function FollowersPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!address) return;
     const load = async () => {
       setLoading(true);
       try {
-        // Load profile target
         const profileRes = await fetch(`${API_BASE}/profiles/${address}`);
         if (profileRes.ok) {
           const p = await profileRes.json();
           setProfile(p);
-
-          // Load followers, sertakan viewer_id kalau user login
           const url = `${API_BASE}/follows?following_id=${p.id}${user ? `&viewer_id=${user.id}` : ""}`;
           const res = await fetch(url);
           if (res.ok) {
@@ -54,7 +53,6 @@ function FollowersPage() {
     <div className="min-h-screen bg-background pb-20 md:pb-12">
       <Header />
       <div className="mx-auto max-w-2xl">
-        {/* Header sticky */}
         <div className="sticky top-0 z-20 bg-background/85 backdrop-blur-md border-b border-border">
           <div className="flex items-center gap-4 px-4 py-3">
             <button
@@ -74,11 +72,10 @@ function FollowersPage() {
             </div>
           </div>
 
-          {/* Tabs */}
           <div className="flex px-4">
             <Link
               to="/profile/$address_/followers"
-              params={{ address }}
+              params={{ address_ }}
               className="flex-1 py-3 text-center text-sm font-semibold text-brand relative"
             >
               Followers
@@ -86,7 +83,7 @@ function FollowersPage() {
             </Link>
             <Link
               to="/profile/$address_/following"
-              params={{ address }}
+              params={{ address_ }}
               className="flex-1 py-3 text-center text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors"
             >
               Following
@@ -94,7 +91,6 @@ function FollowersPage() {
           </div>
         </div>
 
-        {/* Content */}
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="size-8 animate-spin text-brand" />
