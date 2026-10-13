@@ -25,29 +25,49 @@ function FollowersPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!address) return;
+    if (!address) {
+      setLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+
     const load = async () => {
       setLoading(true);
       try {
+        // Step 1: Load profile
         const profileRes = await fetch(`${API_BASE}/profiles/${address}`);
-        if (profileRes.ok) {
-          const p = await profileRes.json();
-          setProfile(p);
-          const url = `${API_BASE}/follows?following_id=${p.id}${user ? `&viewer_id=${user.id}` : ""}`;
-          const res = await fetch(url);
-          if (res.ok) {
-            const data = await res.json();
-            setFollowers(data);
-          }
+        if (!profileRes.ok) {
+          if (!cancelled) setLoading(false);
+          return;
         }
+        const p = await profileRes.json();
+        if (cancelled) return;
+        setProfile(p);
+
+        // Step 2: Load followers
+        const url = `${API_BASE}/follows?following_id=${p.id}${user ? `&viewer_id=${user.id}` : ""}`;
+        const res = await fetch(url);
+        if (!res.ok) {
+          if (!cancelled) setLoading(false);
+          return;
+        }
+        const data = await res.json();
+        if (cancelled) return;
+
+        console.log("✅ Followers loaded:", data?.length || 0);
+        setFollowers(Array.isArray(data) ? data : []);
       } catch (err) {
-        console.error("Failed to load followers:", err);
+        console.error("❌ Failed to load followers:", err);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
+
     load();
-  }, [address, user]);
+
+    return () => { cancelled = true; };
+  }, [address, user?.id]);
 
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-12">
