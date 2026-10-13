@@ -3,6 +3,7 @@ import { LogOut, RefreshCw } from "lucide-react";
 import { API_BASE } from "@/lib/posts";
 import { AdminSidebar } from "./admin-sidebar";
 import { AdminTableView } from "./admin-table-view";
+import { AdminCharts } from "./admin-charts";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -39,6 +40,20 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
     return () => clearInterval(interval);
   }, []);
 
+  const getPageTitle = () => {
+    if (view === "dashboard") return "Dashboard";
+    if (view === "charts") return "Analytics Charts";
+    if (view === "qie-pass") return "QIE Pass Manager";
+    return view.replace(/_/g, " ");
+  };
+
+  const getPageSubtitle = () => {
+    if (view === "dashboard") return "Overview & analytics";
+    if (view === "charts") return "Visual analytics";
+    if (view === "qie-pass") return "Manage KYC-verified users";
+    return `Manage ${view.replace(/_/g, " ")}`;
+  };
+
   return (
     <div className="flex min-h-screen bg-background">
       <AdminSidebar
@@ -55,10 +70,10 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
           <div className="flex items-center justify-between px-6 py-3">
             <div className="min-w-0">
               <h1 className="font-display text-xl font-bold capitalize truncate">
-                {view === "dashboard" ? "Dashboard" : view.replace(/_/g, " ")}
+                {getPageTitle()}
               </h1>
               <p className="text-xs text-muted-foreground">
-                {view === "dashboard" ? "Overview & analytics" : `Manage ${view.replace(/_/g, " ")}`}
+                {getPageSubtitle()}
               </p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
@@ -84,11 +99,28 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
         <div className="p-6">
           {view === "dashboard" ? (
             <DashboardView stats={stats} extra={extra} loading={loading} onSelectTable={setView} />
+          ) : view === "charts" ? (
+            <AdminCharts />
+          ) : view === "qie-pass" ? (
+            <QiePassPlaceholder />
           ) : (
             <AdminTableView tableName={view} />
           )}
         </div>
       </main>
+    </div>
+  );
+}
+
+// Placeholder QIE Pass — ganti nanti dengan component asli
+function QiePassPlaceholder() {
+  return (
+    <div className="rounded-2xl border border-dashed border-border bg-card p-16 text-center max-w-2xl mx-auto">
+      <div className="text-5xl mb-4">✅</div>
+      <h2 className="text-xl font-bold mb-2">QIE Pass Manager</h2>
+      <p className="text-sm text-muted-foreground">
+        Fitur ini akan segera hadir. Stay tuned!
+      </p>
     </div>
   );
 }
