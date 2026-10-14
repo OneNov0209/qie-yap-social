@@ -10,7 +10,7 @@ interface AdminTableViewProps {
 
 const PAGE_SIZE = 50;
 
-type FilterType = "all" | "today" | "7days" | "30days" | "custom";
+type FilterType = "all" | "today" | "7days" | "30days";
 type BooleanFilter = "all" | "true" | "false";
 type SortDir = "asc" | "desc";
 
@@ -24,7 +24,7 @@ export function AdminTableView({ tableName }: AdminTableViewProps) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  // 🔍 Filter states
+  // Filters
   const [dateFilter, setDateFilter] = useState<FilterType>("all");
   const [boolFilter, setBoolFilter] = useState<BooleanFilter>("all");
   const [boolColumn, setBoolColumn] = useState<string>("");
@@ -49,22 +49,17 @@ export function AdminTableView({ tableName }: AdminTableViewProps) {
     load();
   }, [tableName]);
 
-  // Auto-detect boolean columns
+  // Auto-detect boolean & date columns
   const booleanColumns = useMemo(() => {
     if (!data.length) return [];
     const sample = data[0];
-    return Object.keys(sample).filter(
-      (k) => typeof sample[k] === "boolean"
-    );
+    return Object.keys(sample).filter((k) => typeof sample[k] === "boolean");
   }, [data]);
 
-  // Auto-detect date columns
   const hasDateColumn = useMemo(() => {
     if (!data.length) return false;
     const sample = data[0];
-    return Object.keys(sample).some(
-      (k) => k === "created_at" || k.endsWith("_at")
-    );
+    return Object.keys(sample).some((k) => k === "created_at" || k.endsWith("_at"));
   }, [data]);
 
   const resetFilters = () => {
@@ -87,7 +82,6 @@ export function AdminTableView({ tableName }: AdminTableViewProps) {
   const processed = useMemo(() => {
     let result = [...data];
 
-    // 1. Search
     if (search.trim()) {
       const q = search.toLowerCase();
       result = result.filter((row) =>
@@ -95,18 +89,12 @@ export function AdminTableView({ tableName }: AdminTableViewProps) {
       );
     }
 
-    // 2. Date filter
     if (dateFilter !== "all" && hasDateColumn) {
       const now = new Date();
       let cutoff: Date | null = null;
-
-      if (dateFilter === "today") {
-        cutoff = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      } else if (dateFilter === "7days") {
-        cutoff = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      } else if (dateFilter === "30days") {
-        cutoff = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-      }
+      if (dateFilter === "today") cutoff = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      else if (dateFilter === "7days") cutoff = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      else if (dateFilter === "30days") cutoff = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
       if (cutoff) {
         result = result.filter((row) => {
@@ -117,13 +105,11 @@ export function AdminTableView({ tableName }: AdminTableViewProps) {
       }
     }
 
-    // 3. Boolean filter
     if (boolFilter !== "all" && boolColumn) {
       const targetVal = boolFilter === "true";
       result = result.filter((row) => Boolean(row[boolColumn]) === targetVal);
     }
 
-    // 4. Sort
     if (sortKey) {
       result.sort((a, b) => {
         const va = a[sortKey];
@@ -145,16 +131,11 @@ export function AdminTableView({ tableName }: AdminTableViewProps) {
   const totalPages = Math.max(1, Math.ceil(processed.length / PAGE_SIZE));
   const pageData = processed.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
-  const hasActiveFilters =
-    dateFilter !== "all" || boolFilter !== "all" || search.trim().length > 0;
+  const hasActiveFilters = dateFilter !== "all" || boolFilter !== "all" || search.trim().length > 0;
 
   const toggleSort = (key: string) => {
-    if (sortKey === key) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    } else {
-      setSortKey(key);
-      setSortDir("desc");
-    }
+    if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else { setSortKey(key); setSortDir("desc"); }
     setPage(0);
   };
 
@@ -166,16 +147,13 @@ export function AdminTableView({ tableName }: AdminTableViewProps) {
   };
 
   const toggleSelectAll = () => {
-    if (selected.size === pageData.length && pageData.length > 0) {
-      setSelected(new Set());
-    } else {
-      setSelected(new Set(pageData.map((r) => r.id)));
-    }
+    if (selected.size === pageData.length && pageData.length > 0) setSelected(new Set());
+    else setSelected(new Set(pageData.map((r) => r.id)));
   };
 
   const handleBulkDelete = async () => {
     if (selected.size === 0) return;
-    if (!confirm(`Delete ${selected.size} rows from "${tableName}"?\n\nThis cannot be undone!`)) return;
+    if (!confirm(`Delete ${selected.size} rows?\n\nCannot be undone!`)) return;
     let success = 0;
     for (const id of selected) {
       try {
@@ -234,11 +212,39 @@ export function AdminTableView({ tableName }: AdminTableViewProps) {
     toast.success(`Exported ${processed.length} rows`);
   };
 
+  // ✅ Open full text modal
+  const openFullText = (text: string, title: string) => {
+    const w = window.open("", "_blank", "width=600,height=500");
+    if (w) {
+      w.document.write(`
+        <html>
+          <head>
+            <title>${title}</title>
+            <style>
+              body { font-family: system-ui, -apple-system, sans-serif; padding: 24px; margin: 0; background: #f7f8fa; color: #111; line-height: 1.6; font-size: 14px; }
+              .card { background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); }
+              h2 { margin: 0 0 16px; font-size: 16px; color: #ec4899; }
+              pre { white-space: pre-wrap; word-wrap: break-word; font-family: inherit; margin: 0; }
+            </style>
+          </head>
+          <body>
+            <div class="card">
+              <h2>${title}</h2>
+              <pre>${text.replace(/</g, "&lt;")}</pre>
+            </div>
+          </body>
+        </html>
+      `);
+      w.document.close();
+    }
+  };
+
   const formatCell = (key: string, val: any, rowId: string) => {
     if (val === null || val === undefined || val === "null") {
       return <span className="text-muted-foreground/50">—</span>;
     }
 
+    // Tx hash → link ke explorer
     if (key === "tx_hash" && val) {
       return (
         <a
@@ -246,6 +252,7 @@ export function AdminTableView({ tableName }: AdminTableViewProps) {
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center gap-1 font-mono text-[11px] text-brand hover:underline"
+          title={String(val)}
         >
           {String(val).slice(0, 8)}…
           <ExternalLink className="size-3" />
@@ -253,6 +260,7 @@ export function AdminTableView({ tableName }: AdminTableViewProps) {
       );
     }
 
+    // Boolean → badge
     if (typeof val === "boolean") {
       return (
         <span
@@ -266,23 +274,69 @@ export function AdminTableView({ tableName }: AdminTableViewProps) {
       );
     }
 
+    // ✅ Bio / content / description → popup on click
     if (key === "content" || key === "description" || key === "bio") {
       const text = String(val);
+      if (!text.trim()) return <span className="text-muted-foreground/50">—</span>;
+      const short = text.length > 32 ? text.slice(0, 32) + "…" : text;
       return (
-        <div className="max-w-[280px] truncate text-xs" title={text}>
-          {text}
-        </div>
+        <button
+          onClick={() => openFullText(text, key.charAt(0).toUpperCase() + key.slice(1))}
+          className="max-w-[180px] truncate text-left text-xs text-foreground hover:text-brand transition-colors underline-offset-2 hover:underline"
+          title="Click to view full text"
+        >
+          {short}
+        </button>
       );
     }
 
-    if (key === "address" || key.endsWith("_address")) {
+    // ✅ Avatar seed — URL atau text
+    if (key === "avatar_seed" && val) {
+      const text = String(val);
+      if (text.startsWith("http")) {
+        return (
+          <a
+            href={text}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 rounded-md bg-muted/60 px-2 py-1 text-[11px] text-brand hover:bg-brand/10 transition-colors"
+            title={text}
+          >
+            🔗 link
+            <ExternalLink className="size-3" />
+          </a>
+        );
+      }
       return (
-        <span className="font-mono text-[11px] text-muted-foreground" title={String(val)}>
-          {String(val).slice(0, 10)}…{String(val).slice(-6)}
+        <span
+          className="inline-block max-w-[100px] truncate font-mono text-[11px] text-muted-foreground"
+          title={text}
+        >
+          {text}
         </span>
       );
     }
 
+    // Address → copy button
+    if (key === "address" || key.endsWith("_address")) {
+      const addr = String(val);
+      return (
+        <button
+          onClick={() => handleCopy(addr, `addr-${rowId}`)}
+          className="inline-flex items-center gap-1 rounded-md bg-muted/60 px-2 py-1 font-mono text-[11px] hover:bg-brand/10 hover:text-brand transition-colors"
+          title={`Click to copy: ${addr}`}
+        >
+          <span>{addr.slice(0, 6)}…{addr.slice(-4)}</span>
+          {copiedId === `addr-${rowId}` ? (
+            <Check className="size-3 text-emerald-500" />
+          ) : (
+            <Copy className="size-3 opacity-40" />
+          )}
+        </button>
+      );
+    }
+
+    // ID / _id / _hash → copy button
     if (key === "id" || key.endsWith("_id") || key.endsWith("_hash")) {
       const fullVal = String(val);
       const shortVal = `${fullVal.slice(0, 6)}…${fullVal.slice(-4)}`;
@@ -290,13 +344,19 @@ export function AdminTableView({ tableName }: AdminTableViewProps) {
         <button
           onClick={() => handleCopy(fullVal, rowId)}
           className="inline-flex items-center gap-1.5 rounded-md bg-muted/60 px-2 py-1 font-mono text-[11px] transition-colors hover:bg-brand/10 hover:text-brand"
+          title={`Click to copy: ${fullVal}`}
         >
           <span>{shortVal}</span>
-          {copiedId === rowId ? <Check className="size-3 text-emerald-500" /> : <Copy className="size-3 opacity-50" />}
+          {copiedId === rowId ? (
+            <Check className="size-3 text-emerald-500" />
+          ) : (
+            <Copy className="size-3 opacity-50" />
+          )}
         </button>
       );
     }
 
+    // Date → format cantik
     if (key === "created_at" || key.endsWith("_at")) {
       try {
         const d = new Date(val);
@@ -314,20 +374,32 @@ export function AdminTableView({ tableName }: AdminTableViewProps) {
       }
     }
 
+    // Object → JSON preview
     if (typeof val === "object") {
       const jsonStr = JSON.stringify(val);
       return (
-        <span className="font-mono text-[11px] text-muted-foreground" title={jsonStr}>
-          {jsonStr.length > 24 ? `${jsonStr.slice(0, 24)}…` : jsonStr}
+        <span className="inline-block max-w-[200px] truncate font-mono text-[11px] text-muted-foreground" title={jsonStr}>
+          {jsonStr}
         </span>
       );
     }
 
+    // Number
     if (typeof val === "number") {
       return <span className="tabular-nums text-xs">{val}</span>;
     }
 
-    return <span className="text-xs">{String(val)}</span>;
+    // Text biasa — kalau panjang, truncate dengan title
+    const text = String(val);
+    if (text.length > 30) {
+      return (
+        <span className="inline-block max-w-[160px] truncate text-xs" title={text}>
+          {text}
+        </span>
+      );
+    }
+
+    return <span className="text-xs">{text}</span>;
   };
 
   if (loading) {
@@ -407,7 +479,6 @@ export function AdminTableView({ tableName }: AdminTableViewProps) {
       {/* Filter Panel */}
       {showFilters && (
         <div className="rounded-xl border border-border bg-card p-4 space-y-4">
-          {/* Date Filter */}
           {hasDateColumn && (
             <div>
               <label className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
@@ -438,7 +509,6 @@ export function AdminTableView({ tableName }: AdminTableViewProps) {
             </div>
           )}
 
-          {/* Boolean Filter */}
           {booleanColumns.length > 0 && (
             <div>
               <label className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
@@ -482,7 +552,6 @@ export function AdminTableView({ tableName }: AdminTableViewProps) {
             </div>
           )}
 
-          {/* Reset */}
           {hasActiveFilters && (
             <button
               onClick={resetFilters}
@@ -597,11 +666,11 @@ export function AdminTableView({ tableName }: AdminTableViewProps) {
                     />
                   </td>
                   {columns.map((k) => (
-                    <td key={k} className="whitespace-nowrap px-3 py-2 align-middle">
+                    <td key={k} className="px-3 py-2 align-middle whitespace-nowrap">
                       {formatCell(k, row[k], row.id)}
                     </td>
                   ))}
-                  <td className="whitespace-nowrap px-3 py-2 align-middle">
+                  <td className="px-3 py-2 align-middle whitespace-nowrap">
                     <button
                       onClick={() => handleDelete(row.id)}
                       className="flex items-center gap-1 rounded-md border border-destructive/30 bg-destructive/10 px-2 py-1 text-[10px] font-medium text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors"
