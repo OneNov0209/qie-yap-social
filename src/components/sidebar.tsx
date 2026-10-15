@@ -2,15 +2,40 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { Home, Search, Activity, Wallet, Trophy, User, Coins, PlusCircle, X, Menu, Code, Users } from "lucide-react";
 import { useAuth } from "@/lib/auth-store";
 import { cn } from "@/lib/utils";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useSidebarStore } from "@/lib/sidebar-store";
+import { API_BASE } from "@/lib/posts";
 
 export function Sidebar() {
   const { user } = useAuth();
   const path = useRouterState({ select: (s) => s.location.pathname });
   const profilePath = user?.address ?? "0x0000000000000000000000000000000000000000";
-  
+
   const { isOpen, toggle, close } = useSidebarStore();
+
+  // ✅ Stats from /api/stats
+  const [stats, setStats] = useState<{ totalYaps: number; totalQie: string; totalBroq: string } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadStats = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/stats`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled) setStats(data);
+      } catch (err) {
+        console.warn("Failed to load stats:", err);
+      }
+    };
+    loadStats();
+    // Refresh tiap 60 detik (opsional)
+    const interval = setInterval(loadStats, 60000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, []);
 
   useEffect(() => {
     if (window.innerWidth < 1024) {
@@ -90,11 +115,15 @@ export function Sidebar() {
             <div className="space-y-1">
               <div className="flex justify-between text-xs">
                 <span className="text-muted-foreground/60">Total Yaps</span>
-                <span className="font-semibold text-foreground">--</span>
+                <span className="font-semibold text-foreground">
+                  {stats ? stats.totalYaps.toLocaleString("id-ID") : "--"}
+                </span>
               </div>
               <div className="flex justify-between text-xs">
                 <span className="text-muted-foreground/60">Tips Tipped</span>
-                <span className="font-semibold text-foreground">-- QIE</span>
+                <span className="font-semibold text-foreground">
+                  {stats ? `${parseFloat(stats.totalQie).toFixed(2)} QIE` : "-- QIE"}
+                </span>
               </div>
             </div>
           </div>
