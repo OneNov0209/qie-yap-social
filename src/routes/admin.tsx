@@ -13,7 +13,7 @@ export const Route = createFileRoute("/admin")({
   component: AdminPage,
 });
 
-const ADMIN_PASSWORD = "Qie336699*";
+const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD_UI || "";
 const STORAGE_KEY = "qie_yap_admin_auth";
 
 function AdminPage() {
