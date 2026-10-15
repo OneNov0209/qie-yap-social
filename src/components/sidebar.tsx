@@ -13,14 +13,14 @@ export function Sidebar() {
 
   const { isOpen, toggle, close } = useSidebarStore();
 
-  // ✅ Stats from /api/stats
+  // ✅ Stats from /api/stats (publik, tanpa auth)
   const [stats, setStats] = useState<{ totalYaps: number; totalQie: string; totalBroq: string } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     const loadStats = async () => {
       try {
-        const res = await fetch(`${API_BASE}/api/stats`);
+        const res = await fetch(`${API_BASE}/stats`);
         if (!res.ok) return;
         const data = await res.json();
         if (!cancelled) setStats(data);
@@ -29,7 +29,6 @@ export function Sidebar() {
       }
     };
     loadStats();
-    // Refresh tiap 60 detik (opsional)
     const interval = setInterval(loadStats, 60000);
     return () => {
       cancelled = true;
@@ -88,7 +87,8 @@ export function Sidebar() {
           </button>
         </div>
 
-        <nav className="flex-1 space-y-1.5 px-4 py-6">
+        {/* Nav Items */}
+        <nav className="flex-1 space-y-1.5 px-4 py-6 overflow-y-auto">
           {navItems.map((it) => (
             <Link
               key={it.label}
@@ -106,6 +106,7 @@ export function Sidebar() {
           ))}
         </nav>
 
+        {/* ✅ Stats Card — di bawah tab Projects */}
         <div className="border-t border-white/5 p-4">
           <div className="rounded-xl border border-white/5 bg-black/20 backdrop-blur-sm p-4 shadow-inner">
             <div className="flex items-center gap-2 text-xs text-muted-foreground/70 mb-2">
