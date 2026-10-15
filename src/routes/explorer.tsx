@@ -19,14 +19,13 @@ export const Route = createFileRoute("/explorer")({
 interface ExplorerTx {
   id: string;
   type: "tip" | "yap" | "super_yap" | "boost";
-  from_user_id: string;
-  to_user_id?: string;
+  from_name: string;
+  to_name?: string;
   amount?: number;
+  token_type?: "QIE" | "BROQ";
   tx_hash: string | null;
   created_at: string;
   content?: string;
-  author_display_name?: string;
-  recipient_display_name?: string;
 }
 
 function ExplorerPage() {
@@ -36,11 +35,11 @@ function ExplorerPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "tip" | "super_yap" | "boost" | "yap">("all");
   const [stats, setStats] = useState({
-    totalTips: 0,
+    totalQieTipped: 0,
+    totalBroqTipped: 0,
     totalSuperYaps: 0,
     totalBoosts: 0,
     totalYaps: 0,
-    totalQIE: 0,
   });
 
   useEffect(() => {
@@ -51,7 +50,7 @@ function ExplorerPage() {
     setLoading(true);
     try {
       const posts = await fetchFeed("latest", user?.id || null);
-      
+
       let tips: any[] = [];
       try {
         const tipsRes = await fetch(`${API_BASE}/tips?limit=100`);
@@ -65,9 +64,10 @@ function ExplorerPage() {
       const tipTxs: ExplorerTx[] = tips.map((t: any) => ({
         id: t.id,
         type: "tip",
-        from_user_id: t.from_user_id,
-        to_user_id: t.to_user_id,
+        from_name: t.from_user?.display_name || t.from_user?.username || "Unknown",
+        to_name: t.to_user?.display_name || t.to_user?.username || "Unknown",
         amount: Number(t.amount),
+        token_type: (t.token_type || "QIE") as "QIE" | "BROQ",
         tx_hash: t.tx_hash || null,
         created_at: t.created_at,
       }));
@@ -77,11 +77,10 @@ function ExplorerPage() {
         .map((p) => ({
           id: p.id,
           type: "yap",
-          from_user_id: p.author.address,
+          from_name: p.author.displayName,
           tx_hash: p.txHash || null,
           created_at: p.createdAt,
           content: p.content,
-          author_display_name: p.author.displayName,
         }));
 
       const superYapTxs: ExplorerTx[] = posts
@@ -89,11 +88,10 @@ function ExplorerPage() {
         .map((p) => ({
           id: p.id,
           type: "super_yap",
-          from_user_id: p.author.address,
+          from_name: p.author.displayName,
           tx_hash: p.txHash || null,
           created_at: p.createdAt,
           content: p.content,
-          author_display_name: p.author.displayName,
         }));
 
       const boostTxs: ExplorerTx[] = posts
@@ -101,28 +99,29 @@ function ExplorerPage() {
         .map((p) => ({
           id: p.id,
           type: "boost",
-          from_user_id: p.author.address,
+          from_name: p.author.displayName,
           tx_hash: p.txHash || null,
           created_at: p.createdAt,
           content: p.content,
-          author_display_name: p.author.displayName,
         }));
 
       const allTxs = [...tipTxs, ...yapTxs, ...superYapTxs, ...boostTxs];
       allTxs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-      const totalTips = tipTxs.reduce((sum, t) => sum + (t.amount || 0), 0);
-      const totalSuperYaps = superYapTxs.length;
-      const totalBoosts = boostTxs.length;
-      const totalYaps = yapTxs.length;
+      const totalQieTipped = tipTxs
+        .filter((t) => t.token_type === "QIE")
+        .reduce((sum, t) => sum + (t.amount || 0), 0);
+      const totalBroqTipped = tipTxs
+        .filter((t) => t.token_type === "BROQ")
+        .reduce((sum, t) => sum + (t.amount || 0), 0);
 
       setTxs(allTxs.slice(0, 50));
       setStats({
-        totalTips,
-        totalSuperYaps,
-        totalBoosts,
-        totalYaps,
-        totalQIE: totalTips,
+        totalQieTipped,
+        totalBroqTipped,
+        totalSuperYaps: superYapTxs.length,
+        totalBoosts: boostTxs.length,
+        totalYaps: yapTxs.length,
       });
     } catch (err) {
       console.error("Explorer error:", err);
@@ -167,25 +166,27 @@ function ExplorerPage() {
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-          <StatCard 
-            icon={<Coins className="size-4 text-emerald-500" />}
-            label="Total Tips"
-            value={`${stats.totalTips.toFixed(4)} QIE`}
+          <StatCard
+            icon={<Coins className="size-4 text-brand" />}
+            label="QIE Tips"
+            value={`${stats.totalQieTipped.toFixed(4)}`}
             sub="Total QIE tipped"
+            accent="brand"
           />
-          <StatCard 
-            icon={<MessageCircle className="size-4 text-blue-500" />}
-            label="On-Chain Yaps"
-            value={stats.totalYaps.toString()}
-            sub="Yaps recorded"
+          <StatCard
+            icon={<Coins className="size-4 text-purple-500" />}
+            label="BROQ Tips"
+            value={stats.totalBroqTipped.toLocaleString('id-ID', { maximumFractionDigits: 0 })}
+            sub="Total BROQ tipped"
+            accent="purple"
           />
-          <StatCard 
+          <StatCard
             icon={<Sparkles className="size-4 text-amber-500" />}
             label="Super Yaps"
             value={stats.totalSuperYaps.toString()}
             sub="Premium Yaps"
           />
-          <StatCard 
+          <StatCard
             icon={<Zap className="size-4 text-purple-500" />}
             label="Boosts"
             value={stats.totalBoosts.toString()}
@@ -206,8 +207,8 @@ function ExplorerPage() {
               onClick={() => setFilter(f.value as any)}
               className={cn(
                 "rounded-full px-4 py-1.5 text-xs font-medium transition-all duration-200",
-                filter === f.value 
-                  ? "bg-foreground text-background shadow-sm" 
+                filter === f.value
+                  ? "bg-foreground text-background shadow-sm"
                   : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
               )}
             >
@@ -246,10 +247,11 @@ function ExplorerPage() {
             {filteredTxs.map((tx, index) => {
               const meta = getTxMeta(tx.type);
               const Icon = meta.icon;
-              
+              const isBroq = tx.token_type === "BROQ";
+
               return (
-                <div 
-                  key={`${tx.id}-${index}`} 
+                <div
+                  key={`${tx.id}-${index}`}
                   className="group rounded-xl border border-border/50 bg-card/50 p-4 transition-all hover:bg-card/80 hover:border-border"
                 >
                   <div className="flex items-start justify-between gap-3">
@@ -269,29 +271,35 @@ function ExplorerPage() {
                             </span>
                           )}
                         </div>
-                        
+
                         <p className="text-sm font-medium mt-0.5 truncate">
-                          {tx.type === "tip" 
-                            ? `💎 ${tx.from_user_id ? shortAddr(tx.from_user_id) : 'Unknown'} → ${tx.to_user_id ? shortAddr(tx.to_user_id) : 'Unknown'}`
-                            : `✍️ ${tx.author_display_name || shortAddr(tx.from_user_id)}`
+                          {tx.type === "tip"
+                            ? `${isBroq ? "🪙" : "💎"} ${tx.from_name} → ${tx.to_name}`
+                            : `✍️ ${tx.from_name}`
                           }
                         </p>
-                        
+
                         {tx.content && (
                           <p className="text-xs text-muted-foreground truncate max-w-md mt-0.5">
                             "{tx.content.slice(0, 60)}..."
                           </p>
                         )}
-                        
+
                         <div className="flex items-center gap-3 mt-1 text-[10px] text-muted-foreground">
                           <span className="flex items-center gap-1">
                             <Clock className="size-3" />
                             {formatTime(tx.created_at)}
                           </span>
-                          {tx.amount && tx.amount > 0 && (
-                            <span className="flex items-center gap-1 text-emerald-500 font-medium">
+                          {tx.amount !== undefined && tx.amount > 0 && (
+                            <span className={cn(
+                              "flex items-center gap-1 font-medium",
+                              isBroq ? "text-purple-500" : "text-brand"
+                            )}>
                               <Coins className="size-3" />
-                              +{tx.amount.toFixed(4)} QIE
+                              +{isBroq
+                                ? `${Number(tx.amount).toLocaleString('id-ID', { maximumFractionDigits: 2 })} BROQ`
+                                : `${Number(tx.amount).toFixed(4)} QIE`
+                              }
                             </span>
                           )}
                         </div>
@@ -322,11 +330,23 @@ function ExplorerPage() {
   );
 }
 
-function StatCard({ icon, label, value, sub }: { icon: React.ReactNode; label: string; value: string; sub: string }) {
+function StatCard({
+  icon, label, value, sub, accent,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  sub: string;
+  accent?: "brand" | "purple";
+}) {
   return (
     <div className="rounded-xl border border-border bg-card/50 p-4 text-center hover:bg-card/80 transition-colors">
       <div className="flex justify-center mb-2">{icon}</div>
-      <p className="text-sm font-bold">{value}</p>
+      <p className={cn(
+        "text-sm font-bold",
+        accent === "brand" && "text-brand",
+        accent === "purple" && "text-purple-500",
+      )}>{value}</p>
       <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">{label}</p>
       <p className="text-[9px] text-muted-foreground/60 mt-0.5">{sub}</p>
     </div>
