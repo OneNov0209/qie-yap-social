@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { BadgeCheck, Search, Loader2, RefreshCw, X, Check, AlertCircle, ExternalLink, Copy, Edit2, Save, CheckSquare, Square, Download } from "lucide-react";
-import { API_BASE } from "@/lib/posts";
+import { API_BASE, adminFetch } from "@/lib/posts";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -35,7 +35,7 @@ export function AdminQiePass() {
     setLoading(true);
     try {
       const status = tab === "verified" ? "verified" : "unverified";
-      const res = await fetch(`${API_BASE}/admin/qie-pass/list?status=${status}&limit=1000`);
+      const res = await adminFetch(`${API_BASE}/admin/qie-pass/list?status=${status}&limit=1000`);
       if (res.ok) {
         const data = await res.json();
         setUsers(data.users || []);
@@ -69,7 +69,7 @@ export function AdminQiePass() {
   const handleAction = async (profileId: string, action: "verify" | "unverify" | "update_qie_id", qieId?: string) => {
     setProcessing((p) => new Set(p).add(profileId));
     try {
-      const res = await fetch(`${API_BASE}/admin/qie-pass/action`, {
+      const res = await adminFetch(`${API_BASE}/admin/qie-pass/action`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ profile_id: profileId, action, qie_id: qieId }),
@@ -96,7 +96,7 @@ export function AdminQiePass() {
     setProcessing((p) => new Set(p).add(profileId));
     toast.loading("Checking QIE Pass API...", { id: `recheck-${profileId}` });
     try {
-      const res = await fetch(`${API_BASE}/admin/qie-pass/recheck/${profileId}`, {
+      const res = await adminFetch(`${API_BASE}/admin/qie-pass/recheck/${profileId}`, {
         method: "POST",
       });
       const data = await res.json();
@@ -124,7 +124,7 @@ export function AdminQiePass() {
     if (!confirm(`${action === "verify" ? "Verify" : "Unverify"} ${selected.size} users?`)) return;
 
     try {
-      const res = await fetch(`${API_BASE}/admin/qie-pass/bulk`, {
+      const res = await adminFetch(`${API_BASE}/admin/qie-pass/bulk`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ profile_ids: Array.from(selected), action }),
