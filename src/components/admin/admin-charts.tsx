@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Loader2, TrendingUp, FileText, Coins, Trophy } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Legend } from "recharts";
-import { API_BASE } from "@/lib/posts";
+import { API_BASE, adminFetch } from "@/lib/posts";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -28,7 +28,7 @@ export function AdminCharts() {
     const load = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`${API_BASE}/admin/chart?days=${days}`);
+        const res = await adminFetch(`${API_BASE}/admin/chart?days=${days}`);
         if (res.ok) {
           setData(await res.json());
         }
