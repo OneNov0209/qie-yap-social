@@ -20,6 +20,7 @@ export interface User {
 interface AuthState {
   user: User | null;
   connecting: boolean;
+  connectStep: string | null;  // ✅ NEW: label tahap koneksi
   connect: () => Promise<void>;
   disconnect: () => void;
   updateProfile: (updates: Partial<User>) => void;
@@ -30,12 +31,13 @@ export const useAuth = create<AuthState>()(
     (set, get) => ({
       user: null,
       connecting: false,
+      connectStep: null,
 
       connect: async () => {
         if (typeof window === 'undefined' || !window.ethereum) {
           throw new Error('QIE Wallet tidak terdeteksi. Harap install ekstensi QIE Wallet.');
         }
-        set({ connecting: true });
+        set({ connecting: true, connectStep: 'Connecting wallet...' });
 
         try {
           // 1. Ambil alamat wallet
@@ -43,26 +45,26 @@ export const useAuth = create<AuthState>()(
           const address = (accounts as string[])[0];
           if (!address) throw new Error('Tidak ada akun yang ditemukan di QIE Wallet.');
 
-          // 2. Ambil referral code dari URL (jika ada)
+          set({ connectStep: 'Checking profile...' });
+
+          // 2. Ambil referral code
           const referredBy = getReferredBy();
 
-          // 3. Cek apakah user sudah terdaftar (tanpa perlu signature)
+          // 3. Cek existing user
           const checkRes = await fetch(`${API_BASE}/profiles/${address}`);
           const isExistingUser = checkRes.ok;
 
           let profile: any;
 
           if (isExistingUser) {
-            // ✅ User sudah ada — langsung login (tidak perlu signature)
             profile = await checkRes.json();
-            console.log("✅ Existing user logged in:", address.slice(0, 10) + "...");
+            console.log("✅ Existing user:", address.slice(0, 10) + "...");
           } else {
-            // ✅ User baru — WAJIB tanda tangan wallet
-            console.log("🆕 New user detected, requesting signature...");
+            console.log("🆕 New user, requesting signature...");
+            set({ connectStep: 'Please sign in your wallet...' });
 
             const message = generateRegisterMessage(address);
 
-            // Minta user tanda tangan pesan
             let signature: string;
             try {
               signature = await window.ethereum.request({
@@ -70,20 +72,16 @@ export const useAuth = create<AuthState>()(
                 params: [message, address],
               }) as string;
             } catch (signError: any) {
-              // User menolak tanda tangan
               if (signError?.code === 4001) {
                 throw new Error('Tanda tangan dibutuhkan untuk registrasi. Silakan setujui tanda tangan di wallet Anda.');
               }
               throw new Error('Gagal menandatangani pesan: ' + (signError.message || 'Unknown error'));
             }
 
-            if (!signature) {
-              throw new Error('Tanda tangan tidak valid.');
-            }
+            if (!signature) throw new Error('Tanda tangan tidak valid.');
 
-            console.log("✍️ Signature obtained, registering...");
+            set({ connectStep: 'Registering...' });
 
-            // Kirim ke backend dengan signature
             const res = await fetch(`${API_BASE}/profiles`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -101,42 +99,48 @@ export const useAuth = create<AuthState>()(
             }
 
             profile = await res.json();
-            console.log("✅ Registration successful:", profile.id);
+            console.log("✅ Registered:", profile.id);
           }
 
-          // 4. Bersihkan URL setelah login/register berhasil
-          if (referredBy) {
-            clearReferralFromUrl();
-          }
+          if (referredBy) clearReferralFromUrl();
 
-          // 5. Ambil balance on-chain
-          const balance = await getQieBalance(address as `0x${string}`).catch(() => 0);
-
+          // 4. Set user DULU (jangan tunggu balance)
           const displayName = profile.display_name || `${address.slice(0, 6)}…${address.slice(-4)}`;
           const username = profile.username || address.slice(0, 8);
 
           const userData: User = {
             id: profile.id,
             address: profile.address ?? address,
-            username: username,
-            displayName: displayName,
+            username,
+            displayName,
             bio: profile.bio ?? '',
             avatarSeed: profile.avatar_seed ?? address,
             badge: 'shrimp',
             isValidator: Boolean(profile.is_validator),
-            balance,
+            balance: 0, // sementara
           };
 
-          console.log("✅ User data saved:", userData);
-          set({ user: userData, connecting: false });
+          set({ user: userData, connecting: false, connectStep: null });
+          console.log("✅ User logged in");
+
+          // 5. Fetch balance di background (non-blocking)
+          getQieBalance(address as `0x${string}`)
+            .then((balance) => {
+              const current = get().user;
+              if (current && current.address === address) {
+                set({ user: { ...current, balance } });
+              }
+            })
+            .catch(() => { /* ignore */ });
+
         } catch (error) {
           console.error('Connect error:', error);
-          set({ connecting: false });
+          set({ connecting: false, connectStep: null });
           throw error;
         }
       },
 
-      disconnect: () => set({ user: null }),
+      disconnect: () => set({ user: null, connecting: false, connectStep: null }),
 
       updateProfile: (updates) => {
         const current = get().user;
