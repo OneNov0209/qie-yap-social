@@ -321,3 +321,47 @@ export async function fetchBroqBalance(address: string): Promise<string> {
   const data = await res.json();
   return data.formatted || '0';
 }
+
+// ✅ SIGNATURE-BASED REGISTRATION
+export async function registerWithSignature(
+  address: string,
+  referredBy: string | null,
+  signature: string,
+  message: string
+): Promise<{ success: boolean; profile?: any; error?: string }> {
+  try {
+    const res = await fetch(`${API_BASE}/profiles`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        address,
+        referred_by: referredBy,
+        signature,
+        message,
+      }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      return { success: false, error: data.error || "Registration failed" };
+    }
+
+    return { success: true, profile: data };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Network error" };
+  }
+}
+
+// ✅ Helper: Generate signature message untuk register
+export function generateRegisterMessage(address: string): string {
+  const timestamp = Date.now();
+  const nonce = Math.random().toString(36).substring(2, 15);
+  return `Sign to register on QIE Yap
+
+I confirm ownership of this wallet and agree to QIE Yap terms.
+
+Address: ${address}
+Timestamp: ${timestamp}
+Nonce: ${nonce}`;
+}
