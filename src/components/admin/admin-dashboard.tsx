@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { LogOut, RefreshCw } from "lucide-react";
-import { API_BASE } from "@/lib/posts";
+import { API_BASE, adminFetch } from "@/lib/posts";
 import { AdminSidebar } from "./admin-sidebar";
 import { AdminTableView } from "./admin-table-view";
 import { AdminCharts } from "./admin-charts";
@@ -21,7 +21,7 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
 
   const loadStats = async () => {
     try {
-      const res = await fetch(`${API_BASE}/admin/stats/all`);
+      const res = await adminFetch(`${API_BASE}/admin/stats/all`);
       if (res.ok) {
         const data = await res.json();
         setStats(data.counts || {});
