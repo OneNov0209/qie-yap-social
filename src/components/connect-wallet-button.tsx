@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { useState } from "react";
 
 export function ConnectWalletButton() {
-  const { user, connect, connecting, disconnect } = useAuth();
+  const { user, connect, connecting, connectStep, disconnect } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
 
   const handleConnect = async () => {
@@ -42,18 +42,22 @@ export function ConnectWalletButton() {
     );
   }
 
+  const label = connecting || isLoading
+    ? (connectStep || "Connecting...")
+    : "Connect QIE Wallet";
+
   return (
     <Button
       onClick={handleConnect}
       disabled={connecting || isLoading}
       className="rounded-full bg-[#4B6BFB] hover:bg-[#3A5ADE] text-white px-4 py-2 flex items-center gap-2 font-semibold shadow-lg shadow-brand/20 transition-all"
     >
-      <img 
-        src="https://raw.githubusercontent.com/OneNov0209/logo/refs/heads/main/Qie-wallet.png" 
-        alt="QIE Wallet" 
+      <img
+        src="https://raw.githubusercontent.com/OneNov0209/logo/refs/heads/main/Qie-wallet.png"
+        alt="QIE Wallet"
         className="w-5 h-5 rounded-full"
       />
-      {connecting || isLoading ? "Connecting..." : "Connect QIE Wallet"}
+      <span className="truncate max-w-[180px]">{label}</span>
     </Button>
   );
 }
