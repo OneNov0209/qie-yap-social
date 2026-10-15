@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { Loader2, Search, Download, Trash2, Copy, Check, ExternalLink, ArrowUpDown, ArrowUp, ArrowDown, X, ChevronLeft, ChevronRight, Calendar, Filter } from "lucide-react";
-import { API_BASE } from "@/lib/posts";
+import { API_BASE, adminFetch } from "@/lib/posts";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -36,7 +36,7 @@ export function AdminTableView({ tableName }: AdminTableViewProps) {
       setLoading(true);
       resetFilters();
       try {
-        const res = await fetch(`${API_BASE}/admin/${tableName}?limit=100000`);
+        const res = await adminFetch(`${API_BASE}/admin/${tableName}?limit=100000`);
         const json = await res.json();
         setData(Array.isArray(json) ? json : []);
       } catch (err) {
@@ -157,7 +157,7 @@ export function AdminTableView({ tableName }: AdminTableViewProps) {
     let success = 0;
     for (const id of selected) {
       try {
-        await fetch(`${API_BASE}/admin/${tableName}/${id}`, { method: "DELETE" });
+        await adminFetch(`${API_BASE}/admin/${tableName}/${id}`, { method: "DELETE" });
         success++;
       } catch {}
     }
@@ -169,7 +169,7 @@ export function AdminTableView({ tableName }: AdminTableViewProps) {
   const handleDelete = async (id: string) => {
     if (!confirm(`Delete row?\n\nID: ${id}`)) return;
     try {
-      await fetch(`${API_BASE}/admin/${tableName}/${id}`, { method: "DELETE" });
+      await adminFetch(`${API_BASE}/admin/${tableName}/${id}`, { method: "DELETE" });
       setData((prev) => prev.filter((r) => r.id !== id));
       toast.success("Deleted");
     } catch {
