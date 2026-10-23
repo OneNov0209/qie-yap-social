@@ -63,6 +63,7 @@ function ProfilePage() {
   const [editName, setEditName] = useState("");
   const [editBio, setEditBio] = useState("");
   const [editAvatarSeed, setEditAvatarSeed] = useState("");
+  const [editQieId, setEditQieId] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
   const [chartData, setChartData] = useState<any[]>([]);
@@ -236,19 +237,32 @@ function ProfilePage() {
           display_name: editName.trim(),
           bio: editBio.trim(),
           avatar_seed: editAvatarSeed.trim() || profile.address,
+          qie_id: editQieId.trim(), // Mengirim QIE ID untuk diverifikasi backend
         }),
       });
-      if (!res.ok) throw new Error("Failed to update profile");
       
-      const updated = await res.json();
+      const data = await res.json().catch(() => ({}));
+      
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to update profile");
+      }
+      
       const updatedProfile = {
         ...profile,
-        displayName: updated.display_name || editName.trim(),
-        bio: updated.bio || editBio.trim(),
-        avatarSeed: updated.avatar_seed || editAvatarSeed.trim() || profile.address,
+        displayName: data.display_name || editName.trim(),
+        bio: data.bio || editBio.trim(),
+        avatarSeed: data.avatar_seed || editAvatarSeed.trim() || profile.address,
+        qie_id: data.qie_id || null, // Update QIE ID dari response backend
       };
+      
       setProfile(updatedProfile);
-      if (isOwn) updateProfile({ displayName: editName.trim(), bio: editBio.trim(), avatarSeed: editAvatarSeed.trim() || profile.address });
+      if (isOwn) {
+        updateProfile({ 
+          displayName: editName.trim(), 
+          bio: editBio.trim(), 
+          avatarSeed: editAvatarSeed.trim() || profile.address 
+        });
+      }
       toast.success("Profile updated!");
       setIsEditModalOpen(false);
     } catch (error: any) {
@@ -282,7 +296,18 @@ function ProfilePage() {
           <div className="flex items-end justify-between -mt-12">
             <Avatar seed={profile.avatarSeed} size={96} className="ring-4 ring-background shadow-lg" />
             {isOwn ? (
-              <Button variant="outline" className="rounded-full border-brand/40 text-brand hover:bg-brand-soft" onClick={() => setIsEditModalOpen(true)}>
+              <Button 
+                variant="outline" 
+                className="rounded-full border-brand/40 text-brand hover:bg-brand-soft" 
+                onClick={() => {
+                  // ✅ Isi form edit dengan data lama sebelum modal dibuka
+                  setEditName(profile.displayName);
+                  setEditBio(profile.bio);
+                  setEditAvatarSeed(profile.avatarSeed);
+                  setEditQieId(profile.qie_id || "");
+                  setIsEditModalOpen(true);
+                }}
+              >
                 Edit profile
               </Button>
             ) : (
@@ -443,8 +468,23 @@ function ProfilePage() {
                   <Input value={editAvatarSeed} onChange={(e) => setEditAvatarSeed(e.target.value)} placeholder="Enter a word/phrase or URL" className="mt-1" />
                 </div>
               </div>
+              
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">QIE ID (Opsional)</label>
+                <Input 
+                  value={editQieId} 
+                  onChange={(e) => setEditQieId(e.target.value)} 
+                  placeholder="contoh: nama.qie" 
+                  className="mt-1" 
+                />
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  Masukkan QIE ID Anda. Sistem akan memverifikasi kepemilikan wallet.
+                </p>
+              </div>
+
               <div><label className="text-xs font-medium text-muted-foreground">Display Name</label><Input value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Your display name" className="mt-1" /></div>
               <div><label className="text-xs font-medium text-muted-foreground">Bio</label><Textarea value={editBio} onChange={(e) => setEditBio(e.target.value)} placeholder="Tell the QIE community..." className="mt-1 resize-none" rows={3} /></div>
+              
               <div className="flex justify-end gap-3 pt-2">
                 <Button variant="outline" onClick={() => setIsEditModalOpen(false)}>Cancel</Button>
                 <Button onClick={handleSaveProfile} disabled={isSaving} className="bg-brand">{isSaving ? "Saving..." : "Save Changes"}</Button>
