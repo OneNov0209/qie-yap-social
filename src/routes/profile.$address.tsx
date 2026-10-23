@@ -474,11 +474,11 @@ function ProfilePage() {
                 <Input 
                   value={editQieId} 
                   onChange={(e) => setEditQieId(e.target.value)} 
-                  placeholder="contoh: nama.qie" 
+                  placeholder="example: name.qie" 
                   className="mt-1" 
                 />
                 <p className="text-[10px] text-muted-foreground mt-1">
-                  Masukkan QIE ID Anda. Sistem akan memverifikasi kepemilikan wallet.
+                  Enter your QIE ID. The system will verify your wallet ownership.
                 </p>
               </div>
 
