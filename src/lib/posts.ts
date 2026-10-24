@@ -134,6 +134,19 @@ export async function createPost(
   return res.json();
 }
 
+// ✅ Update status post setelah transaksi on-chain (Super Yap / Boost)
+export async function updatePostStatus(
+  postId: string,
+  updates: { is_super_yap?: boolean; is_boosted?: boolean; boost_hours?: number }
+): Promise<boolean> {
+  const res = await fetch(`${API_BASE}/posts/${postId}/status`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(updates),
+  });
+  return res.ok;
+}
+
 export async function toggleLike(postId: string, userId: string): Promise<void> {
   await fetch(`${API_BASE}/likes`, {
     method: "POST",
@@ -264,7 +277,6 @@ export async function uploadToIPFS(file: File): Promise<string | null> {
 // ✅ REFERRAL HELPERS
 // ============================================
 
-// Ambil parameter ?ref= dari URL
 export function getReferredBy(): string | null {
   if (typeof window === 'undefined') return null;
   const params = new URLSearchParams(window.location.search);
@@ -272,7 +284,6 @@ export function getReferredBy(): string | null {
   return ref && ref.startsWith('0x') ? ref : null;
 }
 
-// Bersihkan parameter ?ref= setelah disimpan
 export function clearReferralFromUrl() {
   if (typeof window === 'undefined') return;
   const url = new URL(window.location.href);
@@ -353,7 +364,6 @@ export async function registerWithSignature(
   }
 }
 
-// ✅ Helper: Generate signature message untuk register
 export function generateRegisterMessage(address: string): string {
   const timestamp = Date.now();
   const nonce = Math.random().toString(36).substring(2, 15);
@@ -366,7 +376,6 @@ Timestamp: ${timestamp}
 Nonce: ${nonce}`;
 }
 
-// ✅ ADMIN API helper — kirim auth token
 const ADMIN_TOKEN = import.meta.env.VITE_ADMIN_API_TOKEN || "";
 
 export async function adminFetch(url: string, options: RequestInit = {}) {
