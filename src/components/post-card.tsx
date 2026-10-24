@@ -7,7 +7,7 @@ import { Avatar } from "./avatar-img";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth-store";
-import { toggleLike, toggleRepost, toggleBookmark, type FeedPost, relativeTime, shortAddr, API_BASE } from "@/lib/posts";
+import { toggleLike, toggleRepost, toggleBookmark, type FeedPost, relativeTime, shortAddr, API_BASE, updatePostStatus } from "@/lib/posts";
 import { sendTip, boostPost, createSuperYap, checkWalletConnection } from "@/lib/qie-chain";
 import { BROQ_TOKEN, ERC20_ABI } from "@/lib/tokens";
 import { createWalletClient, custom, parseUnits, defineChain } from "viem";
@@ -38,12 +38,11 @@ function compact(n: number) {
 function renderContentWithMentions(content: string) {
   if (!content) return null;
   
-  // Split by @mention pattern
   const parts = content.split(/(@[a-zA-Z0-9_\.\-]+)/g);
   
   return parts.map((part, i) => {
     if (part.startsWith('@') && part.length > 1) {
-      const username = part.slice(1); // hapus @
+      const username = part.slice(1);
       return (
         <Link
           key={i}
@@ -70,14 +69,12 @@ export function PostCard({ post }: { post: FeedPost }) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
 
-  // ✅ State untuk Tip Modal (QIE / BROQ)
   const [isTipModalOpen, setIsTipModalOpen] = useState(false);
   const [tipToken, setTipToken] = useState<'QIE' | 'BROQ'>('QIE');
   const [tipAmount, setTipAmount] = useState('');
   const [tipSending, setTipSending] = useState(false);
   const [broqBalance, setBroqBalance] = useState<string>('0');
 
-  // ✅ Local state untuk tips
   const [tipQie, setTipQie] = useState<number>(post?.tipTotalQie ?? 0);
   const [tipBroq, setTipBroq] = useState<number>(post?.tipTotalBroq ?? 0);
 
@@ -88,7 +85,6 @@ export function PostCard({ post }: { post: FeedPost }) {
 
   const reposters = (post as any).reposters || [];
 
-  // ✅ Lock body scroll saat lightbox atau tip modal open
   useEffect(() => {
     if (lightboxImage || isTipModalOpen) {
       const originalOverflow = document.body.style.overflow;
@@ -292,23 +288,23 @@ export function PostCard({ post }: { post: FeedPost }) {
       return;
     }
 
-    const hours = window.prompt("Boost duration (1-72 hours):", "24");
-    if (!hours || isNaN(parseInt(hours)) || parseInt(hours) < 1 || parseInt(hours) > 72) {
+    const hoursStr = window.prompt("Boost duration (1-72 hours):", "24");
+    if (!hoursStr || isNaN(parseInt(hoursStr)) || parseInt(hoursStr) < 1 || parseInt(hoursStr) > 72) {
       toast.error("Duration must be 1-72 hours");
       return;
     }
+    const hours = parseInt(hoursStr);
 
     setIsProcessing(true);
     try {
-      toast.loading("Waiting for wallet confirmation...");
-      const hash = await boostPost(
-        contractAddress,
-        BigInt(0),
-        BigInt(hours)
-      );
-      toast.dismiss();
-      toast.success(`Post boosted for ${hours}h! Tx: ${hash.slice(0, 10)}...`);
-      window.location.reload();
+      const toastId = toast.loading("Waiting for wallet confirmation...");
+      const hash = await boostPost(contractAddress, BigInt(0), BigInt(hours));
+      
+      toast.loading("Saving to backend...", { id: toastId });
+      await updatePostStatus(post.id, { is_boosted: true, boost_hours: hours });
+      
+      toast.success(`Post boosted for ${hours}h! Tx: ${hash.slice(0, 10)}...`, { id: toastId });
+      setTimeout(() => window.location.reload(), 1000);
     } catch (error: any) {
       toast.dismiss();
       console.error("❌ Boost error:", error);
@@ -331,10 +327,14 @@ export function PostCard({ post }: { post: FeedPost }) {
 
     setIsProcessing(true);
     try {
-      toast.loading("Waiting for wallet confirmation...");
+      const toastId = toast.loading("Waiting for wallet confirmation...");
       const hash = await createSuperYap(contractAddress);
-      toast.dismiss();
-      toast.success(`Super Yap created! Tx: ${hash.slice(0, 10)}...`);
+      
+      toast.loading("Saving to backend...", { id: toastId });
+      await updatePostStatus(post.id, { is_super_yap: true });
+      
+      toast.success(`Super Yap created! Tx: ${hash.slice(0, 10)}...`, { id: toastId });
+      setTimeout(() => window.location.reload(), 1000);
     } catch (error: any) {
       toast.dismiss();
       console.error("❌ SuperYap error:", error);
@@ -516,248 +516,4 @@ export function PostCard({ post }: { post: FeedPost }) {
           <button
             onClick={onToggleRepost}
             className={cn(
-              "flex items-center gap-1.5 text-sm font-medium transition-colors hover:text-brand-start group",
-              reposted ? "text-brand-start" : "text-muted-foreground"
-            )}
-          >
-            <Repeat className={cn("size-5 transition-transform group-hover:scale-110", reposted && "fill-current")} />
-            <span>{compact(reposts)}</span>
-          </button>
-        </div>
-
-        <div className="flex items-center gap-1">
-          <button
-            onClick={onToggleBookmark}
-            className={cn(
-              "p-1.5 rounded-full transition-colors hover:bg-muted",
-              bookmarked ? "text-brand-start" : "text-muted-foreground"
-            )}
-          >
-            <Bookmark className={cn("size-5", bookmarked && "fill-current")} />
-          </button>
-          <button
-            onClick={handleCopyLink}
-            className="p-1.5 rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-brand-start"
-          >
-            <LinkIcon className="size-5" />
-          </button>
-          <button
-            onClick={handleShareToX}
-            className="p-1.5 rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-brand-start"
-            title="Share on X"
-          >
-            <X className="size-5" />
-          </button>
-        </div>
-      </div>
-
-      {/* === Bottom: Premium Actions === */}
-      <div className="ml-[60px] mt-1 flex flex-wrap items-center gap-2 border-t border-border/20 pt-3">
-        <button
-          onClick={handleOpenTipModal}
-          disabled={isProcessing}
-          className="flex items-center gap-1.5 rounded-full bg-gradient-to-r from-[#FF0A6C] to-[#0040FF] px-4 py-1.5 text-xs font-semibold text-white shadow-md shadow-brand-start/25 transition-all hover:scale-105 hover:shadow-lg disabled:opacity-50 disabled:hover:scale-100"
-        >
-          {hasAnyTip ? (
-            <span className="flex items-center gap-2">
-              {tipQie > 0 && (
-                <span className="flex items-center gap-1">
-                  💎 {tipQie < 1 ? tipQie.toFixed(4) : tipQie.toFixed(2)} QIE
-                </span>
-              )}
-              {tipBroq > 0 && (
-                <span className="flex items-center gap-1 border-l border-white/30 pl-2">
-                  🪙 {tipBroq.toLocaleString('id-ID', { maximumFractionDigits: 2 })} BROQ
-                </span>
-              )}
-            </span>
-          ) : (
-            <span>💎 Tip</span>
-          )}
-        </button>
-
-        {isOwner && (
-          <button
-            onClick={handleSuperYap}
-            disabled={isProcessing}
-            className="flex items-center gap-1.5 rounded-full border border-gold/40 px-4 py-1.5 text-xs font-semibold text-gold transition-all hover:bg-gold hover:text-white hover:shadow-md disabled:opacity-50"
-          >
-            <Flame className="size-3.5" />
-            Super Yap
-          </button>
-        )}
-
-        <button
-          onClick={handleBoost}
-          disabled={isProcessing}
-          className="flex items-center gap-1.5 rounded-full border border-brand-start/20 px-4 py-1.5 text-xs font-semibold text-muted-foreground transition-all hover:border-brand-start hover:bg-brand-start/5 hover:text-brand-start disabled:opacity-50"
-        >
-          <Zap className="size-3.5" />
-          Boost
-        </button>
-      </div>
-
-      {/* ✅ LIGHTBOX MODAL via Portal — anti flicker */}
-      {lightboxImage && typeof document !== "undefined" && createPortal(
-        <div
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/95 p-4"
-          onClick={() => setLightboxImage(null)}
-        >
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setLightboxImage(null);
-            }}
-            className="absolute top-4 right-4 z-10 rounded-full bg-white/10 p-3 text-white hover:bg-white/20 transition-colors"
-            aria-label="Close"
-          >
-            <X className="size-6" />
-          </button>
-
-          <a
-            href={lightboxImage}
-            download
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            className="absolute top-4 right-20 z-10 rounded-full bg-white/10 p-3 text-white hover:bg-white/20 transition-colors"
-            aria-label="Download"
-          >
-            <Download className="size-6" />
-          </a>
-
-          <div
-            className="max-h-[90vh] max-w-[90vw] flex items-center justify-center"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <img
-              src={lightboxImage}
-              alt="Full view"
-              className="max-h-[90vh] max-w-[90vw] object-contain rounded-lg shadow-2xl select-none"
-              draggable={false}
-            />
-          </div>
-
-          <p className="absolute bottom-6 left-1/2 -translate-x-1/2 text-xs text-white/60 pointer-events-none">
-            Click anywhere to close
-          </p>
-        </div>,
-        document.body
-      )}
-
-      {/* ✅ TIP MODAL via Portal */}
-      {isTipModalOpen && typeof document !== "undefined" && createPortal(
-        <div
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 p-4"
-          onClick={() => !tipSending && setIsTipModalOpen(false)}
-        >
-          <div
-            className="w-full max-w-md rounded-2xl bg-card border border-border p-6 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold">Send Tip</h3>
-              <button
-                onClick={() => !tipSending && setIsTipModalOpen(false)}
-                className="p-1 rounded-full hover:bg-muted"
-                disabled={tipSending}
-              >
-                <X className="size-5" />
-              </button>
-            </div>
-
-            <div className="mb-4">
-              <label className="text-xs font-medium text-muted-foreground mb-2 block">
-                Choose token
-              </label>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setTipToken('QIE')}
-                  className={cn(
-                    "flex-1 flex items-center justify-center gap-2 rounded-xl border-2 py-3 font-semibold transition-all",
-                    tipToken === 'QIE'
-                      ? "border-brand bg-brand/10 text-brand"
-                      : "border-border text-muted-foreground hover:border-brand/50"
-                  )}
-                  disabled={tipSending}
-                >
-                  💰 QIE
-                </button>
-                <button
-                  onClick={() => setTipToken('BROQ')}
-                  className={cn(
-                    "flex-1 flex items-center justify-center gap-2 rounded-xl border-2 py-3 font-semibold transition-all",
-                    tipToken === 'BROQ'
-                      ? "border-brand bg-brand/10 text-brand"
-                      : "border-border text-muted-foreground hover:border-brand/50"
-                  )}
-                  disabled={tipSending}
-                >
-                  🪙 BROQ
-                </button>
-              </div>
-            </div>
-
-            {tipToken === 'BROQ' && (
-              <div className="mb-3 text-xs text-muted-foreground">
-                Your balance: <span className="font-semibold text-foreground">
-                  {Number(broqBalance).toLocaleString('id-ID')} BROQ
-                </span>
-              </div>
-            )}
-
-            <div className="mb-4">
-              <label className="text-xs font-medium text-muted-foreground mb-2 block">
-                Amount ({tipToken})
-              </label>
-              <input
-                type="number"
-                value={tipAmount}
-                onChange={(e) => setTipAmount(e.target.value)}
-                placeholder={tipToken === 'QIE' ? "0.1" : "1000"}
-                min="0"
-                step="any"
-                disabled={tipSending}
-                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-lg font-semibold outline-none focus:border-brand transition-colors"
-              />
-              <div className="flex gap-2 mt-2">
-                {(tipToken === 'QIE' ? ['0.1', '1', '10'] : ['100', '1000', '10000']).map((v) => (
-                  <button
-                    key={v}
-                    onClick={() => setTipAmount(v)}
-                    disabled={tipSending}
-                    className="text-xs px-3 py-1 rounded-full border border-border hover:border-brand hover:text-brand transition-colors"
-                  >
-                    {v}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <button
-              onClick={handleSendTip}
-              disabled={tipSending || !tipAmount || parseFloat(tipAmount) <= 0}
-              className="w-full rounded-xl bg-gradient-to-r from-[#FF0A6C] to-[#0040FF] py-3 font-bold text-white shadow-md transition-all hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100"
-            >
-              {tipSending ? (
-                <>
-                  <Loader2 className="inline size-5 mr-2 animate-spin" />
-                  Sending...
-                </>
-              ) : (
-                <>Send {tipToken} Tip</>
-              )}
-            </button>
-
-            <p className="text-[11px] text-muted-foreground text-center mt-3">
-              {tipToken === 'QIE'
-                ? '2% platform fee applies'
-                : 'BROQ tip goes 100% to recipient'}
-            </p>
-          </div>
-        </div>,
-        document.body
-      )}
-    </article>
-  );
-}
+              "flex items-center gap-1.5 text
