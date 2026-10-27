@@ -274,12 +274,12 @@ To redeploy manually:
 
 ---
 
-**🔐 Security Notes**
+## 🔐 Security Notes
 
-· Never commit .env or VITE_PINATA_JWT to GitHub.
-· All sensitive keys are stored only in Vercel Environment Variables.
-· The backend uses parameterized SQL queries to prevent injection attacks.
-· Only post owners can delete their own posts (server-side validation).
+- **No Secrets in Repo:** Never commit `.env` files or `VITE_PINATA_JWT` to GitHub.
+- **Environment Variables:** All sensitive keys and tokens are securely stored in Vercel's Environment Variables.
+- **SQL Injection Prevention:** The backend exclusively uses parameterized SQL queries to ensure database safety.
+- **Strict Authorization:** Only post owners are authorized to delete their own posts, enforced via server-side validation.
 
 ---
 
