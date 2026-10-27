@@ -173,7 +173,7 @@ contract QieYap {
 --
 ### 📊 Contract Highlights
 
-Berikut adalah ringkasan logika utama yang tertanam di dalam *Smart Contract*:
+Here is a summary of the main logic embedded within a *Smart Contract*:
 
 | Fitur | Deskripsi & Alokasi Dana |
 | :--- | :--- |
