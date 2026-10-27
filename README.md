@@ -9,7 +9,7 @@ Users can post "Yaps", upload images, share link previews, send on-chain **Tips*
 ## 🚀 Live Demo
 
 - **Website:** [https://qie.yap.onenov.xyz/](https://qie.yap.onenov.xyz/)
-- **Blockchain Explorer (QIE Mainnet):** [https://qie.explorer.onenov.xyz](https://qie.explorer.onenov.xyz)
+- **Blockchain Explorer (QIE Mainnet):** [https://mainnet.qie.digital](https://mainnet.qie.digital)
 
 ---
 
@@ -31,7 +31,7 @@ Users can post "Yaps", upload images, share link previews, send on-chain **Tips*
 
 - **Network:** QIE Mainnet (Chain ID: 1990)
 - **RPC URL:** `https://rpc-evm.qie.onenov.xyz`
-- **Explorer:** `https://qie.explorer.onenov.xyz`
+- **Explorer:** `https://mainnet.qie.digital`
 - **Contract Address:** `0x2A433A09e0Ce2766affb89E774BbdC3c29044D0a`
 - **Treasury / Dev Wallet:** `0x109b18b9cb9ec1C9CED114A13FfA86F8c13CFa7a`
 
@@ -185,8 +185,6 @@ Yap Emits on-chain event hash (content stored off-chain in PostgreSQL)
 
 All data is stored in a self-hosted PostgreSQL database managed via a custom Node.js + Express API.
 
-Key Tables
-
 Table Purpose
 profiles User profiles linked to wallet addresses
 posts Yap posts (content, media_url, link_preview, is_boosted, is_super_yap)
@@ -204,29 +202,17 @@ notifications Aggregated real-time notifications (Follow, Like, Reply, Tip)
 
 Feature Description
 ✅ Post Yaps (Text) Unlimited characters (max 2500) with Markdown-like support.
-
 ✅ Image Upload Upload images directly via Pinata IPFS.
-
 ✅ Link Preview Auto-fetches OG metadata (title, image, description) when pasting a URL.
-
 ✅ On-Chain Tips Send QIE directly to creators. 2% platform fee, 98% to recipient.
-
 ✅ Super Yaps Premium post with gold border. Burns 50% of the fee.
-
 ✅ Boost Promoted post badge. Shows "⚡ Promoted" indicator in feed.
-
 ✅ Social Interactions Follow, Unfollow, Like, Repost, Bookmark.
-
-✅ Real-Time Feed "Latest" feed with real-time updates via Supabase (deprecated) / Polling.
-
+✅ Real-Time Feed "Latest" feed with real-time updates via Polling.
 ✅ Leaderboard Top creators ranked by total tips received.
-
 ✅ Dashboard View tips received, wallet balance, and withdraw earnings.
-
 ✅ Explorer On-chain activity explorer (Tips, Yaps, Super Yaps, Boosts).
-
 ✅ Notifications Real-time notifications for Follows, Likes, Replies, and Tips.
-
 ✅ Delete Post Users can delete their own posts (Cascading deletion).
 
 ---
@@ -234,23 +220,9 @@ Feature Description
 🎨 Design Philosophy
 
 · Futuristic UI with glassmorphism, subtle gold dot patterns, and neon gradients (#FF0A6C → #0040FF).
-
 · Responsive Design with a dedicated sidebar for desktop and a bottom navigation bar for mobile.
-
 · Premium Typography using Inter, Space Grotesk, and JetBrains Mono.
 
----
-
-⚙️ Environment Variables (Vercel)
-
-Key Value
-```
-VITE_API_BASE https://api.yap.onenov.xyz/api
-VITE_QIE_YAP_CONTRACT 0x2A433A09e0Ce2766affb89E774BbdC3c29044D0a
-VITE_DEV_WALLET 0x109b18b9cb9ec1C9CED114A13FfA86F8c13CFa7a
-VITE_PINATA_JWT (Your Pinata JWT for IPFS uploads)
-VITE_APP_URL https://qie.yap.onenov.xyz
-```
 ---
 
 🛠️ Local Development
@@ -260,13 +232,13 @@ Clone the repository and install dependencies:
 ```bash
 git clone https://github.com/OneNov0209/qie-yap-social.git
 cd qie-yap-social
-bun install   # or npm install
+npm install
 ```
 
-Create a .env file with the variables listed above, then run:
+Create a .env file based on .env.example (contains API Base URL, Contract Address, and Pinata JWT), then run:
 
 ```bash
-bun run dev
+npm run dev
 ```
 
 ---
@@ -287,11 +259,8 @@ To redeploy manually:
 🔐 Security Notes
 
 · Never commit .env or VITE_PINATA_JWT to GitHub.
-
 · All sensitive keys are stored only in Vercel Environment Variables.
-
 · The backend uses parameterized SQL queries to prevent injection attacks.
-
 · Only post owners can delete their own posts (server-side validation).
 
 ---
@@ -305,10 +274,8 @@ MIT License — feel free to use and modify this project for your own purposes.
 🏆 Acknowledgments
 
 Built for the QIE Hackathon 3rd Edition (2026).
-Special thanks to the QIE ecosystem, the OneNov for frontend scaffolding, and the Contabo VPS for backend hosting.
+Special thanks to the QIE ecosystem, OneNov for frontend scaffolding, and Contabo VPS for backend hosting.
 
 ---
 
-Happy Yapping! 🚀✨
-
-```
+**Happy Yapping! 🚀✨**
