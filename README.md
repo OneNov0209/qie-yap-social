@@ -198,26 +198,38 @@ notifications Aggregated real-time notifications (Follow, Like, Reply, Tip)
 
 ---
 
-✨ Core Features
+# ✨ Core Features
 
-Feature Description
+*Feature Description*
 ✅ Post Yaps (Text) Unlimited characters (max 2500) with Markdown-like support.
+
 ✅ Image Upload Upload images directly via Pinata IPFS.
+
 ✅ Link Preview Auto-fetches OG metadata (title, image, description) when pasting a URL.
+
 ✅ On-Chain Tips Send QIE directly to creators. 2% platform fee, 98% to recipient.
+
 ✅ Super Yaps Premium post with gold border. Burns 50% of the fee.
+
 ✅ Boost Promoted post badge. Shows "⚡ Promoted" indicator in feed.
+
 ✅ Social Interactions Follow, Unfollow, Like, Repost, Bookmark.
+
 ✅ Real-Time Feed "Latest" feed with real-time updates via Polling.
+
 ✅ Leaderboard Top creators ranked by total tips received.
+
 ✅ Dashboard View tips received, wallet balance, and withdraw earnings.
+
 ✅ Explorer On-chain activity explorer (Tips, Yaps, Super Yaps, Boosts).
+
 ✅ Notifications Real-time notifications for Follows, Likes, Replies, and Tips.
+
 ✅ Delete Post Users can delete their own posts (Cascading deletion).
 
 ---
 
-🎨 Design Philosophy
+**🎨 Design Philosophy**
 
 · Futuristic UI with glassmorphism, subtle gold dot patterns, and neon gradients (#FF0A6C → #0040FF).
 · Responsive Design with a dedicated sidebar for desktop and a bottom navigation bar for mobile.
@@ -225,7 +237,7 @@ Feature Description
 
 ---
 
-🛠️ Local Development
+**🛠️ Local Development**
 
 Clone the repository and install dependencies:
 
@@ -243,7 +255,7 @@ npm run dev
 
 ---
 
-🚀 Deployment
+**🚀 Deployment**
 
 The frontend is deployed on Vercel via GitHub integration.
 The backend is hosted on a Contabo VPS running Ubuntu 22.04 with Node.js v22.
@@ -256,7 +268,7 @@ To redeploy manually:
 
 ---
 
-🔐 Security Notes
+**🔐 Security Notes**
 
 · Never commit .env or VITE_PINATA_JWT to GitHub.
 · All sensitive keys are stored only in Vercel Environment Variables.
@@ -265,13 +277,13 @@ To redeploy manually:
 
 ---
 
-📄 License
+**📄 License**
 
 MIT License — feel free to use and modify this project for your own purposes.
 
 ---
 
-🏆 Acknowledgments
+**🏆 Acknowledgments**
 
 Built for the QIE Hackathon 3rd Edition (2026).
 Special thanks to the QIE ecosystem, OneNov for frontend scaffolding, and Contabo VPS for backend hosting.
