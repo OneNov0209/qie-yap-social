@@ -170,31 +170,37 @@ contract QieYap {
     }
 }
 ```
+--
+### 📊 Contract Highlights
 
-Contract Highlights
+Berikut adalah ringkasan logika utama yang tertanam di dalam *Smart Contract*:
 
-Feature Details
-Tip 2% platform fee → devWallet, 98% → recipient wallet instantly
-Super Yap 50% burned, 50% → treasury (Creates premium gold border posts)
-Boost 100% → treasury (Promotes posts with a "Promoted" badge)
-Yap Emits on-chain event hash (content stored off-chain in PostgreSQL)
+| Fitur | Deskripsi & Alokasi Dana |
+| :--- | :--- |
+| **💸 Tip** | **2%** platform fee masuk ke `devWallet`, dan **98%** langsung dikirim ke wallet penerima secara instan. |
+| **🌟 Super Yap** | **50%** dari biaya dibakar (*burned* ke `0x...dEaD`), dan **50%** masuk ke `treasury`. Pengguna mendapatkan post premium dengan border emas. |
+| **🚀 Boost** | **100%** biaya masuk ke `treasury`. Post akan mendapatkan badge "⚡ Promoted" di feed. |
+| **📝 Yap** | Hanya meng-*emit* event hash ke *blockchain* (konten teks/media disimpan secara *off-chain* di PostgreSQL untuk menghemat gas). |
 
 ---
 
-🗄️ Backend Database (PostgreSQL on VPS)
+## 🗄️ Backend Database (PostgreSQL on VPS)
 
 All data is stored in a self-hosted PostgreSQL database managed via a custom Node.js + Express API.
 
-Table Purpose
-profiles User profiles linked to wallet addresses
-posts Yap posts (content, media_url, link_preview, is_boosted, is_super_yap)
-likes User likes on posts
-reposts User reposts
-bookmarks User bookmarks
-follows Follower relationships
-tips On-chain tip transaction records
-comments Replies to posts
-notifications Aggregated real-time notifications (Follow, Like, Reply, Tip)
+### Key Tables
+
+| Table | Purpose |
+| :--- | :--- |
+| `profiles` | User profiles linked to wallet addresses |
+| `posts` | Yap posts (content, media_url, link_preview, is_boosted, is_super_yap) |
+| `likes` | User likes on posts |
+| `reposts` | User reposts |
+| `bookmarks` | User bookmarks |
+| `follows` | Follower relationships |
+| `tips` | On-chain tip transaction records |
+| `comments` | Replies to posts |
+| `notifications` | Aggregated real-time notifications (Follow, Like, Reply, Tip) |
 
 ---
 
@@ -229,11 +235,11 @@ notifications Aggregated real-time notifications (Follow, Like, Reply, Tip)
 
 ---
 
-**🎨 Design Philosophy**
+## 🎨 Design Philosophy
 
-· Futuristic UI with glassmorphism, subtle gold dot patterns, and neon gradients (#FF0A6C → #0040FF).
-· Responsive Design with a dedicated sidebar for desktop and a bottom navigation bar for mobile.
-· Premium Typography using Inter, Space Grotesk, and JetBrains Mono.
+- **Futuristic UI:** A sleek interface utilizing glassmorphism, subtle gold dot patterns, and dynamic neon gradients (`#FF0A6C` → `#0040FF`).
+- **Fully Responsive:** Optimized for all devices, featuring a dedicated desktop sidebar and a mobile-friendly bottom navigation bar.
+- **Premium Typography:** A carefully selected font pairing using *Inter*, *Space Grotesk*, and *JetBrains Mono* for a modern, readable aesthetic.
 
 ---
 
