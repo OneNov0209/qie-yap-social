@@ -242,11 +242,31 @@ export function shortAddr(addr: string): string {
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
 }
 
-// ✅ Upload to backend (Pinata proxy) - API Key Pinata sekarang aman di server
-export async function uploadToIPFS(file: File): Promise<string | null> {
+// ✅ Upload to backend (Pinata proxy) - Dengan Verifikasi Signature
+export async function uploadToIPFS(
+  file: File,
+  address: string,
+  signMessage: (args: { message: string }) => Promise<string>
+): Promise<string | null> {
   try {
+    // 1. Minta user tanda tangan pesan
+    const timestamp = Date.now();
+    const message = `Sign to upload image to QIE Yap\n\nAddress: ${address}\nTimestamp: ${timestamp}`;
+
+    let signature;
+    try {
+      signature = await signMessage({ message });
+    } catch (err) {
+      console.error("User rejected signature:", err);
+      throw new Error("Signature required to upload image. Please approve the popup in your wallet.");
+    }
+
+    // 2. Kirim file beserta signature ke backend
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("address", address);
+    formData.append("signature", signature);
+    formData.append("message", message);
 
     const res = await fetch(`${API_BASE}/upload`, {
       method: "POST",
@@ -254,15 +274,16 @@ export async function uploadToIPFS(file: File): Promise<string | null> {
     });
 
     if (!res.ok) {
-      console.error("Upload failed:", await res.text());
-      return null;
+      const errorData = await res.json().catch(() => ({}));
+      console.error("Upload failed:", errorData);
+      throw new Error(errorData.error || "Upload failed");
     }
 
     const data = await res.json();
     return data.url || null;
-  } catch (error) {
+  } catch (error: any) {
     console.error("Upload to IPFS failed:", error);
-    return null;
+    throw error;
   }
 }
 
