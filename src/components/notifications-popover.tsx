@@ -40,27 +40,40 @@ export function NotificationsPopover() {
   const [items, setItems] = useState<NotificationRow[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const loadNotifications = async () => {
-    if (!user) return;
-    setLoading(true);
-    try {
-      const res = await fetch(`${API_BASE}/notifications?user_id=${user.id}&limit=20`);
-      if (res.ok) {
-        const data = await res.json();
-        setItems(data);
-      }
-    } catch (err) {
-      console.error("Failed to load notifications:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
     if (!user) return;
+    
+    let isMounted = true;
+    const controller = new AbortController();
+
+    const loadNotifications = async () => {
+      if (!user) return;
+      setLoading(true);
+      try {
+        const res = await fetch(`${API_BASE}/notifications?user_id=${user.id}&limit=20`, {
+          signal: controller.signal
+        });
+        if (res.ok && isMounted) {
+          const data = await res.json();
+          setItems(data);
+        }
+      } catch (err: any) {
+        if (err.name !== 'AbortError') {
+          console.error("Failed to load notifications:", err);
+        }
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
     loadNotifications();
     const interval = setInterval(loadNotifications, 10000);
-    return () => clearInterval(interval);
+
+    return () => {
+      isMounted = false;
+      controller.abort();
+      clearInterval(interval);
+    };
   }, [user]);
 
   const unread = items.filter((n) => !n.read).length;
@@ -112,7 +125,7 @@ export function NotificationsPopover() {
             Mark all read
           </Button>
         </div>
-        {loading ? (
+        {loading && items.length === 0 ? (
           <div className="px-4 py-8 text-center text-sm text-muted-foreground animate-pulse">
             Loading...
           </div>
@@ -121,13 +134,10 @@ export function NotificationsPopover() {
         ) : (
           <ul className="max-h-96 divide-y divide-border overflow-auto">
             {items.map((n) => {
-              // ✅ Link destination
               let linkTo = "#";
               if (n.type === "follow") {
-                // Follow → profil pengirim
                 linkTo = n.from ? `/profile/${n.from.address}` : "#";
               } else {
-                // Like, Reply, Tip, Mention → ke postingan
                 const postId = n.post?.id || n.post_id || (n.type === 'tip' || n.type === 'mention' ? null : n.id);
                 linkTo = postId ? `/yap/${postId}` : "#";
               }
