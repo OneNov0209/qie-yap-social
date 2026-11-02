@@ -30,7 +30,7 @@ function TokensPage() {
         if (res.ok) {
           const data = await res.json();
           
-          // Hanya filter token yang benar-benar 0 (tidak ada supply)
+          // Hanya filter token yang benar-benar 0 (tidak ada supply sama sekali)
           const validTokens = data.filter((t: QIEDexToken) => Number(t.totalSupply) > 0);
           setTokens(validTokens);
           setFilteredTokens(validTokens);
@@ -58,16 +58,20 @@ function TokensPage() {
   }, [search, tokens]);
 
   const formatSupply = (supply: string) => {
-  const num = Number(supply) / 1e18;
-  
-  if (num === 0) return "0";
-  if (num >= 1_000_000_000) return (num / 1_000_000_000).toFixed(2) + "B";
-  if (num >= 1_000_000) return (num / 1_000_000).toFixed(2) + "M";
-  if (num >= 1_000) return (num / 1_000).toFixed(2) + "K";
-  if (num < 0.01) return num.toFixed(8);
-  
-  return num.toLocaleString('en-US', { maximumFractionDigits: 2 });
-};
+    const num = Number(supply) / 1e18;
+    
+    // Jika benar-benar 0, tampilkan strip
+    if (num === 0) return "-";
+    
+    // Jika angka sangat kecil (di bawah 0.0001), anggap tidak ada supply
+    if (num < 0.0001) return "< 0.0001";
+    
+    if (num >= 1_000_000_000) return (num / 1_000_000_000).toFixed(2) + "B";
+    if (num >= 1_000_000) return (num / 1_000_000).toFixed(2) + "M";
+    if (num >= 1_000) return (num / 1_000).toFixed(2) + "K";
+    
+    return num.toLocaleString('en-US', { maximumFractionDigits: 4 });
+  };
 
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-12 overflow-x-hidden">
