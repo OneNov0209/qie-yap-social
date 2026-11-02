@@ -17,8 +17,7 @@ export const FOOTER_DATA = {
     { label: "Documentation", href: "https://docs.qie.digital/" },
     { label: "Developer Portal", href: "https://www.qie.digital/developer#" },
     { label: "GitHub", href: "https://github.com/qieadmin" },
-    { label: "IBC Explorer", href: "/ibc" },
-    { label: "Chain Parameters", href: "/parameters" },
+    { label: "IBC Explorer", href: "https://qie.explorer.onenov.xyz" },
   ],
   ecosystem: [
     { label: "QIE Bridge", href: "https://bridge.qie.digital/" },
@@ -34,14 +33,14 @@ export const FOOTER_DATA = {
     { label: "Reddit", href: "https://www.reddit.com/r/qiblockchain/?rdt=58368" },
   ],
   company: [
-    { label: "About", href: "https://www.qie.digital/developer#" },
+    { label: "About", href: "https://www.qie.digital/about" },
     { label: "Blog", href: "https://www.qie.digital/blog" },
     { label: "Medium", href: "https://medium.com/@QIEecosystem/" },
     { label: "Contact", href: "mailto:info@qiewallet.me" },
   ],
   legal: [
     { label: "Terms of Service", href: "https://www.qie.digital/terms-of-services" },
-    { label: "Privacy Policy", href: "https://www.qie.digital/terms-of-services" },
+    { label: "Privacy Policy", href: "https://www.qie.digital/privacy" },
   ],
   email: "info@qiewallet.me",
 } as const;
