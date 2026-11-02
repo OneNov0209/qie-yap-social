@@ -36,7 +36,7 @@ export const useAuth = create<AuthState>()(
 
       connect: async () => {
         if (typeof window === 'undefined' || !window.ethereum) {
-          throw new Error('QIE Wallet extension not detected. Please install QIE Wallet or use a supported browser.');
+          throw new Error('QIE Wallet extension not detected. Please install QIE Wallet.');
         }
         set({ connecting: true, connectStep: 'Connecting wallet...' });
 
