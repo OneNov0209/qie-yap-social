@@ -294,8 +294,30 @@ function ProfilePage() {
   };
 
   if (loading) return (
-    <div className="min-h-screen bg-background"><Header /><div className="mx-auto max-w-2xl px-4 py-12 text-center text-muted-foreground">Loading…</div></div>
-  );
+  <div className="min-h-screen bg-background">
+    <Header />
+    <div className="mx-auto max-w-2xl animate-pulse">
+      <div className="h-40 bg-muted md:rounded-b-3xl" />
+      <div className="px-4">
+        <div className="flex items-end justify-between -mt-12">
+          <div className="size-24 rounded-full bg-muted ring-4 ring-background" />
+          <div className="h-10 w-28 rounded-full bg-muted" />
+        </div>
+        <div className="mt-4 space-y-3">
+          <div className="h-8 w-48 rounded bg-muted" />
+          <div className="h-4 w-32 rounded bg-muted" />
+          <div className="h-4 w-full rounded bg-muted" />
+          <div className="grid grid-cols-4 gap-2 pt-2">
+            <div className="h-16 rounded-xl bg-muted" />
+            <div className="h-16 rounded-xl bg-muted" />
+            <div className="h-16 rounded-xl bg-muted" />
+            <div className="h-16 rounded-xl bg-muted" />
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+);
 
   if (!profile) return (
     <div className="min-h-screen bg-background">
