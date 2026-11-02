@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState, useCallback, useRef } from "react";
-import { Flame, Clock, Users, Sparkles } from "lucide-react";
+import { Flame, Clock, Users, Sparkles, Activity } from "lucide-react";
 import { Header } from "@/components/header";
 import { Composer } from "@/components/composer";
 import { PostCard } from "@/components/post-card";
@@ -20,13 +20,14 @@ export const Route = createFileRoute("/feed")({
   component: FeedPage,
 });
 
-type Tab = "trending" | "latest" | "following" | "super";
+type Tab = "trending" | "latest" | "following" | "super" | "activity";
 
 const TABS: Array<{ id: Tab; label: string; icon: typeof Flame }> = [
   { id: "trending", label: "Trending",   icon: Flame },
   { id: "latest",   label: "Latest",     icon: Clock },
   { id: "following",label: "Following",  icon: Users },
   { id: "super",    label: "Super Yaps", icon: Sparkles },
+  { id: "activity", label: "Activity",   icon: Activity },
 ];
 
 function FeedPage() {
@@ -46,22 +47,21 @@ function FeedPage() {
       const userId = user?.id || null;
       const currentOffset = reset ? 0 : offset;
       
-      // Tarik data feed biasa
-      const data = await fetchFeed(tab, userId, currentOffset);
-      
-      // Tarik data auto-feed (hackathon & project)
-      const autoRes = await fetch(`${API_BASE}/auto-feed?limit=10`);
-      const autoData = autoRes.ok ? await autoRes.json() : [];
-
-      if (data.length === 0) {
-        setHasMore(false);
-      } else {
-        setPosts((prev) => reset ? data : [...prev, ...data]);
-        setOffset((prev) => reset ? data.length : prev + data.length);
-      }
-      
-      if (reset) {
+      if (tab === "activity") {
+        // Hanya load auto-feed
+        const autoRes = await fetch(`${API_BASE}/auto-feed?limit=50`);
+        const autoData = autoRes.ok ? await autoRes.json() : [];
         setAutoPosts(autoData);
+        setHasMore(false); // Activity tidak pakai infinite scroll
+      } else {
+        // Load feed biasa
+        const data = await fetchFeed(tab, userId, currentOffset);
+        if (data.length === 0) {
+          setHasMore(false);
+        } else {
+          setPosts((prev) => reset ? data : [...prev, ...data]);
+          setOffset((prev) => reset ? data.length : prev + data.length);
+        }
       }
     } catch (err) {
       console.error("❌ Error loading feed:", err);
@@ -73,14 +73,15 @@ function FeedPage() {
   // Reset saat tab berubah
   useEffect(() => {
     setPosts([]);
+    setAutoPosts([]);
     setOffset(0);
     setHasMore(true);
     loadPosts(true);
   }, [tab]);
 
-  // Infinite Scroll observer
+  // Infinite Scroll observer (hanya untuk tab non-activity)
   useEffect(() => {
-    if (!loadMoreRef.current || loading) return;
+    if (!loadMoreRef.current || loading || tab === "activity") return;
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting && hasMore && !loading) {
@@ -91,10 +92,7 @@ function FeedPage() {
     );
     observer.observe(loadMoreRef.current);
     return () => observer.disconnect();
-  }, [loadPosts, hasMore, loading]);
-
-  // Gabungkan feed biasa dan auto-feed
-  const combinedPosts = tab === "latest" ? [...autoPosts, ...posts] : posts;
+  }, [loadPosts, hasMore, loading, tab]);
 
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-12">
@@ -108,7 +106,7 @@ function FeedPage() {
               key={t.id}
               onClick={() => setTab(t.id)}
               className={cn(
-                "flex items-center gap-1.5 whitespace-nowrap border-b-2 px-5 py-3 text-sm font-semibold transition-colors",
+                "flex items-center gap-1.5 whitespace-nowrap border-b-2 px-4 py-3 text-sm font-semibold transition-colors",
                 tab === t.id
                   ? t.id === "super"
                     ? "border-gold text-gold"
@@ -122,41 +120,58 @@ function FeedPage() {
           ))}
         </div>
 
-        {/* List Postingan */}
-        <div className="space-y-5">
-          {combinedPosts.map((p) => (
-            p.is_auto ? (
-              <div key={p.id} className="yap-card p-4 border-l-4 border-brand/30 bg-card/30">
-                <div className="flex gap-3">
-                  <div className="size-10 shrink-0 rounded-full bg-brand-soft flex items-center justify-center">
-                    <Sparkles className="size-5 text-brand" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold">{p.author.display_name}</p>
-                    <p className="text-sm text-foreground/80 mt-1 whitespace-pre-wrap">{p.content}</p>
-                    <p className="text-[10px] text-muted-foreground mt-2">Auto-generated activity</p>
-                  </div>
-                </div>
+        {/* Tampilan Activity */}
+        {tab === "activity" && (
+          <div className="space-y-5">
+            {autoPosts.length === 0 && !loading ? (
+              <div className="rounded-2xl border border-dashed border-border bg-card p-12 text-center text-muted-foreground">
+                No ecosystem activity yet.
               </div>
             ) : (
-              <PostCard key={p.id} post={p} />
-            )
-          ))}
-        </div>
+              autoPosts.map((p) => (
+                <div key={p.id} className="yap-card p-5 border-l-4 border-brand/30 bg-card/30">
+                  <div className="flex gap-4">
+                    <div className="size-12 shrink-0 rounded-full bg-brand-soft flex items-center justify-center">
+                      <Activity className="size-6 text-brand" />
+                    </div>
+                    <div>
+                      <p className="text-base font-bold text-foreground">{p.author.display_name}</p>
+                      {p.author.qie_id && (
+                        <p className="text-xs text-brand font-medium mb-2">@{p.author.qie_id}</p>
+                      )}
+                      <p className="text-sm text-foreground/80 whitespace-pre-wrap">{p.content}</p>
+                      <p className="text-[10px] text-muted-foreground mt-3">
+                        {new Date(p.created_at).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
 
-        {/* Loading & Infinite Scroll Trigger */}
-        {loading && (
-          <div className="py-4 text-center text-sm text-muted-foreground animate-pulse">
-            Loading more...
-          </div>
-        )}
-        {!loading && hasMore && (
-          <div ref={loadMoreRef} className="h-4 w-full" />
-        )}
-        {!hasMore && combinedPosts.length > 0 && (
-          <div className="py-8 text-center text-sm text-muted-foreground">
-            You've reached the end! 🚀
-          </div>
+        {/* Tampilan Feed Biasa */}
+        {tab !== "activity" && (
+          <>
+            <div className="space-y-5">
+              {posts.map((p) => <PostCard key={p.id} post={p} />)}
+            </div>
+
+            {loading && (
+              <div className="py-4 text-center text-sm text-muted-foreground animate-pulse">
+                Loading more...
+              </div>
+            )}
+            {!loading && hasMore && (
+              <div ref={loadMoreRef} className="h-4 w-full" />
+            )}
+            {!hasMore && posts.length > 0 && (
+              <div className="py-8 text-center text-sm text-muted-foreground">
+                You've reached the end! 🚀
+              </div>
+            )}
+          </>
         )}
       </main>
     </div>
