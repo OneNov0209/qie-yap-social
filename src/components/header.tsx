@@ -12,21 +12,18 @@ export function Header() {
   const { user } = useAuth();
 
   return (
-    <header className="sticky top-0 z-40 border-b border-transparent bg-background/60 backdrop-blur-xl shadow-sm shadow-brand-start/5">
-      {/* Garis Glow di bawah header */}
+    <header className="sticky top-0 z-40 w-full border-b border-transparent bg-background/60 backdrop-blur-xl shadow-sm shadow-brand-start/5">
       <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-brand-start to-transparent opacity-30" />
       
-      <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3">
-        
-        {/* Logo tetap mengarah ke Landing Page (/) */}
-        <Link to="/" className="flex items-center gap-2.5">
-          <img src={LOGO} alt="QIE" className="size-9 rounded-xl shadow-sm shadow-brand/30" />
-          <span className="font-display text-xl font-bold tracking-tight">
+      <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-2 px-3 py-3 sm:px-4">
+        <Link to="/" className="flex shrink-0 items-center gap-2">
+          <img src={LOGO} alt="QIE" className="size-8 rounded-xl shadow-sm shadow-brand/30 sm:size-9" />
+          <span className="hidden font-display text-lg font-bold tracking-tight sm:block sm:text-xl">
             QIE <span className="text-brand">Yap</span>
           </span>
         </Link>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           {user && <NotificationsPopover />}
           <ThemeToggle />
           <ConnectWalletButton />
