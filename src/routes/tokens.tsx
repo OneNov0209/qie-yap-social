@@ -14,7 +14,8 @@ interface QIEDexToken {
   name: string;
   totalSupply: string;
   icon_url?: string;
-  explorer_supply?: string;
+  real_supply?: string;
+  real_decimals?: number;
 }
 
 function TokensPage() {
@@ -37,12 +38,19 @@ function TokensPage() {
           const updatedTokens = await Promise.all(
             data.map(async (token) => {
               try {
-                const expRes = await fetch(`${API_BASE}/explorer/token/${token.id}`);
+                // Panggil API Explorer QIE secara langsung (bukan lewat proxy backend)
+                const expRes = await fetch(`https://mainnet.qie.digital/api/v2/tokens/${token.id}`);
                 if (expRes.ok) {
                   const expData = await expRes.json();
-                  return { ...token, explorer_supply: expData.total_supply };
+                  return { 
+                    ...token, 
+                    real_supply: expData.total_supply,
+                    real_decimals: Number(expData.decimals)
+                  };
                 }
-              } catch (e) {}
+              } catch (e) {
+                console.error("Gagal ambil data explorer untuk", token.symbol, e);
+              }
               return token;
             })
           );
@@ -72,19 +80,18 @@ function TokensPage() {
     }
   }, [search, tokens]);
 
-  const formatSupply = (supply: string) => {
-    let num = Number(supply);
-    if (isNaN(num)) return "0";
-
-    // Coba bagi 18 desimal (standar EVM)
-    let val = num / 1e18;
+  const formatSupply = (supply: string | undefined, decimals: number | undefined) => {
+    if (!supply) return "0";
     
-    // Jika hasilnya terlalu kecil (< 1) padahal aslinya besar, coba bagi 6 desimal
-    if (val < 0.0001 && num > 0) {
-       val = num / 1e6;
-    }
+    // Jika data dari Explorer tidak ada, kembalikan 0
+    if (decimals === undefined) return "-";
 
-    return val.toLocaleString('en-US', { maximumFractionDigits: 2 });
+    const raw = Number(supply);
+    const dec = Number(decimals);
+    
+    const realVal = raw / Math.pow(10, dec);
+    
+    return realVal.toLocaleString('en-US', { maximumFractionDigits: 2 });
   };
 
   return (
@@ -136,8 +143,6 @@ function TokensPage() {
           ) : (
             <div className="space-y-2">
               {filteredTokens.map((token) => {
-                const supplyToDisplay = token.explorer_supply || token.totalSupply;
-                
                 return (
                   <div key={token.id} className="flex items-center justify-between rounded-xl border border-border/50 bg-card/50 p-3">
                     <div className="flex items-center gap-3 min-w-0">
@@ -156,7 +161,7 @@ function TokensPage() {
                     <div className="flex items-center gap-3 shrink-0">
                       <div className="text-right">
                         <p className="text-sm font-medium">
-                          {formatSupply(supplyToDisplay)}
+                          {token.real_supply ? formatSupply(token.real_supply, token.real_decimals) : formatSupply(token.totalSupply, 18)}
                         </p>
                         <p className="text-[10px] text-muted-foreground">Supply</p>
                       </div>
