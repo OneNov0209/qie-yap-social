@@ -24,6 +24,7 @@ interface AuthState {
   connect: () => Promise<void>;
   disconnect: () => void;
   updateProfile: (updates: Partial<User>) => void;
+  signMessage: (args: { message: string }) => Promise<string>;
 }
 
 export const useAuth = create<AuthState>()(
@@ -141,6 +142,29 @@ export const useAuth = create<AuthState>()(
         const current = get().user;
         if (!current) return;
         set({ user: { ...current, ...updates } });
+      },
+
+      // ✅ Tambahan fungsi baru untuk meminta signature dompet
+      signMessage: async ({ message }) => {
+        if (typeof window === 'undefined' || !window.ethereum) {
+          throw new Error('QIE Wallet not detected.');
+        }
+        const currentUser = get().user;
+        if (!currentUser) {
+          throw new Error('Please connect your wallet first.');
+        }
+        try {
+          const signature = await window.ethereum.request({
+            method: 'personal_sign',
+            params: [message, currentUser.address],
+          }) as string;
+          return signature;
+        } catch (err: any) {
+          if (err?.code === 4001) {
+            throw new Error('Signature rejected by user.');
+          }
+          throw new Error('Failed to sign message.');
+        }
       },
     }),
     {
