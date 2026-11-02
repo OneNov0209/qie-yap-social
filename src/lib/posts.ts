@@ -134,7 +134,6 @@ export async function createPost(
   return res.json();
 }
 
-// ✅ Update status post setelah transaksi on-chain (Super Yap / Boost)
 export async function updatePostStatus(
   postId: string,
   updates: { is_super_yap?: boolean; is_boosted?: boolean; boost_hours?: number }
@@ -243,39 +242,29 @@ export function shortAddr(addr: string): string {
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
 }
 
+// ✅ Upload to backend (Pinata proxy) - API Key Pinata sekarang aman di server
 export async function uploadToIPFS(file: File): Promise<string | null> {
-  const PINATA_JWT = import.meta.env.VITE_PINATA_JWT;
-  if (!PINATA_JWT) {
-    console.error("Pinata JWT not found in env");
-    return null;
-  }
-
-  const formData = new FormData();
-  formData.append("file", file);
-
   try {
-    const res = await fetch("https://api.pinata.cloud/pinning/pinFileToIPFS", {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const res = await fetch(`${API_BASE}/upload`, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${PINATA_JWT}`,
-      },
       body: formData,
     });
 
-    const data = await res.json();
-    if (data.IpfsHash) {
-      return `https://gateway.pinata.cloud/ipfs/${data.IpfsHash}`;
+    if (!res.ok) {
+      console.error("Upload failed:", await res.text());
+      return null;
     }
-    return null;
+
+    const data = await res.json();
+    return data.url || null;
   } catch (error) {
     console.error("Upload to IPFS failed:", error);
     return null;
   }
 }
-
-// ============================================
-// ✅ REFERRAL HELPERS
-// ============================================
 
 export function getReferredBy(): string | null {
   if (typeof window === 'undefined') return null;
@@ -292,10 +281,6 @@ export function clearReferralFromUrl() {
     window.history.replaceState({}, '', url.toString());
   }
 }
-
-// ============================================
-// TIP HELPERS (Support QIE + BROQ)
-// ============================================
 
 export async function sendTipToBackend(params: {
   post_id: string;
@@ -333,7 +318,6 @@ export async function fetchBroqBalance(address: string): Promise<string> {
   return data.formatted || '0';
 }
 
-// ✅ SIGNATURE-BASED REGISTRATION
 export async function registerWithSignature(
   address: string,
   referredBy: string | null,
