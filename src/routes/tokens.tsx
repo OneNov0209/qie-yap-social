@@ -30,19 +30,8 @@ function TokensPage() {
         if (res.ok) {
           const data = await res.json();
           
-          // Filter: Supply > 0 & Buang token sampah
-          const validTokens = data.filter((t: QIEDexToken) => {
-            if (Number(t.totalSupply) <= 0) return false;
-            
-            const sym = t.symbol.toLowerCase();
-            if (sym.length <= 2 && !["qie", "eth", "usdc", "usdt"].includes(sym)) return false;
-            
-            const junkSymbols = ["dd", "gld", "bubb", "rocket", "stat", "golden"];
-            if (junkSymbols.includes(sym)) return false;
-            
-            return true;
-          });
-          
+          // Hanya filter token yang benar-benar 0 (tidak ada supply)
+          const validTokens = data.filter((t: QIEDexToken) => Number(t.totalSupply) > 0);
           setTokens(validTokens);
           setFilteredTokens(validTokens);
         }
@@ -70,6 +59,9 @@ function TokensPage() {
 
   const formatSupply = (supply: string) => {
     const num = Number(supply) / 1e18;
+    
+    // Jika supply sangat kecil tapi bukan 0, tampilkan desimalnya
+    if (num > 0 && num < 0.01) return num.toFixed(6);
     
     if (num >= 1_000_000_000) return (num / 1_000_000_000).toFixed(2) + "B";
     if (num >= 1_000_000) return (num / 1_000_000).toFixed(2) + "M";
