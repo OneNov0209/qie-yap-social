@@ -46,15 +46,13 @@ function FeedPage() {
     try {
       const userId = user?.id || null;
       const currentOffset = reset ? 0 : offset;
-      
+
       if (tab === "activity") {
-        // Hanya load auto-feed
         const autoRes = await fetch(`${API_BASE}/auto-feed?limit=50`);
         const autoData = autoRes.ok ? await autoRes.json() : [];
         setAutoPosts(autoData);
-        setHasMore(false); // Activity tidak pakai infinite scroll
+        setHasMore(false);
       } else {
-        // Load feed biasa
         const data = await fetchFeed(tab, userId, currentOffset);
         if (data.length === 0) {
           setHasMore(false);
@@ -64,13 +62,12 @@ function FeedPage() {
         }
       }
     } catch (err) {
-      console.error("❌ Error loading feed:", err);
+      console.error("Error loading feed:", err);
     } finally {
       setLoading(false);
     }
   }, [tab, user, offset, loading, hasMore]);
 
-  // Reset saat tab berubah
   useEffect(() => {
     setPosts([]);
     setAutoPosts([]);
@@ -79,7 +76,6 @@ function FeedPage() {
     loadPosts(true);
   }, [tab]);
 
-  // Infinite Scroll observer (hanya untuk tab non-activity)
   useEffect(() => {
     if (!loadMoreRef.current || loading || tab === "activity") return;
     const observer = new IntersectionObserver(
@@ -95,32 +91,33 @@ function FeedPage() {
   }, [loadPosts, hasMore, loading, tab]);
 
   return (
-    <div className="min-h-screen bg-background pb-20 md:pb-12">
+    <div className="min-h-screen w-full overflow-x-hidden bg-background pb-20 md:pb-12">
       <Header />
-      <main className="mx-auto max-w-4xl px-6 py-6 md:px-8 lg:px-10">
+      <main className="mx-auto w-full max-w-4xl px-4 py-6 sm:px-6 md:px-8 lg:px-10">
         <Composer onPosted={() => { setPosts([]); setOffset(0); setHasMore(true); loadPosts(true); }} />
 
-        <div className="mb-6 flex items-center gap-1 overflow-x-auto border-b border-border">
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={cn(
-                "flex items-center gap-1.5 whitespace-nowrap border-b-2 px-4 py-3 text-sm font-semibold transition-colors",
-                tab === t.id
-                  ? t.id === "super"
-                    ? "border-gold text-gold"
-                    : "border-brand text-foreground"
-                  : "border-transparent text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <t.icon className="size-4" />
-              {t.label}
-            </button>
-          ))}
+        <div className="mb-6 w-full overflow-x-auto border-b border-border scrollbar-hide">
+          <div className="flex min-w-max items-center gap-1">
+            {TABS.map((t) => (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                className={cn(
+                  "flex shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-4 py-3 text-sm font-semibold transition-colors",
+                  tab === t.id
+                    ? t.id === "super"
+                      ? "border-gold text-gold"
+                      : "border-brand text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <t.icon className="size-4" />
+                {t.label}
+              </button>
+            ))}
+          </div>
         </div>
 
-        {/* Tampilan Activity */}
         {tab === "activity" && (
           <div className="space-y-5">
             {autoPosts.length === 0 && !loading ? (
@@ -134,12 +131,12 @@ function FeedPage() {
                     <div className="size-12 shrink-0 rounded-full bg-brand-soft flex items-center justify-center">
                       <Activity className="size-6 text-brand" />
                     </div>
-                    <div>
-                      <p className="text-base font-bold text-foreground">{p.author.display_name}</p>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-base font-bold text-foreground truncate">{p.author.display_name}</p>
                       {p.author.qie_id && (
-                        <p className="text-xs text-brand font-medium mb-2">@{p.author.qie_id}</p>
+                        <p className="text-xs text-brand font-medium mb-2 truncate">@{p.author.qie_id}</p>
                       )}
-                      <p className="text-sm text-foreground/80 whitespace-pre-wrap">{p.content}</p>
+                      <p className="text-sm text-foreground/80 whitespace-pre-wrap break-words">{p.content}</p>
                       <p className="text-[10px] text-muted-foreground mt-3">
                         {new Date(p.created_at).toLocaleString()}
                       </p>
@@ -151,7 +148,6 @@ function FeedPage() {
           </div>
         )}
 
-        {/* Tampilan Feed Biasa */}
         {tab !== "activity" && (
           <>
             <div className="space-y-5">
