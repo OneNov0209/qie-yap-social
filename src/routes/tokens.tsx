@@ -58,16 +58,16 @@ function TokensPage() {
   }, [search, tokens]);
 
   const formatSupply = (supply: string) => {
-    const num = Number(supply) / 1e18;
-    
-    // Jika supply sangat kecil tapi bukan 0, tampilkan desimalnya
-    if (num > 0 && num < 0.01) return num.toFixed(6);
-    
-    if (num >= 1_000_000_000) return (num / 1_000_000_000).toFixed(2) + "B";
-    if (num >= 1_000_000) return (num / 1_000_000).toFixed(2) + "M";
-    if (num >= 1_000) return (num / 1_000).toFixed(2) + "K";
-    return num.toLocaleString('en-US', { maximumFractionDigits: 2 });
-  };
+  const num = Number(supply) / 1e18;
+  
+  if (num === 0) return "0";
+  if (num >= 1_000_000_000) return (num / 1_000_000_000).toFixed(2) + "B";
+  if (num >= 1_000_000) return (num / 1_000_000).toFixed(2) + "M";
+  if (num >= 1_000) return (num / 1_000).toFixed(2) + "K";
+  if (num < 0.01) return num.toFixed(8);
+  
+  return num.toLocaleString('en-US', { maximumFractionDigits: 2 });
+};
 
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-12 overflow-x-hidden">
