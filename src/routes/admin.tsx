@@ -18,7 +18,6 @@ function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // Cek session ke backend saat halaman dimuat
   useEffect(() => {
     fetch(`${API_BASE}/admin/check-session`, { credentials: 'include' })
       .then(res => {
@@ -36,7 +35,6 @@ function AdminPage() {
         credentials: 'include',
         body: JSON.stringify({ password }),
       });
-      
       if (res.ok) {
         setIsAuthenticated(true);
         return true;
@@ -52,17 +50,7 @@ function AdminPage() {
     setIsAuthenticated(false);
   };
 
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="text-muted-foreground">Loading...</div>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return <AdminLogin onLogin={handleLogin} />;
-  }
-
+  if (loading) return <div className="flex min-h-screen items-center justify-center">Loading...</div>;
+  if (!isAuthenticated) return <AdminLogin onLogin={handleLogin} />;
   return <AdminDashboard onLogout={handleLogout} />;
 }
