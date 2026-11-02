@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-store";
 
 export const Route = createFileRoute("/project/$id")({
-  head: ({ params }) => ({
+  head: () => ({
     meta: [
       { title: `Project — QIE Yap` },
       { name: "description", content: `View project details on QIE Yap.` },
@@ -54,7 +54,6 @@ function ProjectDetailPage() {
 
   const loadProject = async () => {
     try {
-      // Ambil data project
       const res = await fetch(`${API_BASE}/projects/${id}`);
       if (res.ok) {
         const data = await res.json();
@@ -63,7 +62,6 @@ function ProjectDetailPage() {
         setForksCount(Number(data.forks_count) || 0);
       }
       
-      // Ambil komentar
       const commentsRes = await fetch(`${API_BASE}/projects/${id}/comments`);
       if (commentsRes.ok) {
         const commentsData = await commentsRes.json();
@@ -94,7 +92,6 @@ function ProjectDetailPage() {
       });
       if (!res.ok) throw new Error("Like failed");
       const data = await res.json();
-      // Ambil count terbaru dari respons agar sinkron
       const newCount = data.count !== undefined ? data.count : likeCount;
       setLikeCount(newCount);
       toast.success(data.action === 'liked' ? "Liked!" : "Unliked");
@@ -121,7 +118,6 @@ function ProjectDetailPage() {
       const data = await res.json();
       if (data.action === 'forked' && data.project) {
         toast.success(`Forked! New project created: ${data.project.name}`);
-        // ✅ FINAL FIX: Redirect menggunakan UUID (id), BUKAN tx_hash!
         router.navigate({ 
           to: "/project/$id", 
           params: { id: data.project.id } 
@@ -161,6 +157,11 @@ function ProjectDetailPage() {
     } finally {
       setSubmittingComment(false);
     }
+  };
+
+  const formatDate = (dateString: string) => {
+    const d = new Date(dateString);
+    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
   };
 
   if (loading) {
@@ -224,7 +225,7 @@ function ProjectDetailPage() {
                   </span>
                   <span className="flex items-center gap-1">
                     <Calendar className="size-3.5" />
-                    {new Date(project.created_at).toLocaleDateString()}
+                    {formatDate(project.created_at)}
                   </span>
                 </div>
               </div>
@@ -238,29 +239,26 @@ function ProjectDetailPage() {
           )}
 
           {project.contract_address && (
-  <div className="mt-4 p-3 rounded-xl bg-muted/50 border border-border/30">
-    <p className="text-xs text-muted-foreground mb-1">Contract Address</p>
-    <div className="flex items-center gap-2 flex-wrap">
-      <code className="text-sm font-mono text-foreground/80 break-all">
-        {project.contract_address}
-      </code>
-      <CheckCircle2 className="size-4 text-emerald-500 shrink-0" />
-      
-      {/* TAMBAHAN BARU: Tombol View on Explorer */}
-      <a
-        href={`https://mainnet.qie.digital/address/${project.contract_address}`}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="ml-auto flex items-center gap-1.5 text-xs font-medium text-brand hover:text-brand/80 transition-colors bg-brand/10 px-3 py-1.5 rounded-full"
-      >
-        <ExternalLink className="size-3.5" />
-        View on Explorer
-      </a>
-    </div>
-  </div>
-)}
+            <div className="mt-4 p-3 rounded-xl bg-muted/50 border border-border/30">
+              <p className="text-xs text-muted-foreground mb-1">Contract Address</p>
+              <div className="flex items-center gap-2 flex-wrap">
+                <code className="text-sm font-mono text-foreground/80 break-all">
+                  {project.contract_address}
+                </code>
+                <CheckCircle2 className="size-4 text-emerald-500 shrink-0" />
+                <a
+                  href={`https://mainnet.qie.digital/address/${project.contract_address}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="ml-auto flex items-center gap-1.5 text-xs font-medium text-brand hover:text-brand/80 transition-colors bg-brand/10 px-3 py-1.5 rounded-full"
+                >
+                  <ExternalLink className="size-3.5" />
+                  View on Explorer
+                </a>
+              </div>
+            </div>
+          )}
 
-          {/* Action Bar */}
           <div className="mt-6 flex items-center gap-4 pt-4 border-t border-border/30">
             <button
               onClick={toggleLike}
@@ -280,8 +278,6 @@ function ProjectDetailPage() {
               <GitFork className={cn("size-4", forked && "text-brand")} />
               <span>{forksCount}</span>
             </button>
-
-            {/* PERBAIKAN: Cegah klik jika tx_hash null */}
             <button
               onClick={() => setIsViewingTx(true)}
               disabled={!project.tx_hash || project.tx_hash === 'null' || project.tx_hash === '' || project.tx_hash.trim() === ''}
@@ -302,7 +298,6 @@ function ProjectDetailPage() {
           </div>
         </div>
 
-        {/* Comment Section */}
         <div className="mt-8">
           <h3 className="font-semibold mb-4">Comments ({comments.length})</h3>
           {user && (
@@ -334,7 +329,7 @@ function ProjectDetailPage() {
                     <p className="text-sm font-medium">{comment.author?.display_name || 'Unknown'}</p>
                     <p className="text-sm text-foreground/80">{comment.content}</p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {new Date(comment.created_at).toLocaleDateString()}
+                      {formatDate(comment.created_at)}
                     </p>
                   </div>
                 </div>
@@ -344,7 +339,6 @@ function ProjectDetailPage() {
         </div>
       </div>
 
-      {/* Transaction Detail Modal - Mengambil data dari Backend (API) */}
       {isViewingTx && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
           <div className="w-full max-w-4xl max-h-[80vh] bg-card rounded-2xl border border-border shadow-2xl overflow-hidden flex flex-col">
@@ -362,9 +356,6 @@ function ProjectDetailPage() {
   );
 }
 
-// ============================================
-// KOMPONEN TRANSACTION DETAIL VIEWER (MEMANGGIL API)
-// ============================================
 function TransactionDetailViewer({ 
   txHash, 
   contractAddress, 
@@ -380,7 +371,6 @@ function TransactionDetailViewer({
   useEffect(() => {
     const fetchTx = async () => {
       try {
-        // Panggil endpoint baru di Backend
         const res = await fetch(`${API_BASE}/tx/${txHash}`);
         if (!res.ok) throw new Error("Failed to fetch transaction data");
         const data = await res.json();
@@ -423,7 +413,6 @@ function TransactionDetailViewer({
         </button>
       </div>
 
-      {/* Grid Data Utama */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="rounded-xl border border-border/30 bg-muted/20 p-3">
           <p className="text-xs text-muted-foreground">Value</p>
@@ -450,7 +439,6 @@ function TransactionDetailViewer({
         </div>
       </div>
 
-      {/* Tx Hash */}
       <div className="space-y-2">
         <p className="text-xs text-muted-foreground">Transaction Hash</p>
         <div className="flex items-center gap-2 bg-muted/30 rounded-xl p-3 border border-border/30">
@@ -461,7 +449,6 @@ function TransactionDetailViewer({
         </div>
       </div>
 
-      {/* From / To */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
           <p className="text-xs text-muted-foreground">From</p>
@@ -482,7 +469,6 @@ function TransactionDetailViewer({
         </div>
       </div>
 
-      {/* Gas Info */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="space-y-2">
           <p className="text-xs text-muted-foreground">Gas Price</p>
@@ -498,7 +484,6 @@ function TransactionDetailViewer({
         </div>
       </div>
 
-      {/* Input Data / Contract Code */}
       {txData.input && txData.input !== '0x' && (
         <div className="space-y-2">
           <p className="text-xs text-muted-foreground">Input Data (Contract Code)</p>
@@ -510,7 +495,6 @@ function TransactionDetailViewer({
         </div>
       )}
 
-      {/* Contract Address (jika ada) */}
       {contractAddress && (
         <div className="space-y-2">
           <p className="text-xs text-muted-foreground">Contract Created</p>
