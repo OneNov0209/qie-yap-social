@@ -81,15 +81,29 @@ function LiveActivityTicker() {
         const items: string[] = [];
         
         tips.forEach((tip: any) => {
-          // Mengambil display_name atau username dari backend, bukan ID
-          const from = tip.from_user?.display_name || tip.from_user?.username || 'Someone';
-          const to = tip.to_user?.display_name || tip.to_user?.username || 'someone';
+          // ✅ FIX: Fallback ke QIE ID, atau short address, bukan "Someone"
+          const from = tip.from_user?.qie_id 
+            ? `@${tip.from_user.qie_id}`
+            : tip.from_user?.display_name 
+            || shortAddr(tip.from_user?.address) 
+            || 'Someone';
+          
+          const to = tip.to_user?.qie_id 
+            ? `@${tip.to_user.qie_id}`
+            : tip.to_user?.display_name 
+            || shortAddr(tip.to_user?.address) 
+            || 'someone';
+          
           const token = tip.token_type === 'BROQ' ? 'BROQ' : 'QIE';
           items.push(`💸 ${from} tipped ${to} ${tip.amount} ${token}`);
         });
 
         feed.forEach((post: any) => {
-          const author = post.author?.display_name || post.author?.username || 'Someone';
+          const author = post.author?.qie_id 
+            ? `@${post.author.qie_id}`
+            : post.author?.display_name 
+            || shortAddr(post.author?.address) 
+            || 'Someone';
           items.push(`📝 ${author} posted a new Yap`);
         });
 
@@ -367,7 +381,7 @@ function FAQItem({ question, answer, isOpen: defaultOpen = false }: { question: 
 }
 
 // ============================================
-// 4. TIMELINE CARD (FIXED: Labels)
+// 4. TIMELINE CARD
 // ============================================
 function TimelineCard({ 
   step, 
@@ -506,7 +520,7 @@ function LandingPage() {
   const faqs = [
     {
       question: "What is QIE Yap?",
-      answer: "QIE Yap is the reputation layer of QIE. It's a platform to discover builders, earn QIE for your contributions, and grow your on-chain résumé."
+      answer: "QIE Yap is the discovery, reputation, and earning layer for QIE. Discover builders, earn QIE for your contributions, and grow your on-chain résumé."
     },
     {
       question: "Does it cost anything to post a Yap?",
@@ -565,7 +579,7 @@ function LandingPage() {
           </h1>
 
           <p className="mx-auto max-w-2xl text-lg text-muted-foreground md:text-xl">
-            QIE Yap is the reputation layer of QIE. Discover top builders, earn QIE for your contributions, and turn your wallet into a verifiable on-chain résumé.
+            QIE Yap is the discovery, reputation, and earning layer for QIE. Discover top builders, earn QIE for your contributions, and turn your wallet into a verifiable on-chain résumé.
           </p>
 
           <LiveActivityTicker />
@@ -593,7 +607,7 @@ function LandingPage() {
       {/* === QIE PRICE CARD === */}
       <QiePriceCard />
 
-      {/* === STATISTICS (LIVE + QIE & BROQ SEPARATE) === */}
+      {/* === STATISTICS === */}
       <section className="mx-auto max-w-6xl px-4 pb-20">
         <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
           {[
