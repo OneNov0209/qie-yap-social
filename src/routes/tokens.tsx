@@ -14,7 +14,7 @@ interface QIEDexToken {
   name: string;
   totalSupply: string;
   icon_url?: string;
-  real_supply?: string; 
+  explorer_supply?: string;
 }
 
 function TokensPage() {
@@ -31,22 +31,18 @@ function TokensPage() {
         if (res.ok) {
           const data: QIEDexToken[] = await res.json();
           
-          
           setTokens(data);
           setFilteredTokens(data);
 
-          
           const updatedTokens = await Promise.all(
             data.map(async (token) => {
               try {
                 const expRes = await fetch(`${API_BASE}/explorer/token/${token.id}`);
                 if (expRes.ok) {
                   const expData = await expRes.json();
-                  return { ...token, real_supply: expData.total_supply };
+                  return { ...token, explorer_supply: expData.total_supply };
                 }
-              } catch (e) {
-                
-              }
+              } catch (e) {}
               return token;
             })
           );
@@ -77,18 +73,11 @@ function TokensPage() {
   }, [search, tokens]);
 
   const formatSupply = (supply: string) => {
-    let num = Number(supply) / 1e18;
-    
-    if (num < 1 && num > 0) {
-      num = Number(supply) / 1e6; 
-    }
-
-    if (num === 0) return "-";
+    const num = Number(supply);
     if (num >= 1_000_000_000) return (num / 1_000_000_000).toFixed(2) + "B";
     if (num >= 1_000_000) return (num / 1_000_000).toFixed(2) + "M";
     if (num >= 1_000) return (num / 1_000).toFixed(2) + "K";
-    
-    return num.toLocaleString('en-US', { maximumFractionDigits: 4 });
+    return num.toLocaleString();
   };
 
   return (
@@ -139,38 +128,42 @@ function TokensPage() {
             </div>
           ) : (
             <div className="space-y-2">
-              {filteredTokens.map((token) => (
-                <div key={token.id} className="flex items-center justify-between rounded-xl border border-border/50 bg-card/50 p-3">
-                  <div className="flex items-center gap-3 min-w-0">
-                    {token.icon_url ? (
-                      <img src={token.icon_url} alt={token.name} className="size-10 rounded-full shrink-0" />
-                    ) : (
-                      <div className="rounded-full bg-muted p-2 shrink-0">
-                        <Coins className="size-4 text-brand" />
+              {filteredTokens.map((token) => {
+                const supplyToDisplay = token.explorer_supply || token.totalSupply;
+                
+                return (
+                  <div key={token.id} className="flex items-center justify-between rounded-xl border border-border/50 bg-card/50 p-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      {token.icon_url ? (
+                        <img src={token.icon_url} alt={token.name} className="size-10 rounded-full shrink-0" />
+                      ) : (
+                        <div className="rounded-full bg-muted p-2 shrink-0">
+                          <Coins className="size-4 text-brand" />
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold truncate">{token.symbol}</p>
+                        <p className="text-xs text-muted-foreground truncate">{token.name}</p>
                       </div>
-                    )}
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold truncate">{token.symbol}</p>
-                      <p className="text-xs text-muted-foreground truncate">{token.name}</p>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <div className="text-right">
+                        <p className="text-sm font-medium">
+                          {formatSupply(supplyToDisplay)}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground">Supply</p>
+                      </div>
+                      <Link
+                        to="/token/$id"
+                        params={{ id: token.id }}
+                        className="rounded-full bg-brand/10 px-3 py-1 text-xs font-medium text-brand hover:bg-brand/20 transition-colors"
+                      >
+                        View
+                      </Link>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 shrink-0">
-                    <div className="text-right">
-                      <p className="text-sm font-medium">
-                        {token.real_supply ? formatSupply(token.real_supply) : formatSupply(token.totalSupply)}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground">Supply</p>
-                    </div>
-                    <Link
-                      to="/token/$id"
-                      params={{ id: token.id }}
-                      className="rounded-full bg-brand/10 px-3 py-1 text-xs font-medium text-brand hover:bg-brand/20 transition-colors"
-                    >
-                      View
-                    </Link>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
