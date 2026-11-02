@@ -155,7 +155,7 @@ function RootComponent() {
   useEffect(() => {
     if (typeof window === 'undefined' || typeof document === 'undefined') return;
 
-    const WIDGET_ID = "YOUR_WIDGET_ID";
+    const WIDGET_ID = "qie-live-0d436e93a55eb8eb374b";
     const SCRIPT_ID = "qie-id-widget-loader";
 
     if (document.getElementById(SCRIPT_ID)) return;
