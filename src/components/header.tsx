@@ -42,7 +42,7 @@ export function MobileBottomNav() {
     { to: "/feed", label: "Feed", icon: Home },
     { to: "/search", label: "Search", icon: Search },
     { to: "/explorer", label: "Explorer", icon: Activity },
-    { to: "/hackathon", label: "Hackathon", icon: Trophy },
+    { to: "/referrals", label: "Referrals", icon: Users },
     { to: "/dashboard", label: "Dashboard", icon: Wallet },
     { to: `/profile/${profilePath}`, label: "Profile", icon: User },
   ];
