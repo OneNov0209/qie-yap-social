@@ -73,11 +73,18 @@ function TokensPage() {
   }, [search, tokens]);
 
   const formatSupply = (supply: string) => {
-    const num = Number(supply);
-    
+    let num = Number(supply);
     if (isNaN(num)) return "0";
+
+    // Coba bagi 18 desimal (standar EVM)
+    let val = num / 1e18;
     
-    return num.toLocaleString('en-US', { maximumFractionDigits: 2 });
+    // Jika hasilnya terlalu kecil (< 1) padahal aslinya besar, coba bagi 6 desimal
+    if (val < 0.0001 && num > 0) {
+       val = num / 1e6;
+    }
+
+    return val.toLocaleString('en-US', { maximumFractionDigits: 2 });
   };
 
   return (
