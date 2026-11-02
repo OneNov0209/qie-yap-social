@@ -81,31 +81,30 @@ function LiveActivityTicker() {
         const items: string[] = [];
         
         tips.forEach((tip: any) => {
-          // ✅ FIX: Fallback ke QIE ID, atau short address, bukan "Someone"
-          const from = tip.from_user?.qie_id 
-            ? `@${tip.from_user.qie_id}`
-            : tip.from_user?.display_name 
-            || shortAddr(tip.from_user?.address) 
-            || 'Someone';
-          
-          const to = tip.to_user?.qie_id 
-            ? `@${tip.to_user.qie_id}`
-            : tip.to_user?.display_name 
-            || shortAddr(tip.to_user?.address) 
-            || 'someone';
-          
-          const token = tip.token_type === 'BROQ' ? 'BROQ' : 'QIE';
-          items.push(`💸 ${from} tipped ${to} ${tip.amount} ${token}`);
-        });
+  const from = tip.from_user?.qie_id
+    ? `@${tip.from_user.qie_id}`
+    : tip.from_user?.display_name
+    || shortAddr(tip.from_user?.address)
+    || 'Someone';
 
-        feed.forEach((post: any) => {
-          const author = post.author?.qie_id 
-            ? `@${post.author.qie_id}`
-            : post.author?.display_name 
-            || shortAddr(post.author?.address) 
-            || 'Someone';
-          items.push(`📝 ${author} posted a new Yap`);
-        });
+  const to = tip.to_user?.qie_id
+    ? `@${tip.to_user.qie_id}`
+    : tip.to_user?.display_name
+    || shortAddr(tip.to_user?.address)
+    || 'someone';
+
+  const token = tip.token_type === 'BROQ' ? 'BROQ' : 'QIE';
+  items.push(`💸 ${from} tipped ${to} ${tip.amount} ${token}`);
+});
+
+feed.forEach((post: any) => {
+  const author = post.author?.qie_id
+    ? `@${post.author.qie_id}`
+    : post.author?.display_name
+    || shortAddr(post.author?.address)
+    || 'Someone';
+  items.push(`📝 ${author} posted a new Yap`);
+});
 
         if (items.length === 0) {
           items.push("🚀 QIE Yap is live on Mainnet!");
