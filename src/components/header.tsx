@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Home, Search, Activity, Wallet, User, Trophy } from "lucide-react";
+import { Home, Search, Activity, Wallet, User, Trophy, Users } from "lucide-react"; // <-- Import Users ditambahkan di sini
 import { ConnectWalletButton } from "./connect-wallet-button";
 import { ThemeToggle } from "./theme-toggle";
 import { useAuth } from "@/lib/auth-store";
@@ -42,7 +42,7 @@ export function MobileBottomNav() {
     { to: "/feed", label: "Feed", icon: Home },
     { to: "/search", label: "Search", icon: Search },
     { to: "/explorer", label: "Explorer", icon: Activity },
-    { to: "/referrals", label: "Referrals", icon: Users },
+    { to: "/referrals", label: "Referrals", icon: Users }, // <-- Sekarang aman
     { to: "/dashboard", label: "Dashboard", icon: Wallet },
     { to: `/profile/${profilePath}`, label: "Profile", icon: User },
   ];
