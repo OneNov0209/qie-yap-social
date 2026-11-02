@@ -4,7 +4,7 @@ import { Header } from "@/components/header";
 import { Avatar } from "@/components/avatar-img";
 import { API_BASE } from "@/lib/posts";
 import { cn } from "@/lib/utils";
-import { ArrowLeft, Code, Heart, MessageCircle, GitFork, Plus } from "lucide-react";
+import { ArrowLeft, Code, Heart, MessageCircle, GitFork, Plus, LogIn } from "lucide-react";
 import { useAuth } from "@/lib/auth-store";
 import { toast } from "sonner";
 
@@ -111,13 +111,21 @@ function ProjectsPage() {
             </Link>
             <h1 className="font-display text-2xl font-bold">Projects</h1>
           </div>
-          <button
-            onClick={() => setShowPublishModal(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-full bg-brand text-white text-sm font-medium hover:bg-brand/90 transition-colors"
-          >
-            <Plus className="size-4" />
-            Publish Project
-          </button>
+          
+          {user ? (
+            <button
+              onClick={() => setShowPublishModal(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-full bg-brand text-white text-sm font-medium hover:bg-brand/90 transition-colors"
+            >
+              <Plus className="size-4" />
+              Publish Project
+            </button>
+          ) : (
+            <span className="text-xs text-muted-foreground flex items-center gap-1.5 bg-muted/50 px-3 py-1.5 rounded-full border border-border/50">
+              <LogIn className="size-3" />
+              Connect to publish
+            </span>
+          )}
         </div>
 
         {loading ? (
@@ -183,10 +191,9 @@ function ProjectsPage() {
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-2">
-                    {/* ✅ PERBAIKAN PENTING DI SINI: Gunakan project.id BUKAN tx_hash */}
                     <Link
                       to="/project/$id"
-                      params={{ id: project.id }} // <-- INI KUNCI PERBAIKANNYA
+                      params={{ id: project.id || project.tx_hash }}
                       className="text-sm text-brand hover:text-brand/80 font-medium"
                     >
                       View Details →
