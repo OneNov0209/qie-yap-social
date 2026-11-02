@@ -134,7 +134,11 @@ function TokenDetailPage() {
           <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="rounded-xl border border-border/30 bg-muted/20 p-4">
               <p className="text-xs text-muted-foreground">Price</p>
-              <p className="text-sm font-bold">{token.exchange_rate ? `$${token.exchange_rate.toFixed(2)}` : "N/A"}</p>
+              <p className="text-sm font-bold">
+                {token.exchange_rate && !isNaN(Number(token.exchange_rate)) 
+                 ? `$${Number(token.exchange_rate).toFixed(2)}` 
+                 : "N/A"}
+              </p>
               <p className="text-[10px] text-muted-foreground">Market</p>
             </div>
             <div className="rounded-xl border border-border/30 bg-muted/20 p-4">
