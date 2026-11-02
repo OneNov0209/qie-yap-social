@@ -61,13 +61,11 @@ function DashboardPage() {
     if (!user) return;
     setLoading(true);
     try {
-      // ✅ Stats dari backend (QIE + BROQ + posts + followers)
       const res = await fetch(`${API_BASE}/dashboard/${user.id}`);
       if (!res.ok) throw new Error(`Dashboard API error: ${res.status}`);
       const data = await res.json();
       setStats(data);
 
-      // ✅ Wallet balance on-chain
       const balance = await getQieBalance(user.address as `0x${string}`).catch(() => 0);
       setWalletBalance(balance);
     } catch (err) {
@@ -80,25 +78,29 @@ function DashboardPage() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-background pb-20 md:pb-12">
+      <div className="min-h-screen bg-background pb-20 md:pb-12 overflow-x-hidden">
         <Header />
-        <div className="mx-auto max-w-2xl px-4 py-12 text-center">
-          <Wallet className="mx-auto size-12 text-muted-foreground" />
-          <h2 className="mt-4 text-xl font-semibold">Connect your wallet</h2>
+        <div className="mx-auto max-w-2xl px-4 py-20 text-center">
+          <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-full bg-brand-soft text-brand">
+            <Wallet className="size-8" />
+          </div>
+          <h2 className="font-display text-2xl font-bold">Connect to view Dashboard</h2>
           <p className="mt-2 text-muted-foreground">
-            Please connect your QIE Wallet to view your dashboard.
+            Please connect your QIE Wallet to view your earnings and analytics.
           </p>
+          <Link to="/feed" className="mt-6 inline-block rounded-full bg-brand px-6 py-2 text-sm font-semibold text-white hover:bg-brand/90 transition-colors">
+            Go to Feed
+          </Link>
         </div>
       </div>
     );
   }
 
-  // Hitung fee hanya dari tips QIE (BROQ tidak ada fee)
   const qieTotal = stats?.qie.total_received || 0;
   const platformFeeEarned = isDev ? qieTotal * 0.02 : 0;
 
   return (
-    <div className="min-h-screen bg-background pb-20 md:pb-12">
+    <div className="min-h-screen bg-background pb-20 md:pb-12 overflow-x-hidden">
       <Header />
       <div className="mx-auto max-w-2xl px-4 py-6">
         <div className="flex items-center gap-3 mb-6">
@@ -119,7 +121,6 @@ function DashboardPage() {
           </div>
         ) : (
           <>
-            {/* === TIPS RECEIVED === */}
             <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
               Tips Received
             </h2>
@@ -138,7 +139,6 @@ function DashboardPage() {
               />
             </div>
 
-            {/* === DEV FEE (hanya untuk dev wallet) === */}
             {isDev && (
               <>
                 <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
@@ -161,7 +161,6 @@ function DashboardPage() {
               </>
             )}
 
-            {/* === ACTIVITY === */}
             <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
               Activity
             </h2>
@@ -183,7 +182,6 @@ function DashboardPage() {
               />
             </div>
 
-            {/* === RECENT TIPS === */}
             <div className="rounded-xl border border-border bg-card/50 p-4">
               <div className="flex items-center gap-2 mb-4">
                 <History className="size-5 text-muted-foreground" />
