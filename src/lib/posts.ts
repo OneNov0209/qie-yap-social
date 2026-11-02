@@ -365,9 +365,6 @@ const ADMIN_TOKEN = import.meta.env.VITE_ADMIN_API_TOKEN || "";
 export async function adminFetch(url: string, options: RequestInit = {}) {
   return fetch(url, {
     ...options,
-    headers: {
-      ...options.headers,
-      "x-admin-token": ADMIN_TOKEN,
-    },
+    credentials: 'include',
   });
 }
