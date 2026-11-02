@@ -35,20 +35,23 @@ export const useAuth = create<AuthState>()(
       connectStep: null,
 
       connect: async () => {
-        if (typeof window === 'undefined' || !window.ethereum) {
-          throw new Error('QIE Wallet extension not detected. Please install QIE Wallet.');
-        }
         set({ connecting: true, connectStep: 'Connecting wallet...' });
 
         try {
+          if (typeof window === 'undefined' || !window.ethereum) {
+            throw new Error('QIE Wallet extension not detected. Please install QIE Wallet.');
+          }
+
           const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
           const address = (accounts as string[])[0];
-          if (!address) throw new Error('No accounts found in QIE Wallet.');
+          
+          if (!address) {
+            throw new Error('No accounts found in QIE Wallet.');
+          }
 
           set({ connectStep: 'Checking profile...' });
 
           const referredBy = getReferredBy();
-
           const checkRes = await fetch(`${API_BASE}/profiles/${address}`);
           const isExistingUser = checkRes.ok;
 
@@ -56,9 +59,7 @@ export const useAuth = create<AuthState>()(
 
           if (isExistingUser) {
             profile = await checkRes.json();
-            console.log("✅ Existing user:", address.slice(0, 10) + "...");
           } else {
-            console.log("🆕 New user, requesting signature...");
             set({ connectStep: 'Please sign in your wallet...' });
 
             const message = generateRegisterMessage(address);
@@ -71,12 +72,14 @@ export const useAuth = create<AuthState>()(
               }) as string;
             } catch (signError: any) {
               if (signError?.code === 4001) {
-                throw new Error('Signature required for registration. Please approve the signature in your wallet.');
+                throw new Error('Signature rejected. Please approve the signature to register.');
               }
-              throw new Error('Failed to sign message: ' + (signError.message || 'Unknown error'));
+              throw new Error('Failed to sign message. Please try again.');
             }
 
-            if (!signature) throw new Error('Invalid signature.');
+            if (!signature) {
+              throw new Error('Invalid signature.');
+            }
 
             set({ connectStep: 'Registering...' });
 
@@ -92,15 +95,16 @@ export const useAuth = create<AuthState>()(
             });
 
             if (!res.ok) {
-              const data = await res.json().catch(() => ({ error: 'Unknown error' }));
+              const data = await res.json().catch(() => ({ error: 'Registration failed' }));
               throw new Error(data.error || `Registration failed: ${res.status}`);
             }
 
             profile = await res.json();
-            console.log("✅ Registered:", profile.id);
           }
 
-          if (referredBy) clearReferralFromUrl();
+          if (referredBy) {
+            clearReferralFromUrl();
+          }
 
           const displayName = profile.display_name || `${address.slice(0, 6)}…${address.slice(-4)}`;
           const username = profile.username || address.slice(0, 8);
@@ -118,7 +122,6 @@ export const useAuth = create<AuthState>()(
           };
 
           set({ user: userData, connecting: false, connectStep: null });
-          console.log("✅ User logged in");
 
           getQieBalance(address as `0x${string}`)
             .then((balance) => {
@@ -127,12 +130,13 @@ export const useAuth = create<AuthState>()(
                 set({ user: { ...current, balance } });
               }
             })
-            .catch(() => { /* ignore */ });
+            .catch(() => {});
 
-        } catch (error) {
-          console.error('Connect error:', error);
+        } catch (error: any) {
           set({ connecting: false, connectStep: null });
-          throw error;
+          
+          const message = error?.message || 'Failed to connect wallet.';
+          throw new Error(message);
         }
       },
 
@@ -144,7 +148,6 @@ export const useAuth = create<AuthState>()(
         set({ user: { ...current, ...updates } });
       },
 
-      // ✅ Tambahan fungsi baru untuk meminta signature dompet
       signMessage: async ({ message }) => {
         if (typeof window === 'undefined' || !window.ethereum) {
           throw new Error('QIE Wallet not detected.');
