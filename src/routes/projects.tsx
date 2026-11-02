@@ -100,6 +100,11 @@ function ProjectsPage() {
     }
   };
 
+  const formatDate = (dateString: string) => {
+    const d = new Date(dateString);
+    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  };
+
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-12">
       <Header />
@@ -172,7 +177,7 @@ function ProjectsPage() {
                         )}
                       </div>
                       <p className="text-sm text-muted-foreground mt-1">
-                        by {project.author?.display_name || 'Unknown'} · {new Date(project.created_at).toLocaleDateString()}
+                        by {project.author?.display_name || 'Unknown'} · {formatDate(project.created_at)}
                       </p>
                       {project.description && (
                         <p className="text-sm text-foreground/80 mt-2 line-clamp-2">{project.description}</p>
@@ -206,7 +211,6 @@ function ProjectsPage() {
         )}
       </div>
 
-      {/* Publish Project Modal */}
       {showPublishModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
           <div className="w-full max-w-md rounded-2xl bg-card p-6 border border-border shadow-2xl">
