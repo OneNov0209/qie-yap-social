@@ -422,7 +422,7 @@ export function PostCard({ post }: { post: FeedPost }) {
           
           <div className="flex flex-wrap items-center gap-x-3 text-xs text-muted-foreground">
             <span>@{post.author?.username || shortAddr(post.author?.address || "")}</span>
-            <span>· {shortAddr(post.author?.address || "")}</span>
+            {/* Alamat wallet dobel sudah dihapus di sini */}
             {post.txHash && (
               <span className="inline-flex items-center gap-1 text-brand-start">
                 <LinkIcon className="size-3" /> On-Chain
