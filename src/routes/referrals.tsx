@@ -4,7 +4,7 @@ import { Header } from "@/components/header";
 import { Avatar } from "@/components/avatar-img";
 import { API_BASE, shortAddr } from "@/lib/posts";
 import { useAuth } from "@/lib/auth-store";
-import { Copy, Share2, Users, Trophy, Loader2, Link as LinkIcon } from "lucide-react";
+import { Copy, Share2, Users, Trophy, Loader2, Link as LinkIcon, Wallet } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/referrals")({
@@ -24,7 +24,10 @@ function ReferralsPage() {
   const [referralLink, setReferralLink] = useState("");
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
     setReferralLink(`https://qie.yap.onenov.xyz/?ref=${user.address}`);
 
     const fetchReferrals = async () => {
@@ -57,18 +60,23 @@ function ReferralsPage() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-background pb-20 md:pb-12">
+      <div className="min-h-screen bg-background pb-20 md:pb-12 overflow-x-hidden">
         <Header />
         <div className="mx-auto max-w-2xl px-4 py-20 text-center">
-          <h1 className="font-display text-2xl font-bold">Connect your wallet</h1>
-          <p className="mt-2 text-muted-foreground">Please connect your QIE wallet to see your referrals.</p>
+          <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-full bg-brand-soft text-brand">
+            <Wallet className="size-8" />
+          </div>
+          <h1 className="font-display text-2xl font-bold">Connect to view Referrals</h1>
+          <p className="mt-2 text-muted-foreground">
+            Please connect your QIE Wallet to see your referral link and earnings.
+          </p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background pb-20 md:pb-12">
+    <div className="min-h-screen bg-background pb-20 md:pb-12 overflow-x-hidden">
       <Header />
       <div className="mx-auto max-w-2xl px-4 py-6">
         <div className="flex items-center gap-2 mb-6">
@@ -76,7 +84,6 @@ function ReferralsPage() {
           <h1 className="font-display text-2xl font-bold">Referrals</h1>
         </div>
 
-        {/* Referral Link Box */}
         <div className="rounded-2xl border border-border/50 bg-card/50 p-6 mb-6">
           <div className="flex items-center gap-2 mb-3">
             <Share2 className="size-5 text-brand" />
@@ -85,13 +92,13 @@ function ReferralsPage() {
           <p className="text-sm text-muted-foreground mb-3">
             Share this link and earn <strong className="text-brand">+10 Contributor Score</strong> for every user who registers!
           </p>
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             <div className="flex-1 rounded-xl border border-border/50 bg-muted/20 px-4 py-3 text-xs font-mono break-all">
               {referralLink}
             </div>
             <button
               onClick={copyLink}
-              className="flex items-center gap-1.5 rounded-xl bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand/90 transition-colors"
+              className="flex items-center justify-center gap-1.5 rounded-xl bg-brand px-4 py-3 sm:py-2 text-sm font-medium text-white hover:bg-brand/90 transition-colors shrink-0"
             >
               <Copy className="size-4" />
               Copy
@@ -106,7 +113,6 @@ function ReferralsPage() {
           </button>
         </div>
 
-        {/* Stats */}
         <div className="grid grid-cols-2 gap-3 mb-6">
           <div className="rounded-xl border border-border bg-card/50 p-4 text-center">
             <Users className="mx-auto size-5 text-brand mb-1" />
@@ -120,7 +126,6 @@ function ReferralsPage() {
           </div>
         </div>
 
-        {/* Referral List */}
         <h2 className="font-semibold mb-3">Your Referrals ({referrals.length})</h2>
         {loading ? (
           <div className="flex justify-center py-12">
@@ -137,11 +142,11 @@ function ReferralsPage() {
             {referrals.map((ref) => (
               <div key={ref.id} className="flex items-center gap-3 rounded-xl border border-border/50 bg-card/50 p-3">
                 <Avatar seed={ref.avatar_seed || ref.address} size={40} />
-                <div className="flex-1">
-                  <p className="font-medium">{ref.display_name || "Unknown"}</p>
-                  <p className="text-xs text-muted-foreground font-mono">{shortAddr(ref.address)}</p>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium truncate">{ref.display_name || "Unknown"}</p>
+                  <p className="text-xs text-muted-foreground font-mono truncate">{shortAddr(ref.address)}</p>
                 </div>
-                <span className="text-xs text-muted-foreground">
+                <span className="text-xs text-muted-foreground shrink-0">
                   {new Date(ref.created_at).toLocaleDateString()}
                 </span>
               </div>
