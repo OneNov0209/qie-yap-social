@@ -63,7 +63,7 @@ function ScrollReveal({ children, delay = 0 }: { children: React.ReactNode; dela
 }
 
 // ============================================
-// 2. LIVE ACTIVITY TICKER
+// 2. LIVE ACTIVITY TICKER (FIXED: Names)
 // ============================================
 function LiveActivityTicker() {
   const [activities, setActivities] = useState<string[]>([]);
@@ -81,14 +81,15 @@ function LiveActivityTicker() {
         const items: string[] = [];
         
         tips.forEach((tip: any) => {
-          const from = tip.from_user_id?.slice(0, 6) || 'Someone';
-          const to = tip.to_user_id?.slice(0, 6) || 'someone';
+          // Mengambil display_name atau username dari backend, bukan ID
+          const from = tip.from_user?.display_name || tip.from_user?.username || 'Someone';
+          const to = tip.to_user?.display_name || tip.to_user?.username || 'someone';
           const token = tip.token_type === 'BROQ' ? 'BROQ' : 'QIE';
           items.push(`💸 ${from} tipped ${to} ${tip.amount} ${token}`);
         });
 
         feed.forEach((post: any) => {
-          const author = post.author?.display_name || post.author_id?.slice(0, 6) || 'Someone';
+          const author = post.author?.display_name || post.author?.username || 'Someone';
           items.push(`📝 ${author} posted a new Yap`);
         });
 
@@ -366,7 +367,7 @@ function FAQItem({ question, answer, isOpen: defaultOpen = false }: { question: 
 }
 
 // ============================================
-// 4. TIMELINE CARD
+// 4. TIMELINE CARD (FIXED: Labels)
 // ============================================
 function TimelineCard({ 
   step, 
@@ -380,7 +381,7 @@ function TimelineCard({
   title: string; 
   description: string; 
   icon: any;
-  type: 'sell' | 'buy';
+  type: 'creator' | 'supporter';
   isLeft: boolean;
 }) {
   return (
@@ -390,16 +391,16 @@ function TimelineCard({
     )}>
       <div className={cn(
         "flex-1 rounded-2xl border border-border/40 bg-card/50 p-5 backdrop-blur-sm shadow-lg transition-all hover:border-brand-start/30",
-        type === 'sell' ? "hover:shadow-brand-start/10" : "hover:shadow-brand-end/10"
+        type === 'creator' ? "hover:shadow-brand-start/10" : "hover:shadow-brand-end/10"
       )}>
         <div className="flex items-start gap-4">
-          <div className={cn("rounded-xl p-3", type === 'sell' ? "bg-brand-soft" : "bg-blue-500/10")}>
-            <Icon className={cn("size-6", type === 'sell' ? "text-brand" : "text-blue-500")} />
+          <div className={cn("rounded-xl p-3", type === 'creator' ? "bg-brand-soft" : "bg-blue-500/10")}>
+            <Icon className={cn("size-6", type === 'creator' ? "text-brand" : "text-blue-500")} />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className={cn("text-[10px] font-bold uppercase tracking-wider", type === 'sell' ? "text-brand" : "text-blue-500")}>
-                {type === 'sell' ? 'SELL CONTRACT' : 'BUY CONTRACT'}
+              <span className={cn("text-[10px] font-bold uppercase tracking-wider", type === 'creator' ? "text-brand" : "text-blue-500")}>
+                {type === 'creator' ? 'CREATOR' : 'SUPPORTER'}
               </span>
               <span className="text-[10px] text-muted-foreground">— Step {step}</span>
             </div>
@@ -578,7 +579,7 @@ function LandingPage() {
               <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
             </Link>
             <a 
-              href="https://qie.explorer.onenov.xyz" 
+              href="https://mainnet.qie.digital" 
               target="_blank" 
               rel="noopener noreferrer"
               className="rounded-full border border-white/10 bg-card/50 px-8 py-3 text-base font-medium backdrop-blur-sm hover:bg-white/5 transition-colors"
@@ -636,11 +637,11 @@ function LandingPage() {
           <div className="relative flex flex-col items-center gap-12 md:gap-16">
             <div className="absolute left-1/2 top-0 h-full w-[2px] -translate-x-1/2 bg-gradient-to-b from-brand-start via-brand-end to-transparent opacity-30" />
 
-            <TimelineCard step={1} title="Creator Posts a Yap" description="User writes a post and selects 'Super Yap' or 'Boost' options." icon={MessageCircle} type="sell" isLeft={true} />
-            <TimelineCard step={2} title="Supporter Sends Tip" description="Fans click 'Tip', choose QIE or BROQ, and confirm via wallet." icon={Coins} type="buy" isLeft={false} />
-            <TimelineCard step={3} title="Smart Contract Processes" description="2% platform fee is deducted. 98% of QIE is sent instantly to creator's wallet." icon={ZapIcon} type="sell" isLeft={true} />
-            <TimelineCard step={4} title="Boost or Super Yap Activated" description="If selected, the post gets a gold border or 'Promoted' badge instantly." icon={Award} type="buy" isLeft={false} />
-            <TimelineCard step={5} title="On-Chain Verified" description="Transaction is recorded on QIE Explorer. Full transparency." icon={CheckCircle} type="sell" isLeft={true} />
+            <TimelineCard step={1} title="Creator Posts a Yap" description="User writes a post and selects 'Super Yap' or 'Boost' options." icon={MessageCircle} type="creator" isLeft={true} />
+            <TimelineCard step={2} title="Supporter Sends Tip" description="Fans click 'Tip', choose QIE or BROQ, and confirm via wallet." icon={Coins} type="supporter" isLeft={false} />
+            <TimelineCard step={3} title="Smart Contract Processes" description="2% platform fee is deducted. 98% of QIE is sent instantly to creator's wallet." icon={ZapIcon} type="creator" isLeft={true} />
+            <TimelineCard step={4} title="Boost or Super Yap Activated" description="If selected, the post gets a gold border or 'Promoted' badge instantly." icon={Award} type="supporter" isLeft={false} />
+            <TimelineCard step={5} title="On-Chain Verified" description="Transaction is recorded on QIE Explorer. Full transparency." icon={CheckCircle} type="creator" isLeft={true} />
           </div>
         </ScrollReveal>
       </section>
