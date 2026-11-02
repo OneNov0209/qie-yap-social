@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Home, Search, Activity, Wallet, User, Trophy, Users } from "lucide-react"; // <-- Import Users ditambahkan di sini
+import { Home, Search, Activity, Wallet, User, Trophy, Users } from "lucide-react";
 import { ConnectWalletButton } from "./connect-wallet-button";
 import { ThemeToggle } from "./theme-toggle";
 import { useAuth } from "@/lib/auth-store";
@@ -12,7 +12,7 @@ export function Header() {
   const { user } = useAuth();
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-transparent bg-background/60 backdrop-blur-xl shadow-sm shadow-brand-start/5">
+    <header className="sticky top-0 z-40 w-full border-b border-white/5 bg-background/80 backdrop-blur-xl shadow-sm shadow-brand-start/5">
       <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-brand-start to-transparent opacity-30" />
       
       <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-2 px-3 py-3 sm:px-4">
@@ -42,7 +42,7 @@ export function MobileBottomNav() {
     { to: "/feed", label: "Feed", icon: Home },
     { to: "/search", label: "Search", icon: Search },
     { to: "/explorer", label: "Explorer", icon: Activity },
-    { to: "/referrals", label: "Referrals", icon: Users }, // <-- Sekarang aman
+    { to: "/referrals", label: "Referrals", icon: Users },
     { to: "/dashboard", label: "Dashboard", icon: Wallet },
     { to: `/profile/${profilePath}`, label: "Profile", icon: User },
   ];
@@ -62,7 +62,7 @@ export function MobileBottomNav() {
         >
           <it.icon className="size-5" />
           <span>{it.label}</span>
-        </Link>
+        </button>
       ))}
     </nav>
   );
