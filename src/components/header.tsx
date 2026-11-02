@@ -62,7 +62,7 @@ export function MobileBottomNav() {
         >
           <it.icon className="size-5" />
           <span>{it.label}</span>
-        </button>
+        </Link>
       ))}
     </nav>
   );
