@@ -2,6 +2,7 @@ import { useAuth } from "@/lib/auth-store";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useState } from "react";
+import { ExternalLink, Wallet } from "lucide-react";
 
 export function ConnectWalletButton() {
   const { user, connect, connecting, connectStep, disconnect } = useAuth();
@@ -14,10 +15,22 @@ export function ConnectWalletButton() {
       await connect();
     } catch (error: any) {
       console.error("Connect error:", error);
-      if (error.message?.includes("QIE Wallet")) {
-        toast.error("QIE Wallet tidak terdeteksi. Silakan install ekstensi QIE Wallet.");
+      if (error.message?.includes("not detected")) {
+        toast.error("QIE Wallet not detected.", {
+          description: (
+            <a
+              href="https://qiewallet.me"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-brand underline font-semibold"
+            >
+              Get QIE Wallet
+            </a>
+          ),
+          duration: 8000,
+        });
       } else {
-        toast.error(error.message || "Gagal menghubungkan wallet");
+        toast.error(error.message || "Failed to connect wallet");
       }
     } finally {
       setIsLoading(false);
