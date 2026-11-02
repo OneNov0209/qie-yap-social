@@ -360,8 +360,6 @@ Timestamp: ${timestamp}
 Nonce: ${nonce}`;
 }
 
-const ADMIN_TOKEN = import.meta.env.VITE_ADMIN_API_TOKEN || "";
-
 export async function adminFetch(url: string, options: RequestInit = {}) {
   return fetch(url, {
     ...options,
