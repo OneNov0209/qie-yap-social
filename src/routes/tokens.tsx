@@ -2,7 +2,7 @@ import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Header } from "@/components/header";
 import { API_BASE } from "@/lib/posts";
-import { ArrowLeft, Coins, Loader2, TrendingUp } from "lucide-react";
+import { ArrowLeft, Coins, Loader2, TrendingUp, Search, X } from "lucide-react";
 
 export const Route = createFileRoute("/tokens")({
   component: TokensPage,
@@ -19,7 +19,9 @@ interface QIEDexToken {
 function TokensPage() {
   const router = useRouter();
   const [tokens, setTokens] = useState<QIEDexToken[]>([]);
+  const [filteredTokens, setFilteredTokens] = useState<QIEDexToken[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     const fetchTokens = async () => {
@@ -27,7 +29,10 @@ function TokensPage() {
         const res = await fetch(`${API_BASE}/qiedex/tokens`);
         if (res.ok) {
           const data = await res.json();
-          setTokens(data);
+          // Filter token yang supply-nya 0 atau tidak valid
+          const validTokens = data.filter((t: QIEDexToken) => Number(t.totalSupply) > 0);
+          setTokens(validTokens);
+          setFilteredTokens(validTokens);
         }
       } catch (err) {
         console.error("Error fetching tokens:", err);
@@ -38,16 +43,29 @@ function TokensPage() {
     fetchTokens();
   }, []);
 
+  useEffect(() => {
+    if (!search.trim()) {
+      setFilteredTokens(tokens);
+    } else {
+      const lower = search.toLowerCase();
+      setFilteredTokens(tokens.filter(t => 
+        t.symbol.toLowerCase().includes(lower) || 
+        t.name.toLowerCase().includes(lower) ||
+        t.id.toLowerCase().includes(lower)
+      ));
+    }
+  }, [search, tokens]);
+
   const formatSupply = (supply: string) => {
     const num = Number(supply);
-    if (num >= 1_000_000_000_000_000_000) {
-      return (num / 1_000_000_000_000_000_000).toFixed(2) + " QIE";
-    }
+    if (num >= 1_000_000_000) return (num / 1_000_000_000).toFixed(2) + "B";
+    if (num >= 1_000_000) return (num / 1_000_000).toFixed(2) + "M";
+    if (num >= 1_000) return (num / 1_000).toFixed(2) + "K";
     return num.toLocaleString();
   };
 
   return (
-    <div className="min-h-screen bg-background pb-20 md:pb-12">
+    <div className="min-h-screen bg-background pb-20 md:pb-12 overflow-x-hidden">
       <Header />
       <div className="mx-auto max-w-2xl px-4 py-6">
         <div className="flex items-center gap-3 mb-6">
@@ -60,6 +78,22 @@ function TokensPage() {
           </div>
         </div>
 
+        <div className="relative mb-6">
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by name, symbol, or address..."
+            className="w-full rounded-xl border border-border/50 bg-card/50 pl-9 pr-9 py-2.5 text-sm outline-none focus:border-brand transition-colors"
+          />
+          {search && (
+            <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-muted-foreground hover:bg-muted">
+              <X className="size-3.5" />
+            </button>
+          )}
+        </div>
+
         <div className="mb-6">
           <div className="flex items-center gap-2 mb-3">
             <TrendingUp className="size-5 text-brand" />
@@ -70,30 +104,30 @@ function TokensPage() {
             <div className="flex justify-center py-20">
               <Loader2 className="size-8 animate-spin text-brand" />
             </div>
-          ) : tokens.length === 0 ? (
+          ) : filteredTokens.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-border bg-card p-12 text-center">
               <Coins className="mx-auto size-12 text-muted-foreground mb-3" />
               <h3 className="text-lg font-semibold">No tokens found</h3>
-              <p className="text-sm text-muted-foreground">Try refreshing the page</p>
+              <p className="text-sm text-muted-foreground">{search ? "Try a different search term." : "No active tokens on QIEDEX yet."}</p>
             </div>
           ) : (
             <div className="space-y-2">
-              {tokens.map((token) => (
+              {filteredTokens.map((token) => (
                 <div key={token.id} className="flex items-center justify-between rounded-xl border border-border/50 bg-card/50 p-3">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
                     {token.icon_url ? (
-                      <img src={token.icon_url} alt={token.name} className="size-10 rounded-full" />
+                      <img src={token.icon_url} alt={token.name} className="size-10 rounded-full shrink-0" />
                     ) : (
-                      <div className="rounded-full bg-muted p-2">
+                      <div className="rounded-full bg-muted p-2 shrink-0">
                         <Coins className="size-4 text-brand" />
                       </div>
                     )}
-                    <div>
-                      <p className="text-sm font-semibold">{token.symbol}</p>
-                      <p className="text-xs text-muted-foreground">{token.name}</p>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold truncate">{token.symbol}</p>
+                      <p className="text-xs text-muted-foreground truncate">{token.name}</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 shrink-0">
                     <div className="text-right">
                       <p className="text-sm font-medium">{formatSupply(token.totalSupply)}</p>
                       <p className="text-[10px] text-muted-foreground">Supply</p>
