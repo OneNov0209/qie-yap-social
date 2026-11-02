@@ -20,7 +20,7 @@ export interface User {
 interface AuthState {
   user: User | null;
   connecting: boolean;
-  connectStep: string | null;  // ✅ NEW: label tahap koneksi
+  connectStep: string | null;
   connect: () => Promise<void>;
   disconnect: () => void;
   updateProfile: (updates: Partial<User>) => void;
@@ -35,22 +35,19 @@ export const useAuth = create<AuthState>()(
 
       connect: async () => {
         if (typeof window === 'undefined' || !window.ethereum) {
-          throw new Error('QIE Wallet tidak terdeteksi. Harap install ekstensi QIE Wallet.');
+          throw new Error('QIE Wallet extension not detected. Please install QIE Wallet or use a supported browser.');
         }
         set({ connecting: true, connectStep: 'Connecting wallet...' });
 
         try {
-          // 1. Ambil alamat wallet
           const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
           const address = (accounts as string[])[0];
-          if (!address) throw new Error('Tidak ada akun yang ditemukan di QIE Wallet.');
+          if (!address) throw new Error('No accounts found in QIE Wallet.');
 
           set({ connectStep: 'Checking profile...' });
 
-          // 2. Ambil referral code
           const referredBy = getReferredBy();
 
-          // 3. Cek existing user
           const checkRes = await fetch(`${API_BASE}/profiles/${address}`);
           const isExistingUser = checkRes.ok;
 
@@ -73,12 +70,12 @@ export const useAuth = create<AuthState>()(
               }) as string;
             } catch (signError: any) {
               if (signError?.code === 4001) {
-                throw new Error('Tanda tangan dibutuhkan untuk registrasi. Silakan setujui tanda tangan di wallet Anda.');
+                throw new Error('Signature required for registration. Please approve the signature in your wallet.');
               }
-              throw new Error('Gagal menandatangani pesan: ' + (signError.message || 'Unknown error'));
+              throw new Error('Failed to sign message: ' + (signError.message || 'Unknown error'));
             }
 
-            if (!signature) throw new Error('Tanda tangan tidak valid.');
+            if (!signature) throw new Error('Invalid signature.');
 
             set({ connectStep: 'Registering...' });
 
@@ -95,7 +92,7 @@ export const useAuth = create<AuthState>()(
 
             if (!res.ok) {
               const data = await res.json().catch(() => ({ error: 'Unknown error' }));
-              throw new Error(data.error || `Gagal register: ${res.status}`);
+              throw new Error(data.error || `Registration failed: ${res.status}`);
             }
 
             profile = await res.json();
@@ -104,7 +101,6 @@ export const useAuth = create<AuthState>()(
 
           if (referredBy) clearReferralFromUrl();
 
-          // 4. Set user DULU (jangan tunggu balance)
           const displayName = profile.display_name || `${address.slice(0, 6)}…${address.slice(-4)}`;
           const username = profile.username || address.slice(0, 8);
 
@@ -117,13 +113,12 @@ export const useAuth = create<AuthState>()(
             avatarSeed: profile.avatar_seed ?? address,
             badge: 'shrimp',
             isValidator: Boolean(profile.is_validator),
-            balance: 0, // sementara
+            balance: 0,
           };
 
           set({ user: userData, connecting: false, connectStep: null });
           console.log("✅ User logged in");
 
-          // 5. Fetch balance di background (non-blocking)
           getQieBalance(address as `0x${string}`)
             .then((balance) => {
               const current = get().user;
