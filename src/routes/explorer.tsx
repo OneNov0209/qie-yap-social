@@ -152,69 +152,74 @@ function ExplorerPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-20 md:pb-12">
+    // ✅ Tambahkan overflow-x-hidden di container utama
+    <div className="min-h-screen w-full overflow-x-hidden bg-background pb-20 md:pb-12">
       <Header />
-      <div className="mx-auto max-w-2xl px-4 py-6">
+      <div className="mx-auto w-full max-w-2xl px-4 py-6">
         <div className="flex items-center gap-3 mb-6">
-          <button onClick={() => router.history.back()} className="text-muted-foreground hover:text-foreground transition-colors">
+          <button onClick={() => router.history.back()} className="shrink-0 text-muted-foreground hover:text-foreground transition-colors">
             <ArrowLeft className="size-5" />
           </button>
-          <div>
-            <h1 className="font-display text-2xl font-bold">On-Chain Explorer</h1>
-            <p className="text-xs text-muted-foreground">QIE Mainnet · Real-time on-chain activity</p>
+          <div className="min-w-0">
+            <h1 className="font-display text-xl sm:text-2xl font-bold truncate">On-Chain Explorer</h1>
+            <p className="text-xs text-muted-foreground truncate">QIE Mainnet · Real-time on-chain activity</p>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        {/* ✅ Grid statistik dibuat lebih responsif */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 mb-6">
           <StatCard
             icon={<Coins className="size-4 text-brand" />}
             label="QIE Tips"
             value={`${stats.totalQieTipped.toFixed(4)}`}
-            sub="Total QIE tipped"
+            sub="Total QIE"
             accent="brand"
           />
           <StatCard
             icon={<Coins className="size-4 text-purple-500" />}
             label="BROQ Tips"
             value={stats.totalBroqTipped.toLocaleString('id-ID', { maximumFractionDigits: 0 })}
-            sub="Total BROQ tipped"
+            sub="Total BROQ"
             accent="purple"
           />
           <StatCard
             icon={<Sparkles className="size-4 text-amber-500" />}
             label="Super Yaps"
             value={stats.totalSuperYaps.toString()}
-            sub="Premium Yaps"
+            sub="Premium"
           />
           <StatCard
             icon={<Zap className="size-4 text-purple-500" />}
             label="Boosts"
             value={stats.totalBoosts.toString()}
-            sub="Promoted posts"
+            sub="Promoted"
           />
         </div>
 
-        <div className="flex flex-wrap gap-2 mb-6">
-          {[
-            { value: "all", label: "All Activity" },
-            { value: "tip", label: "Tips" },
-            { value: "yap", label: "Yaps" },
-            { value: "super_yap", label: "Super Yaps" },
-            { value: "boost", label: "Boosts" },
-          ].map((f) => (
-            <button
-              key={f.value}
-              onClick={() => setFilter(f.value as any)}
-              className={cn(
-                "rounded-full px-4 py-1.5 text-xs font-medium transition-all duration-200",
-                filter === f.value
-                  ? "bg-foreground text-background shadow-sm"
-                  : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
-              )}
-            >
-              {f.label}
-            </button>
-          ))}
+        {/* ✅ Filter buttons: pakai overflow-x-auto agar tidak memaksa layar lebar */}
+        <div className="mb-6 w-full overflow-x-auto pb-1">
+          <div className="flex flex-nowrap gap-2">
+            {[
+              { value: "all", label: "All Activity" },
+              { value: "tip", label: "Tips" },
+              { value: "yap", label: "Yaps" },
+              { value: "super_yap", label: "Super Yaps" },
+              { value: "boost", label: "Boosts" },
+            ].map((f) => (
+              <button
+                key={f.value}
+                onClick={() => setFilter(f.value as any)}
+                className={cn(
+                  "shrink-0 rounded-full px-4 py-1.5 text-xs font-medium transition-all duration-200 whitespace-nowrap",
+                  filter === f.value
+                    ? "bg-foreground text-background shadow-sm"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
+                )}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {loading ? (
@@ -225,11 +230,11 @@ function ExplorerPage() {
                   <div className="flex items-center gap-3">
                     <div className="size-8 rounded-full bg-muted" />
                     <div className="space-y-2">
-                      <div className="h-4 w-48 rounded bg-muted" />
-                      <div className="h-3 w-24 rounded bg-muted" />
+                      <div className="h-4 w-32 sm:w-48 rounded bg-muted" />
+                      <div className="h-3 w-20 sm:w-24 rounded bg-muted" />
                     </div>
                   </div>
-                  <div className="h-4 w-20 rounded bg-muted" />
+                  <div className="h-4 w-10 sm:w-20 rounded bg-muted" />
                 </div>
               </div>
             ))}
@@ -243,7 +248,7 @@ function ExplorerPage() {
             </p>
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-2 w-full">
             {filteredTxs.map((tx, index) => {
               const meta = getTxMeta(tx.type);
               const Icon = meta.icon;
@@ -252,10 +257,10 @@ function ExplorerPage() {
               return (
                 <div
                   key={`${tx.id}-${index}`}
-                  className="group rounded-xl border border-border/50 bg-card/50 p-4 transition-all hover:bg-card/80 hover:border-border"
+                  className="group w-full rounded-xl border border-border/50 bg-card/50 p-4 transition-all hover:bg-card/80 hover:border-border"
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-start gap-3 min-w-0">
+                  <div className="flex items-start justify-between gap-3 w-full">
+                    <div className="flex items-start gap-3 min-w-0 flex-1">
                       <div className={cn("rounded-full p-2 shrink-0", meta.bg)}>
                         <Icon className={cn("size-4", meta.color)} />
                       </div>
@@ -266,7 +271,7 @@ function ExplorerPage() {
                           </span>
                           {tx.tx_hash && (
                             <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-mono text-muted-foreground">
-                              <Hash className="size-2.5" />
+                              <Hash className="size-2.5 shrink-0" />
                               {tx.tx_hash.slice(0, 6)}...{tx.tx_hash.slice(-4)}
                             </span>
                           )}
@@ -280,19 +285,19 @@ function ExplorerPage() {
                         </p>
 
                         {tx.content && (
-                          <p className="text-xs text-muted-foreground truncate max-w-md mt-0.5">
+                          <p className="text-xs text-muted-foreground truncate max-w-full mt-0.5">
                             "{tx.content.slice(0, 60)}..."
                           </p>
                         )}
 
-                        <div className="flex items-center gap-3 mt-1 text-[10px] text-muted-foreground">
-                          <span className="flex items-center gap-1">
+                        <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-1 text-[10px] text-muted-foreground">
+                          <span className="flex items-center gap-1 shrink-0">
                             <Clock className="size-3" />
                             {formatTime(tx.created_at)}
                           </span>
                           {tx.amount !== undefined && tx.amount > 0 && (
                             <span className={cn(
-                              "flex items-center gap-1 font-medium",
+                              "flex items-center gap-1 font-medium shrink-0",
                               isBroq ? "text-purple-500" : "text-brand"
                             )}>
                               <Coins className="size-3" />
@@ -340,15 +345,15 @@ function StatCard({
   accent?: "brand" | "purple";
 }) {
   return (
-    <div className="rounded-xl border border-border bg-card/50 p-4 text-center hover:bg-card/80 transition-colors">
-      <div className="flex justify-center mb-2">{icon}</div>
+    <div className="rounded-xl border border-border bg-card/50 p-3 sm:p-4 text-center hover:bg-card/80 transition-colors w-full min-w-0">
+      <div className="flex justify-center mb-1.5">{icon}</div>
       <p className={cn(
-        "text-sm font-bold",
+        "text-xs sm:text-sm font-bold truncate",
         accent === "brand" && "text-brand",
         accent === "purple" && "text-purple-500",
       )}>{value}</p>
-      <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">{label}</p>
-      <p className="text-[9px] text-muted-foreground/60 mt-0.5">{sub}</p>
+      <p className="text-[9px] sm:text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5 truncate">{label}</p>
+      <p className="text-[8px] sm:text-[9px] text-muted-foreground/60 mt-0.5 truncate">{sub}</p>
     </div>
   );
 }
