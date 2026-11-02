@@ -45,11 +45,11 @@ export function mapPost(item: any): FeedPost {
   const qie_pass_verified = Boolean(authorData.qie_pass_verified || false);
 
   let badge: "shrimp" | "fish" | "dolphin" | "shark" | "whale" = "shrimp";
-  const addrHash = address.length > 10 ? parseInt(address.slice(2, 6), 16) : 0;
-  if (addrHash > 0xFFFF) badge = "whale";
-  else if (addrHash > 0x0FFF) badge = "shark";
-  else if (addrHash > 0x0FF) badge = "dolphin";
-  else if (addrHash > 0x0F) badge = "fish";
+const totalQie = Number(item.tip_total_qie || 0);
+if (totalQie >= 100000) badge = "whale";
+else if (totalQie >= 10000) badge = "shark";
+else if (totalQie >= 1000) badge = "dolphin";
+else if (totalQie >= 100) badge = "fish";
 
   return {
     id: item.id,
