@@ -74,9 +74,9 @@ function TokensPage() {
 
   const formatSupply = (supply: string) => {
     const num = Number(supply);
-    if (num >= 1_000_000_000) return (num / 1_000_000_000).toLocaleString('en-US', { maximumFractionDigits: 2 }) + "B";
-    if (num >= 1_000_000) return (num / 1_000_000).toLocaleString('en-US', { maximumFractionDigits: 2 }) + "M";
-    if (num >= 1_000) return (num / 1_000).toLocaleString('en-US', { maximumFractionDigits: 2 }) + "K";
+    
+    if (isNaN(num)) return "0";
+    
     return num.toLocaleString('en-US', { maximumFractionDigits: 2 });
   };
 
