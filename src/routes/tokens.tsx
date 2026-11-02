@@ -14,6 +14,7 @@ interface QIEDexToken {
   name: string;
   totalSupply: string;
   icon_url?: string;
+  real_supply?: string;
 }
 
 function TokensPage() {
@@ -28,12 +29,34 @@ function TokensPage() {
       try {
         const res = await fetch(`${API_BASE}/qiedex/tokens`);
         if (res.ok) {
-          const data = await res.json();
+          const data: QIEDexToken[] = await res.json();
           
-          // Hanya filter token yang benar-benar 0 (tidak ada supply sama sekali)
-          const validTokens = data.filter((t: QIEDexToken) => Number(t.totalSupply) > 0);
+          
+          const validTokens = data.filter((t) => Number(t.totalSupply) > 0);
+          
+          
           setTokens(validTokens);
           setFilteredTokens(validTokens);
+
+          
+          const updatedTokens = await Promise.all(
+            validTokens.map(async (token) => {
+              try {
+                const expRes = await fetch(`${API_BASE}/explorer/token/${token.id}`);
+                if (expRes.ok) {
+                  const expData = await expRes.json();
+                  return { ...token, real_supply: expData.total_supply };
+                }
+              } catch (e) {
+                
+              }
+              return token;
+            })
+          );
+
+          // Update state
+          setTokens(updatedTokens);
+          setFilteredTokens(updatedTokens);
         }
       } catch (err) {
         console.error("Error fetching tokens:", err);
@@ -60,12 +83,7 @@ function TokensPage() {
   const formatSupply = (supply: string) => {
     const num = Number(supply) / 1e18;
     
-    // Jika benar-benar 0, tampilkan strip
     if (num === 0) return "-";
-    
-    // Jika angka sangat kecil (di bawah 0.0001), anggap tidak ada supply
-    if (num < 0.0001) return "< 0.0001";
-    
     if (num >= 1_000_000_000) return (num / 1_000_000_000).toFixed(2) + "B";
     if (num >= 1_000_000) return (num / 1_000_000).toFixed(2) + "M";
     if (num >= 1_000) return (num / 1_000).toFixed(2) + "K";
@@ -138,7 +156,10 @@ function TokensPage() {
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
                     <div className="text-right">
-                      <p className="text-sm font-medium">{formatSupply(token.totalSupply)}</p>
+                      <p className="text-sm font-medium">
+                        {/* totalSupply */}
+                        {token.real_supply ? formatSupply(token.real_supply) : formatSupply(token.totalSupply)}
+                      </p>
                       <p className="text-[10px] text-muted-foreground">Supply</p>
                     </div>
                     <Link
