@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Sparkles, Rocket, X, Image as ImageIcon, Loader2, Wallet } from "lucide-react";
+import { Sparkles, Rocket, X, Image as ImageIcon, Loader2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Avatar } from "./avatar-img";
 import { useAuth } from "@/lib/auth-store";
@@ -17,7 +17,7 @@ interface ComposerProps {
 }
 
 export function Composer({ onPosted, replyToId, onCancelReply }: ComposerProps) {
-  const { user } = useAuth();
+  const { user, signMessage } = useAuth(); // ✅ Tambahkan signMessage
   const [text, setText] = useState("");
   const [superYap, setSuperYap] = useState(false);
   const [boostHours, setBoostHours] = useState<0 | 1 | 6 | 24>(0);
@@ -83,25 +83,28 @@ export function Composer({ onPosted, replyToId, onCancelReply }: ComposerProps) 
     }
   }, [text]);
 
+  // ✅ UPDATE: Handle upload dengan Signature
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!user) {
+      toast.error("Please connect your wallet first");
+      return;
+    }
     if (file.size > 5 * 1024 * 1024) {
       toast.error("File too large (max 5MB)");
       return;
     }
     setUploading(true);
     try {
-      const url = await uploadToIPFS(file);
+      const url = await uploadToIPFS(file, user.address, signMessage);
       if (url) {
         setMediaUrl(url);
         toast.success("Image uploaded successfully!");
-      } else {
-        toast.error("Upload failed");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      toast.error("Upload failed");
+      toast.error(err.message || "Upload failed");
     } finally {
       setUploading(false);
     }
