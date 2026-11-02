@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from "react";
-import { Sparkles, Rocket, X, Image as ImageIcon, Loader2 } from "lucide-react";
+import { Sparkles, Rocket, X, Image as ImageIcon, Loader2, Wallet } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Avatar } from "./avatar-img";
 import { useAuth } from "@/lib/auth-store";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { createPost, API_BASE, uploadToIPFS } from "@/lib/posts";
-import { submitYapOnChain, YAP_CONTRACT, hashContent } from "@/lib/yap-onchain";
+import { submitYapOnChain } from "@/lib/yap-onchain";
 
 const MAX = 2500;
 
@@ -115,7 +115,6 @@ export function Composer({ onPosted, replyToId, onCancelReply }: ComposerProps) 
       let txHash: string | null = null;
       let cHash: string | null = null;
       
-      // ✅ WAJIB ON-CHAIN: Selalu panggil submitYapOnChain
       try {
         toast("Sign the on-chain yap in your wallet…");
         const r = await submitYapOnChain(user.address as `0x${string}`, text.trim());
@@ -262,15 +261,17 @@ export function Composer({ onPosted, replyToId, onCancelReply }: ComposerProps) 
                 {uploading ? "Uploading..." : "Image"}
               </button>
 
-              <label className="inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-1.5 text-xs">
-                <Sparkles className={cn("size-3.5", superYap ? "text-gold" : "text-muted-foreground")} />
-                <span className={cn("font-bold uppercase tracking-wider", superYap ? "text-gold" : "text-muted-foreground")}>
-                  Super
-                </span>
-                <Switch checked={superYap} onCheckedChange={setSuperYap} className="data-[state=checked]:bg-gold" />
-              </label>
+              <div title="Super Yap: Premium post with gold border. Fee: 0.01 QIE">
+                <label className="inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-1.5 text-xs cursor-help">
+                  <Sparkles className={cn("size-3.5", superYap ? "text-gold" : "text-muted-foreground")} />
+                  <span className={cn("font-bold uppercase tracking-wider", superYap ? "text-gold" : "text-muted-foreground")}>
+                    Super
+                  </span>
+                  <Switch checked={superYap} onCheckedChange={setSuperYap} className="data-[state=checked]:bg-gold" />
+                </label>
+              </div>
 
-              <div className="inline-flex items-center gap-1 rounded-full border border-white/10 p-0.5 text-[11px]">
+              <div title="Boost: Promote post to top of feed. Fee: 0.005 QIE/hour" className="inline-flex items-center gap-1 rounded-full border border-white/10 p-0.5 text-[11px] cursor-help">
                 <Rocket className="ml-1.5 size-3.5 text-muted-foreground" />
                 {([0, 1, 6, 24] as const).map((h) => (
                   <button
@@ -301,14 +302,23 @@ export function Composer({ onPosted, replyToId, onCancelReply }: ComposerProps) 
                   ✦ Premium Yap
                 </span>
               )}
-              {/* ✅ Tombol Yap dengan Font Display & Shadow Lebih Glow */}
-              <button
-                onClick={submit}
-                disabled={(!text.trim() && !mediaUrl) || remaining < 0 || submitting || !user}
-                className="btn-futuristic font-display text-base tracking-wide shadow-lg shadow-brand-start/25 hover:shadow-brand-start/50"
-              >
-                {submitting ? "Yapping…" : "Yap"}
-              </button>
+              
+              {!user ? (
+                <button
+                  onClick={() => toast("Please connect your wallet using the button at the top right.")}
+                  className="btn-futuristic font-display text-sm tracking-wide shadow-lg shadow-brand-start/25 hover:shadow-brand-start/50"
+                >
+                  Connect Wallet
+                </button>
+              ) : (
+                <button
+                  onClick={submit}
+                  disabled={(!text.trim() && !mediaUrl) || remaining < 0 || submitting}
+                  className="btn-futuristic font-display text-base tracking-wide shadow-lg shadow-brand-start/25 hover:shadow-brand-start/50 disabled:opacity-50"
+                >
+                  {submitting ? "Yapping…" : "Yap"}
+                </button>
+              )}
             </div>
           </div>
         </div>
