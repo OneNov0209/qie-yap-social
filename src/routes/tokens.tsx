@@ -29,8 +29,20 @@ function TokensPage() {
         const res = await fetch(`${API_BASE}/qiedex/tokens`);
         if (res.ok) {
           const data = await res.json();
-          // Filter token yang supply-nya 0 atau tidak valid
-          const validTokens = data.filter((t: QIEDexToken) => Number(t.totalSupply) > 0);
+          
+          // Filter: Supply > 0 & Buang token sampah
+          const validTokens = data.filter((t: QIEDexToken) => {
+            if (Number(t.totalSupply) <= 0) return false;
+            
+            const sym = t.symbol.toLowerCase();
+            if (sym.length <= 2 && !["qie", "eth", "usdc", "usdt"].includes(sym)) return false;
+            
+            const junkSymbols = ["dd", "gld", "bubb", "rocket", "stat", "golden"];
+            if (junkSymbols.includes(sym)) return false;
+            
+            return true;
+          });
+          
           setTokens(validTokens);
           setFilteredTokens(validTokens);
         }
@@ -57,11 +69,12 @@ function TokensPage() {
   }, [search, tokens]);
 
   const formatSupply = (supply: string) => {
-    const num = Number(supply);
+    const num = Number(supply) / 1e18;
+    
     if (num >= 1_000_000_000) return (num / 1_000_000_000).toFixed(2) + "B";
     if (num >= 1_000_000) return (num / 1_000_000).toFixed(2) + "M";
     if (num >= 1_000) return (num / 1_000).toFixed(2) + "K";
-    return num.toLocaleString();
+    return num.toLocaleString('en-US', { maximumFractionDigits: 2 });
   };
 
   return (
