@@ -58,11 +58,15 @@ function TokenDetailPage() {
   }, [id]);
 
   const formatSupply = (supply: string) => {
-    const num = Number(supply);
-    if (num >= 1_000_000_000) return (num / 1_000_000_000).toFixed(2) + "B";
-    if (num >= 1_000_000) return (num / 1_000_000).toFixed(2) + "M";
-    if (num >= 1_000) return (num / 1_000).toFixed(2) + "K";
-    return num.toLocaleString();
+    const num = Number(supply) / 1e18;
+    if (isNaN(num)) return "0";
+    return num.toLocaleString('en-US', { maximumFractionDigits: 2 });
+  };
+
+  const formatValue = (value: string) => {
+    const num = Number(value) / 1e18;
+    if (isNaN(num)) return "0";
+    return num.toLocaleString('en-US', { maximumFractionDigits: 4 });
   };
 
   const copyAddress = (address: string) => {
@@ -176,7 +180,7 @@ function TokenDetailPage() {
                           <span className="text-sm font-mono">{transfer.to?.hash?.slice(0, 6)}...{transfer.to?.hash?.slice(-4)}</span>
                         </div>
                         <div className="text-right">
-                          <p className="text-sm font-medium">{transfer.total?.value ? formatSupply(transfer.total.value) : "0"}</p>
+                          <p className="text-sm font-medium">{transfer.total?.value ? formatValue(transfer.total.value) : "0"}</p>
                           <p className="text-[10px] text-muted-foreground">{new Date(transfer.timestamp).toLocaleDateString()}</p>
                         </div>
                       </div>
@@ -203,7 +207,7 @@ function TokenDetailPage() {
                         {holders.map((holder: any, index: number) => (
                           <tr key={index} className="border-t border-border/20">
                             <td className="py-2 font-mono">{holder.address?.hash?.slice(0, 6)}...{holder.address?.hash?.slice(-4)}</td>
-                            <td className="py-2 text-right">{formatSupply(holder.value || "0")}</td>
+                            <td className="py-2 text-right">{formatValue(holder.value || "0")}</td>
                           </tr>
                         ))}
                       </tbody>
