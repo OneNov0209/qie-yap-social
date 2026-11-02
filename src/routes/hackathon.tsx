@@ -115,14 +115,22 @@ function HackathonPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-background pb-20 md:pb-12">
+    <div className="min-h-screen bg-background pb-20 md:pb-12 overflow-x-hidden">
       <Header />
-      <div className="mx-auto max-w-4xl px-6 py-6 md:px-8 lg:px-10">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-2">
+      <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 md:px-8">
+        
+        <div className="mb-6 rounded-2xl border border-brand/20 bg-brand/5 p-4 md:p-6">
+          <div className="flex items-center gap-2 mb-2">
             <Trophy className="size-6 text-brand" />
-            <h1 className="font-display text-2xl font-bold">Hackathon Participants</h1>
+            <h1 className="font-display text-2xl font-bold">QIE Hackathon 3rd Edition</h1>
           </div>
+          <p className="text-sm text-muted-foreground">
+            <strong>Deadline:</strong> 30 November 2026, 23:59 CET. Submit your project and join the QIE ecosystem.
+          </p>
+        </div>
+
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-lg font-semibold">Registered Participants ({participants.length})</h2>
           <button
             onClick={() => setShowForm(true)}
             className="px-4 py-2 rounded-full bg-brand text-white text-sm font-medium hover:bg-brand/90 transition-colors"
@@ -144,71 +152,67 @@ function HackathonPage() {
         ) : (
           <div className="space-y-6">
             {participants.map((p) => (
-              <div key={p.id} className="rounded-2xl border border-border/50 bg-card/50 p-6">
-                {/* Header */}
+              <div key={p.id} className="rounded-2xl border border-border/50 bg-card/50 p-4 sm:p-6">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="flex size-12 items-center justify-center rounded-full bg-brand-soft">
+                  <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-brand-soft">
                     <Users className="size-6 text-brand" />
                   </div>
-                  <div>
-                    <h3 className="text-xl font-bold">{p.project_name}</h3>
-                    <p className="text-sm text-muted-foreground">{p.team_members || "Solo Developer"}</p>
+                  <div className="min-w-0">
+                    <h3 className="text-lg sm:text-xl font-bold truncate">{p.project_name}</h3>
+                    <p className="text-sm text-muted-foreground truncate">{p.team_members || "Solo Developer"}</p>
                   </div>
                 </div>
 
-                {/* Description */}
                 {p.description && (
                   <div className="mb-4">
                     <p className="text-sm font-semibold text-muted-foreground mb-1">Project Description</p>
-                    <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">{p.description}</p>
+                    <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap break-words">{p.description}</p>
                   </div>
                 )}
 
-                {/* Project Links & Social */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                   <div>
                     <p className="text-sm font-semibold text-muted-foreground mb-2">Project Links</p>
                     <div className="space-y-2">
-                      <a href={DEMO_LINKS.github} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-brand hover:underline">
-                        <Github className="size-4" /> GitHub Repository
+                      <a href={DEMO_LINKS.github} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-brand hover:underline truncate">
+                        <Github className="size-4 shrink-0" /> GitHub Repository
                       </a>
-                      <a href={DEMO_LINKS.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-brand hover:underline">
-                        <Globe className="size-4" /> Project Website
+                      <a href={DEMO_LINKS.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-brand hover:underline truncate">
+                        <Globe className="size-4 shrink-0" /> Project Website
                       </a>
-                      <a href={DEMO_LINKS.video} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-brand hover:underline">
-                        <Youtube className="size-4" /> Demo Video
+                      <a href={DEMO_LINKS.video} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-brand hover:underline truncate">
+                        <Youtube className="size-4 shrink-0" /> Demo Video
                       </a>
                     </div>
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-muted-foreground mb-2">Social & Contact</p>
                     <div className="space-y-2">
-                      <p className="flex items-center gap-2 text-sm">
-                        <Twitter className="size-4 text-muted-foreground" /> {DEMO_LINKS.twitter}
+                      <p className="flex items-center gap-2 text-sm truncate">
+                        <Twitter className="size-4 shrink-0 text-muted-foreground" /> {DEMO_LINKS.twitter}
                       </p>
-                      <p className="flex items-center gap-2 text-sm">
-                        <MessageCircle className="size-4 text-muted-foreground" /> {DEMO_LINKS.discord}
+                      <p className="flex items-center gap-2 text-sm truncate">
+                        <MessageCircle className="size-4 shrink-0 text-muted-foreground" /> {DEMO_LINKS.discord}
                       </p>
-                      <p className="flex items-center gap-2 text-sm">
-                        <Send className="size-4 text-muted-foreground" /> {DEMO_LINKS.telegram}
+                      <p className="flex items-center gap-2 text-sm truncate">
+                        <Send className="size-4 shrink-0 text-muted-foreground" /> {DEMO_LINKS.telegram}
                       </p>
                     </div>
                   </div>
                 </div>
 
-                {/* Footer Info */}
-                <div className="flex flex-wrap items-center gap-4 pt-4 border-t border-border/30">
+                <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-border/30">
                   <span className="flex items-center gap-1 text-xs text-muted-foreground">
                     <Calendar className="size-3.5" />
-                    Submitted: {new Date(p.created_at).toLocaleString()}
+                    {new Date(p.created_at).toLocaleDateString()}
                   </span>
                   <span className="flex items-center gap-1 text-xs text-muted-foreground">
                     <Tag className="size-3.5" />
-                    Category: {p.track || "N/A"}
+                    {p.track || "N/A"}
                   </span>
                   <span className="flex items-center gap-1 text-xs text-muted-foreground">
                     <Wallet className="size-3.5" />
-                    Wallet: {p.wallet_address.slice(0, 6)}...{p.wallet_address.slice(-4)}
+                    {p.wallet_address.slice(0, 6)}...{p.wallet_address.slice(-4)}
                   </span>
                 </div>
               </div>
@@ -217,194 +221,111 @@ function HackathonPage() {
         )}
       </div>
 
-      {/* Modal Register */}
       {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-          <div className="w-full max-w-3xl rounded-2xl bg-card p-6 border border-border shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="w-full max-w-3xl rounded-2xl bg-card p-4 sm:p-6 border border-border shadow-2xl my-8">
             <h2 className="text-xl font-bold mb-4">Register for Hackathon</h2>
             
-            {/* Step Indicator */}
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center justify-between mb-6 overflow-x-auto pb-2">
               {steps.map((step) => (
-                <div key={step.id} className="flex flex-col items-center">
+                <div key={step.id} className="flex flex-col items-center min-w-[60px]">
                   <div className={cn(
                     "flex size-8 items-center justify-center rounded-full text-sm font-medium",
                     currentStep === step.id ? "bg-brand text-white" : "bg-muted text-muted-foreground"
                   )}>
                     {currentStep > step.id ? <CheckCircle2 className="size-4" /> : step.id}
                   </div>
-                  <span className="text-[10px] mt-1 text-muted-foreground">{step.label}</span>
+                  <span className="text-[10px] mt-1 text-muted-foreground whitespace-nowrap">{step.label}</span>
                 </div>
               ))}
             </div>
 
-            {/* Step 1: Basic Info */}
             {currentStep === 1 && (
               <div className="space-y-4">
                 <h3 className="font-semibold text-lg">Basic Info</h3>
                 <div>
                   <label className="text-sm font-medium mb-1 block">Team Name</label>
-                  <input
-                    name="team_name"
-                    value={formData.team_name}
-                    onChange={handleInputChange}
-                    className="w-full rounded-xl border border-border/50 bg-muted/20 px-4 py-2 text-sm"
-                    placeholder="e.g. Team QIE"
-                  />
+                  <input name="team_name" value={formData.team_name} onChange={handleInputChange} className="w-full rounded-xl border border-border/50 bg-muted/20 px-4 py-2 text-sm" placeholder="e.g. Team QIE" />
                 </div>
                 <div>
                   <label className="text-sm font-medium mb-1 block">Project Name</label>
-                  <input
-                    name="project_name"
-                    value={formData.project_name}
-                    onChange={handleInputChange}
-                    className="w-full rounded-xl border border-border/50 bg-muted/20 px-4 py-2 text-sm"
-                    placeholder="e.g. My QIE dApp"
-                  />
+                  <input name="project_name" value={formData.project_name} onChange={handleInputChange} className="w-full rounded-xl border border-border/50 bg-muted/20 px-4 py-2 text-sm" placeholder="e.g. My QIE dApp" />
                 </div>
                 <div>
                   <label className="text-sm font-medium mb-1 block">Category</label>
-                  <select
-                    name="category"
-                    value={formData.category}
-                    onChange={handleInputChange}
-                    className="w-full rounded-xl border border-border/50 bg-muted/20 px-4 py-2 text-sm"
-                  >
+                  <select name="category" value={formData.category} onChange={handleInputChange} className="w-full rounded-xl border border-border/50 bg-muted/20 px-4 py-2 text-sm">
                     <option value="">Select category...</option>
                     {CATEGORIES.map((cat) => (
-                      <option key={cat.id} value={cat.title}>
-                        {cat.icon} {cat.title}
-                      </option>
+                      <option key={cat.id} value={cat.title}>{cat.icon} {cat.title}</option>
                     ))}
                   </select>
                 </div>
                 <div>
                   <label className="text-sm font-medium mb-1 block">Description</label>
-                  <textarea
-                    name="description"
-                    value={formData.description}
-                    onChange={handleInputChange}
-                    rows={4}
-                    className="w-full rounded-xl border border-border/50 bg-muted/20 px-4 py-2 text-sm resize-none"
-                    placeholder="Brief description..."
-                  />
+                  <textarea name="description" value={formData.description} onChange={handleInputChange} rows={4} className="w-full rounded-xl border border-border/50 bg-muted/20 px-4 py-2 text-sm resize-none" placeholder="Brief description..." />
                 </div>
               </div>
             )}
 
-            {/* Step 2: Links */}
             {currentStep === 2 && (
               <div className="space-y-4">
                 <h3 className="font-semibold text-lg">Links</h3>
                 <div>
                   <label className="text-sm font-medium mb-1 block">LinkedIn Profile</label>
-                  <input
-                    name="linkedin"
-                    value={formData.linkedin}
-                    onChange={handleInputChange}
-                    className="w-full rounded-xl border border-border/50 bg-muted/20 px-4 py-2 text-sm"
-                    placeholder="https://linkedin.com/in/yourprofile"
-                  />
+                  <input name="linkedin" value={formData.linkedin} onChange={handleInputChange} className="w-full rounded-xl border border-border/50 bg-muted/20 px-4 py-2 text-sm" placeholder="https://linkedin.com/in/yourprofile" />
                 </div>
                 <div>
                   <label className="text-sm font-medium mb-1 block">Project Website</label>
-                  <input
-                    name="website"
-                    value={formData.website}
-                    onChange={handleInputChange}
-                    className="w-full rounded-xl border border-border/50 bg-muted/20 px-4 py-2 text-sm"
-                    placeholder="https://yourproject.com"
-                  />
+                  <input name="website" value={formData.website} onChange={handleInputChange} className="w-full rounded-xl border border-border/50 bg-muted/20 px-4 py-2 text-sm" placeholder="https://yourproject.com" />
                 </div>
                 <div>
                   <label className="text-sm font-medium mb-1 block">GitHub Repository *</label>
-                  <input
-                    name="github"
-                    value={formData.github}
-                    onChange={handleInputChange}
-                    className="w-full rounded-xl border border-border/50 bg-muted/20 px-4 py-2 text-sm"
-                    placeholder="https://github.com/yourrepo"
-                  />
+                  <input name="github" value={formData.github} onChange={handleInputChange} className="w-full rounded-xl border border-border/50 bg-muted/20 px-4 py-2 text-sm" placeholder="https://github.com/yourrepo" />
                 </div>
                 <div>
                   <label className="text-sm font-medium mb-1 block">Product Video URL *</label>
-                  <input
-                    name="video"
-                    value={formData.video}
-                    onChange={handleInputChange}
-                    className="w-full rounded-xl border border-border/50 bg-muted/20 px-4 py-2 text-sm"
-                    placeholder="https://youtube.com/watch?v=..."
-                  />
+                  <input name="video" value={formData.video} onChange={handleInputChange} className="w-full rounded-xl border border-border/50 bg-muted/20 px-4 py-2 text-sm" placeholder="https://youtube.com/watch?v=..." />
                 </div>
               </div>
             )}
 
-            {/* Step 3: Social */}
             {currentStep === 3 && (
               <div className="space-y-4">
                 <h3 className="font-semibold text-lg">Social</h3>
                 <div>
                   <label className="text-sm font-medium mb-1 block">Twitter/X Handle</label>
-                  <input
-                    name="twitter"
-                    value={formData.twitter}
-                    onChange={handleInputChange}
-                    className="w-full rounded-xl border border-border/50 bg-muted/20 px-4 py-2 text-sm"
-                    placeholder="@yourhandle"
-                  />
+                  <input name="twitter" value={formData.twitter} onChange={handleInputChange} className="w-full rounded-xl border border-border/50 bg-muted/20 px-4 py-2 text-sm" placeholder="@yourhandle" />
                 </div>
                 <div>
                   <label className="text-sm font-medium mb-1 block">Discord Username</label>
-                  <input
-                    name="discord"
-                    value={formData.discord}
-                    onChange={handleInputChange}
-                    className="w-full rounded-xl border border-border/50 bg-muted/20 px-4 py-2 text-sm"
-                    placeholder="username#0000"
-                  />
+                  <input name="discord" value={formData.discord} onChange={handleInputChange} className="w-full rounded-xl border border-border/50 bg-muted/20 px-4 py-2 text-sm" placeholder="username#0000" />
                 </div>
                 <div>
                   <label className="text-sm font-medium mb-1 block">Telegram Handle</label>
-                  <input
-                    name="telegram"
-                    value={formData.telegram}
-                    onChange={handleInputChange}
-                    className="w-full rounded-xl border border-border/50 bg-muted/20 px-4 py-2 text-sm"
-                    placeholder="@yourtelegram"
-                  />
+                  <input name="telegram" value={formData.telegram} onChange={handleInputChange} className="w-full rounded-xl border border-border/50 bg-muted/20 px-4 py-2 text-sm" placeholder="@yourtelegram" />
                 </div>
               </div>
             )}
 
-            {/* Step 4: Wallet */}
             {currentStep === 4 && (
               <div className="space-y-4">
                 <h3 className="font-semibold text-lg">Wallet</h3>
                 <div>
                   <label className="text-sm font-medium mb-1 block">QIE Wallet Address</label>
-                  <input
-                    name="wallet_address"
-                    value={user?.address || formData.wallet_address}
-                    onChange={handleInputChange}
-                    className="w-full rounded-xl border border-border/50 bg-muted/20 px-4 py-2 text-sm font-mono"
-                    placeholder="0x..."
-                    readOnly={!!user?.address}
-                  />
+                  <input name="wallet_address" value={user?.address || formData.wallet_address} onChange={handleInputChange} className="w-full rounded-xl border border-border/50 bg-muted/20 px-4 py-2 text-sm font-mono" placeholder="0x..." readOnly={!!user?.address} />
                 </div>
                 <div className="rounded-xl border border-border/30 bg-muted/10 p-4 text-sm text-muted-foreground">
-                  <Wallet className="size-4 text-brand inline mr-1" />
-                  Connect your QIE wallet to verify ownership
+                  <Wallet className="size-4 text-brand inline mr-1" /> Connect your QIE wallet to verify ownership
                 </div>
               </div>
             )}
 
-            {/* Step 5: Review */}
             {currentStep === 5 && (
               <div className="space-y-4">
                 <h3 className="font-semibold text-lg">Review</h3>
                 <div className="rounded-xl border border-border/30 bg-muted/10 p-4">
                   <p className="text-sm font-medium">Basic Information</p>
-                  <div className="mt-2 text-sm space-y-1">
+                  <div className="mt-2 text-sm space-y-1 break-words">
                     <p>Team Name: <span className="font-medium">{formData.team_name}</span></p>
                     <p>Project Name: <span className="font-medium">{formData.project_name}</span></p>
                     <p>Category: <span className="font-medium">{formData.category}</span></p>
@@ -413,7 +334,7 @@ function HackathonPage() {
                 </div>
                 <div className="rounded-xl border border-border/30 bg-muted/10 p-4">
                   <p className="text-sm font-medium">Project Links</p>
-                  <div className="mt-2 text-sm space-y-1">
+                  <div className="mt-2 text-sm space-y-1 break-all">
                     <p>LinkedIn: <span className="font-medium">{formData.linkedin}</span></p>
                     <p>Website: <span className="font-medium">{formData.website}</span></p>
                     <p>GitHub: <span className="font-medium">{formData.github}</span></p>
@@ -422,7 +343,7 @@ function HackathonPage() {
                 </div>
                 <div className="rounded-xl border border-border/30 bg-muted/10 p-4">
                   <p className="text-sm font-medium">Social Media</p>
-                  <div className="mt-2 text-sm space-y-1">
+                  <div className="mt-2 text-sm space-y-1 break-words">
                     <p>Twitter/X: <span className="font-medium">{formData.twitter}</span></p>
                     <p>Discord: <span className="font-medium">{formData.discord}</span></p>
                     <p>Telegram: <span className="font-medium">{formData.telegram}</span></p>
@@ -430,31 +351,16 @@ function HackathonPage() {
                 </div>
                 <div className="rounded-xl border border-border/30 bg-muted/10 p-4">
                   <p className="text-sm font-medium">QIE Wallet</p>
-                  <p className="text-sm mt-1 font-mono">{formData.wallet_address}</p>
+                  <p className="text-sm mt-1 font-mono break-all">{formData.wallet_address}</p>
                 </div>
               </div>
             )}
 
-            {/* Navigation Buttons */}
             <div className="flex justify-between mt-6 pt-4 border-t border-border/30">
-              <button
-                type="button"
-                onClick={() => {
-                  if (currentStep > 1) setCurrentStep(currentStep - 1);
-                  else setShowForm(false);
-                }}
-                className="px-4 py-2 rounded-full border border-border/50 text-sm font-medium hover:bg-muted/50 transition-colors"
-              >
+              <button type="button" onClick={() => { if (currentStep > 1) setCurrentStep(currentStep - 1); else setShowForm(false); }} className="px-4 py-2 rounded-full border border-border/50 text-sm font-medium hover:bg-muted/50 transition-colors">
                 {currentStep > 1 ? "Previous" : "Cancel"}
               </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (currentStep < 5) setCurrentStep(currentStep + 1);
-                  else handleSubmit();
-                }}
-                className="px-6 py-2 rounded-full bg-brand text-white text-sm font-medium hover:bg-brand/90 transition-colors"
-              >
+              <button type="button" onClick={() => { if (currentStep < 5) setCurrentStep(currentStep + 1); else handleSubmit(); }} className="px-6 py-2 rounded-full bg-brand text-white text-sm font-medium hover:bg-brand/90 transition-colors">
                 {currentStep < 5 ? "Next" : "Submit"}
               </button>
             </div>
