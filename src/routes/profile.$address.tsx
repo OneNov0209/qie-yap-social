@@ -71,27 +71,7 @@ function ProfilePage() {
 
   const isOwn = user?.address?.toLowerCase() === address?.toLowerCase();
 
-  // Jika belum login sama sekali, tampilkan layar ajakan connect
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Header />
-        <div className="mx-auto max-w-2xl px-4 py-20 text-center">
-          <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-full bg-brand-soft text-brand">
-            <Wallet className="size-8" />
-          </div>
-          <h1 className="font-display text-2xl font-bold">Connect to see this profile</h1>
-          <p className="mt-2 text-muted-foreground">
-            You need to connect your QIE Wallet to view profiles and posts on QIE Yap.
-          </p>
-          <Link to="/feed" className="mt-6 inline-block rounded-full bg-brand px-6 py-2 text-sm font-semibold text-white hover:bg-brand/90 transition-colors">
-            Go to Feed & Connect
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
+  // ✅ SEMUA HOOKS DIPANGGIL DI SINI (SEBELUM ADA RETURN)
   const loadMorePosts = useCallback(async (profileId: string) => {
     if (loadingMore || !hasMore) return;
     setLoadingMore(true);
@@ -109,6 +89,12 @@ function ProfilePage() {
   }, [loadingMore, hasMore, yaps.length]);
 
   useEffect(() => {
+    // Jika belum login, jangan fetch data profil
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
     const loadData = async () => {
       setLoading(true);
       setYaps([]);
@@ -214,6 +200,7 @@ function ProfilePage() {
     loadData();
   }, [address, user]);
 
+
   const toggleFollow = async () => {
     if (!user || !profile) return toast("Connect your wallet to follow");
     if (isOwn) return;
@@ -293,32 +280,57 @@ function ProfilePage() {
     }
   };
 
-  if (loading) return (
-  <div className="min-h-screen bg-background">
-    <Header />
-    <div className="mx-auto max-w-2xl animate-pulse">
-      <div className="h-40 bg-muted md:rounded-b-3xl" />
-      <div className="px-4">
-        <div className="flex items-end justify-between -mt-12">
-          <div className="size-24 rounded-full bg-muted ring-4 ring-background" />
-          <div className="h-10 w-28 rounded-full bg-muted" />
+  // ✅ SEKARANG BARU BOLEH ADA RETURN (Kondisional)
+  
+  // 1. Tampilan jika belum login
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <div className="mx-auto max-w-2xl px-4 py-20 text-center">
+          <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-full bg-brand-soft text-brand">
+            <Wallet className="size-8" />
+          </div>
+          <h1 className="font-display text-2xl font-bold">Connect to see this profile</h1>
+          <p className="mt-2 text-muted-foreground">
+            You need to connect your QIE Wallet to view profiles and posts on QIE Yap.
+          </p>
+          <Link to="/feed" className="mt-6 inline-block rounded-full bg-brand px-6 py-2 text-sm font-semibold text-white hover:bg-brand/90 transition-colors">
+            Go to Feed & Connect
+          </Link>
         </div>
-        <div className="mt-4 space-y-3">
-          <div className="h-8 w-48 rounded bg-muted" />
-          <div className="h-4 w-32 rounded bg-muted" />
-          <div className="h-4 w-full rounded bg-muted" />
-          <div className="grid grid-cols-4 gap-2 pt-2">
-            <div className="h-16 rounded-xl bg-muted" />
-            <div className="h-16 rounded-xl bg-muted" />
-            <div className="h-16 rounded-xl bg-muted" />
-            <div className="h-16 rounded-xl bg-muted" />
+      </div>
+    );
+  }
+
+  // 2. Tampilan Loading Skeleton
+  if (loading) return (
+    <div className="min-h-screen bg-background">
+      <Header />
+      <div className="mx-auto max-w-2xl animate-pulse">
+        <div className="h-40 bg-muted md:rounded-b-3xl" />
+        <div className="px-4">
+          <div className="flex items-end justify-between -mt-12">
+            <div className="size-24 rounded-full bg-muted ring-4 ring-background" />
+            <div className="h-10 w-28 rounded-full bg-muted" />
+          </div>
+          <div className="mt-4 space-y-3">
+            <div className="h-8 w-48 rounded bg-muted" />
+            <div className="h-4 w-32 rounded bg-muted" />
+            <div className="h-4 w-full rounded bg-muted" />
+            <div className="grid grid-cols-4 gap-2 pt-2">
+              <div className="h-16 rounded-xl bg-muted" />
+              <div className="h-16 rounded-xl bg-muted" />
+              <div className="h-16 rounded-xl bg-muted" />
+              <div className="h-16 rounded-xl bg-muted" />
+            </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
-);
+  );
 
+  // 3. Tampilan jika profil tidak ditemukan
   if (!profile) return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -330,6 +342,7 @@ function ProfilePage() {
     </div>
   );
 
+  // 4. Tampilan Utama Profil
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-12">
       <Header />
