@@ -408,7 +408,7 @@ export function PostCard({ post }: { post: FeedPost }) {
             {post.author?.isValidator && <BadgeCheck className="size-4 text-brand-start fill-current" />}
             {post.author?.qie_pass_verified && (
               <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-500">
-                ✅ Verified with QIE ID
+                ✅ QIE ID holder
               </span>
             )}
             {post.author?.qie_id && (
