@@ -180,7 +180,7 @@ export function Composer({ onPosted, replyToId, onCancelReply }: ComposerProps) 
   const remaining = MAX - text.length;
 
   return (
-    <div className="mb-6 yap-card p-4 border-l-4 border-brand-start/50">
+    <div className="mb-6 yap-card p-4 border-l-4 border-brand-start/50 bg-card/40 backdrop-blur-sm">
       {replyToId && (
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs text-muted-foreground">Replying to a Yap</span>
@@ -198,7 +198,7 @@ export function Composer({ onPosted, replyToId, onCancelReply }: ComposerProps) 
             onChange={(e) => setText(e.target.value.slice(0, MAX))}
             placeholder={user ? "What's happening on QIE?" : "Connect your wallet to start yapping..."}
             disabled={!user || submitting || uploading}
-            className="w-full resize-none border-none bg-transparent p-0 text-lg outline-none placeholder:text-muted-foreground disabled:opacity-70"
+            className="w-full resize-none border-none bg-transparent p-0 text-lg text-foreground outline-none placeholder:text-muted-foreground disabled:opacity-70"
             rows={4}
           />
 
