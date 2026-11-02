@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState, useCallback } from "react";
-import { BadgeCheck, X, BarChart2, Coins, Box, Users, Award, Code, Star, Briefcase, Loader2 } from "lucide-react";
+import { BadgeCheck, X, BarChart2, Coins, Box, Users, Award, Code, Star, Briefcase, Loader2, Wallet } from "lucide-react";
 import { Header } from "@/components/header";
 import { PostCard } from "@/components/post-card";
 import { StakingBadgeChip } from "@/components/staking-badge";
@@ -70,6 +70,27 @@ function ProfilePage() {
   const [chartLoading, setChartLoading] = useState(true);
 
   const isOwn = user?.address?.toLowerCase() === address?.toLowerCase();
+
+  // Jika belum login sama sekali, tampilkan layar ajakan connect
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <div className="mx-auto max-w-2xl px-4 py-20 text-center">
+          <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-full bg-brand-soft text-brand">
+            <Wallet className="size-8" />
+          </div>
+          <h1 className="font-display text-2xl font-bold">Connect to see this profile</h1>
+          <p className="mt-2 text-muted-foreground">
+            You need to connect your QIE Wallet to view profiles and posts on QIE Yap.
+          </p>
+          <Link to="/feed" className="mt-6 inline-block rounded-full bg-brand px-6 py-2 text-sm font-semibold text-white hover:bg-brand/90 transition-colors">
+            Go to Feed & Connect
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   const loadMorePosts = useCallback(async (profileId: string) => {
     if (loadingMore || !hasMore) return;
@@ -237,7 +258,7 @@ function ProfilePage() {
           display_name: editName.trim(),
           bio: editBio.trim(),
           avatar_seed: editAvatarSeed.trim() || profile.address,
-          qie_id: editQieId.trim(), // Mengirim QIE ID untuk diverifikasi backend
+          qie_id: editQieId.trim(),
         }),
       });
       
@@ -252,7 +273,7 @@ function ProfilePage() {
         displayName: data.display_name || editName.trim(),
         bio: data.bio || editBio.trim(),
         avatarSeed: data.avatar_seed || editAvatarSeed.trim() || profile.address,
-        qie_id: data.qie_id || null, // Update QIE ID dari response backend
+        qie_id: data.qie_id || null,
       };
       
       setProfile(updatedProfile);
@@ -300,7 +321,6 @@ function ProfilePage() {
                 variant="outline" 
                 className="rounded-full border-brand/40 text-brand hover:bg-brand-soft" 
                 onClick={() => {
-                  // ✅ Isi form edit dengan data lama sebelum modal dibuka
                   setEditName(profile.displayName);
                   setEditBio(profile.bio);
                   setEditAvatarSeed(profile.avatarSeed);
@@ -346,7 +366,6 @@ function ProfilePage() {
               <ScoreCard icon={<Briefcase className="size-4 text-brand" />} label="Merchant Score" value={profile.merchant_score || 0} />
             </div>
 
-            {/* ✅ STATS: link ke /followers dengan query param */}
             <div className="mt-4 grid grid-cols-3 gap-2 rounded-2xl border border-border bg-card p-3 text-center">
               <Stat label="Yaps" value={String(counts.yaps || yaps.length)} />
               <Link 
@@ -447,14 +466,13 @@ function ProfilePage() {
 
             {!hasMore && yaps.length > 0 && (
               <div className="text-center text-xs text-muted-foreground py-4">
-                — Semua post sudah ditampilkan ({yaps.length}) —
+                — All posts loaded ({yaps.length}) —
               </div>
             )}
           </div>
         </div>
       </div>
 
-      {/* Edit Profile Modal */}
       {isEditModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-2xl bg-card p-6 shadow-xl border border-border relative">
@@ -470,7 +488,7 @@ function ProfilePage() {
               </div>
               
               <div>
-                <label className="text-xs font-medium text-muted-foreground">QIE ID (Opsional)</label>
+                <label className="text-xs font-medium text-muted-foreground">QIE ID (Optional)</label>
                 <Input 
                   value={editQieId} 
                   onChange={(e) => setEditQieId(e.target.value)} 
