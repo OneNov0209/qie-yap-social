@@ -14,7 +14,7 @@ interface QIEDexToken {
   name: string;
   totalSupply: string;
   icon_url?: string;
-  real_supply?: string;
+  real_supply?: string; 
 }
 
 function TokensPage() {
@@ -32,15 +32,12 @@ function TokensPage() {
           const data: QIEDexToken[] = await res.json();
           
           
-          const validTokens = data.filter((t) => Number(t.totalSupply) > 0);
-          
-          
-          setTokens(validTokens);
-          setFilteredTokens(validTokens);
+          setTokens(data);
+          setFilteredTokens(data);
 
           
           const updatedTokens = await Promise.all(
-            validTokens.map(async (token) => {
+            data.map(async (token) => {
               try {
                 const expRes = await fetch(`${API_BASE}/explorer/token/${token.id}`);
                 if (expRes.ok) {
@@ -54,7 +51,6 @@ function TokensPage() {
             })
           );
 
-          // Update state
           setTokens(updatedTokens);
           setFilteredTokens(updatedTokens);
         }
@@ -81,8 +77,12 @@ function TokensPage() {
   }, [search, tokens]);
 
   const formatSupply = (supply: string) => {
-    const num = Number(supply) / 1e18;
+    let num = Number(supply) / 1e18;
     
+    if (num < 1 && num > 0) {
+      num = Number(supply) / 1e6; 
+    }
+
     if (num === 0) return "-";
     if (num >= 1_000_000_000) return (num / 1_000_000_000).toFixed(2) + "B";
     if (num >= 1_000_000) return (num / 1_000_000).toFixed(2) + "M";
@@ -157,7 +157,6 @@ function TokensPage() {
                   <div className="flex items-center gap-3 shrink-0">
                     <div className="text-right">
                       <p className="text-sm font-medium">
-                        {/* totalSupply */}
                         {token.real_supply ? formatSupply(token.real_supply) : formatSupply(token.totalSupply)}
                       </p>
                       <p className="text-[10px] text-muted-foreground">Supply</p>
