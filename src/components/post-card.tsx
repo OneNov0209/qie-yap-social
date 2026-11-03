@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { Heart, MessageCircle, Pin, Sparkles, BadgeCheck, Flame, Zap, Link as LinkIcon, Repeat, Bookmark, Trash2, Loader2, X, Download } from "lucide-react";
@@ -12,19 +12,18 @@ import { sendTip, boostPost, createSuperYap, checkWalletConnection } from "@/lib
 import { BROQ_TOKEN, ERC20_ABI } from "@/lib/tokens";
 import { createWalletClient, custom, parseUnits, defineChain } from "viem";
 
-// QIE Chain definition untuk walletClient
 const QIE_CHAIN_FOR_WALLET = defineChain({
   id: 1990,
   name: "QIE Mainnet",
   nativeCurrency: { name: "QIE", symbol: "QIE", decimals: 18 },
-  rpcUrls: { 
-    default: { 
+  rpcUrls: {
+    default: {
       http: [
         "https://rpc-evm.qie.onenov.xyz",
         "https://rpc2mainnet.qie.digital",
         "https://rpc3mainnet.qie.digital"
-      ] 
-    } 
+      ]
+    }
   },
 });
 
@@ -34,12 +33,10 @@ function compact(n: number) {
   return n.toString();
 }
 
-// ✅ RENDER @MENTION sebagai link
 function renderContentWithMentions(content: string) {
   if (!content) return null;
-  
   const parts = content.split(/(@[a-zA-Z0-9_\.\-]+)/g);
-  
+
   return parts.map((part, i) => {
     if (part.startsWith('@') && part.length > 1) {
       const username = part.slice(1);
@@ -79,10 +76,10 @@ export function PostCard({ post }: { post: FeedPost }) {
   const [tipBroq, setTipBroq] = useState<number>(post?.tipTotalBroq ?? 0);
 
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const contractAddress = import.meta.env.VITE_QIE_YAP_CONTRACT as `0x${string}`;
   const isOwner = user?.address?.toLowerCase() === post.author?.address?.toLowerCase();
-
   const reposters = (post as any).reposters || [];
 
   useEffect(() => {
@@ -95,7 +92,17 @@ export function PostCard({ post }: { post: FeedPost }) {
     }
   }, [lightboxImage, isTipModalOpen]);
 
-  const onToggleLike = async () => {
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Don't navigate if user clicked a button, link, or input
+    const target = e.target as HTMLElement;
+    if (target.closest('button') || target.closest('a') || target.closest('input') || target.closest('textarea')) {
+      return;
+    }
+    navigate({ to: "/yap/$id", params: { id: post.id } });
+  };
+
+  const onToggleLike = async (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (!user) return toast("Connect your wallet to like yaps");
     if (isProcessing) return;
     setIsProcessing(true);
@@ -114,7 +121,8 @@ export function PostCard({ post }: { post: FeedPost }) {
     }
   };
 
-  const onToggleRepost = async () => {
+  const onToggleRepost = async (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (!user) return toast("Connect your wallet to repost");
     if (isProcessing) return;
     setIsProcessing(true);
@@ -133,7 +141,8 @@ export function PostCard({ post }: { post: FeedPost }) {
     }
   };
 
-  const onToggleBookmark = async () => {
+  const onToggleBookmark = async (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (!user) return toast("Connect your wallet to bookmark");
     if (isProcessing) return;
     setIsProcessing(true);
@@ -150,7 +159,8 @@ export function PostCard({ post }: { post: FeedPost }) {
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (!isOwner) return;
     if (!confirm("Are you sure you want to delete this Yap? This action cannot be undone.")) return;
     setIsDeleting(true);
@@ -170,7 +180,8 @@ export function PostCard({ post }: { post: FeedPost }) {
     }
   };
 
-  const handleOpenTipModal = async () => {
+  const handleOpenTipModal = async (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (!user) return toast.error("Connect your wallet to tip");
     const isConnected = await checkWalletConnection();
     if (!isConnected) {
@@ -270,14 +281,15 @@ export function PostCard({ post }: { post: FeedPost }) {
       setTipAmount('');
     } catch (error: any) {
       toast.dismiss(toastId);
-      console.error("❌ Tip error:", error);
+      console.error("Tip error:", error);
       toast.error(error.message || "Tip failed");
     } finally {
       setTipSending(false);
     }
   };
 
-  const handleBoost = async () => {
+  const handleBoost = async (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (!user) return toast.error("Connect your wallet to boost");
     if (!contractAddress) return toast.error("Contract not deployed yet");
     if (isProcessing) return;
@@ -307,14 +319,15 @@ export function PostCard({ post }: { post: FeedPost }) {
       setTimeout(() => window.location.reload(), 1000);
     } catch (error: any) {
       toast.dismiss();
-      console.error("❌ Boost error:", error);
+      console.error("Boost error:", error);
       toast.error(error.message || "Boost failed");
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const handleSuperYap = async () => {
+  const handleSuperYap = async (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (!user) return toast.error("Connect your wallet to create Super Yap");
     if (!contractAddress) return toast.error("Contract not deployed yet");
     if (isProcessing) return;
@@ -337,14 +350,15 @@ export function PostCard({ post }: { post: FeedPost }) {
       setTimeout(() => window.location.reload(), 1000);
     } catch (error: any) {
       toast.dismiss();
-      console.error("❌ SuperYap error:", error);
+      console.error("SuperYap error:", error);
       toast.error(error.message || "Super Yap failed");
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const handleCopyLink = () => {
+  const handleCopyLink = (e: React.MouseEvent) => {
+    e.stopPropagation();
     const url = window.location.origin + `/yap/${post.id}`;
     navigator.clipboard.writeText(url).then(() => {
       toast.success("Link copied to clipboard!");
@@ -353,7 +367,8 @@ export function PostCard({ post }: { post: FeedPost }) {
     });
   };
 
-  const handleShareToX = () => {
+  const handleShareToX = (e: React.MouseEvent) => {
+    e.stopPropagation();
     const url = window.location.origin + `/yap/${post.id}`;
     const text = `Check out this Yap on QIE Mainnet! 🚀`;
     const shareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
@@ -372,13 +387,13 @@ export function PostCard({ post }: { post: FeedPost }) {
 
   return (
     <article
+      onClick={handleCardClick}
       className={cn(
-        "group relative flex flex-col gap-3 rounded-2xl border border-border/50 bg-card p-5 shadow-sm transition-shadow duration-300 hover:shadow-xl hover:border-brand-start/30",
+        "group relative flex flex-col gap-3 rounded-2xl border border-border/50 bg-card p-5 shadow-sm transition-shadow duration-300 hover:shadow-xl hover:border-brand-start/30 cursor-pointer",
         post.isSuperYap && "border-2 border-gold bg-gold-soft/20 shadow-gold/10",
         post.isBoosted && "border-2 border-brand-start/20",
       )}
     >
-      {/* === Repost Indicator === */}
       {reposters.length > 0 && (
         <div className="absolute -top-3 left-5 inline-flex items-center gap-1.5 rounded-full bg-muted/80 px-2.5 py-0.5 text-[10px] font-medium text-muted-foreground border border-border/30 z-10">
           <Repeat className="size-3" />
@@ -388,9 +403,8 @@ export function PostCard({ post }: { post: FeedPost }) {
         </div>
       )}
 
-      {/* === Header === */}
       <div className="flex items-start gap-3 pt-2">
-        <Link to="/profile/$address" params={{ address: post.author?.address || "" }}>
+        <Link to="/profile/$address" params={{ address: post.author?.address || "" }} onClick={(e) => e.stopPropagation()}>
           <Avatar seed={post.author?.avatarSeed || "default"} size={48} className="ring-2 ring-border/50" />
         </Link>
         
@@ -399,6 +413,7 @@ export function PostCard({ post }: { post: FeedPost }) {
             <Link
               to="/profile/$address"
               params={{ address: post.author?.address || "" }}
+              onClick={(e) => e.stopPropagation()}
               className="text-base font-bold text-foreground hover:underline underline-offset-2"
             >
               {post.author?.displayName || "Unknown"}
@@ -408,7 +423,7 @@ export function PostCard({ post }: { post: FeedPost }) {
             {post.author?.isValidator && <BadgeCheck className="size-4 text-brand-start fill-current" />}
             {post.author?.qie_pass_verified && (
               <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-500">
-                ✅ QIE ID holder
+                QIE ID holder
               </span>
             )}
             {post.author?.qie_id && (
@@ -422,7 +437,6 @@ export function PostCard({ post }: { post: FeedPost }) {
           
           <div className="flex flex-wrap items-center gap-x-3 text-xs text-muted-foreground">
             <span>@{post.author?.username || shortAddr(post.author?.address || "")}</span>
-            {/* Alamat wallet dobel sudah dihapus di sini */}
             {post.txHash && (
               <span className="inline-flex items-center gap-1 text-brand-start">
                 <LinkIcon className="size-3" /> On-Chain
@@ -455,7 +469,6 @@ export function PostCard({ post }: { post: FeedPost }) {
         )}
       </div>
 
-      {/* === Content === */}
       <div className="ml-[60px] -mt-1">
         <div className="block text-[15px] leading-relaxed text-foreground/90 whitespace-pre-wrap hover:text-foreground transition-colors">
           {renderContentWithMentions(post.content)}
@@ -467,14 +480,17 @@ export function PostCard({ post }: { post: FeedPost }) {
               src={post.mediaUrl} 
               alt="Post media" 
               className="w-full h-auto object-cover max-h-96 cursor-zoom-in" 
-              onClick={() => setLightboxImage(post.mediaUrl!)}
+              onClick={(e) => {
+                e.stopPropagation();
+                setLightboxImage(post.mediaUrl!);
+              }}
             />
           </div>
         )}
 
         {post.linkPreview && (
           <div className="mt-3 rounded-xl overflow-hidden border border-border/50 bg-card/80 hover:border-brand-start/50 transition-colors">
-            <a href={post.linkPreview.url} target="_blank" rel="noopener noreferrer" className="block">
+            <a href={post.linkPreview.url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="block">
               <div className="flex flex-col sm:flex-row">
                 {post.linkPreview.image && (
                   <div className="sm:w-1/3 h-32 sm:h-auto bg-muted">
@@ -494,7 +510,6 @@ export function PostCard({ post }: { post: FeedPost }) {
         )}
       </div>
 
-      {/* === Action Bar === */}
       <div className="ml-[60px] mt-2 flex items-center justify-between border-t border-border/40 pt-3">
         <div className="flex items-center gap-6">
           <button
@@ -508,7 +523,7 @@ export function PostCard({ post }: { post: FeedPost }) {
             <span>{compact(likes)}</span>
           </button>
 
-          <Link to="/yap/$id" params={{ id: post.id }} className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-brand-start group">
+          <Link to="/yap/$id" params={{ id: post.id }} onClick={(e) => e.stopPropagation()} className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-brand-start group">
             <MessageCircle className="size-5 group-hover:scale-110 transition-transform" />
             <span>{compact(post.replies || 0)}</span>
           </Link>
@@ -551,7 +566,6 @@ export function PostCard({ post }: { post: FeedPost }) {
         </div>
       </div>
 
-      {/* === Bottom: Premium Actions === */}
       <div className="ml-[60px] mt-1 flex flex-wrap items-center gap-2 border-t border-border/20 pt-3">
         <button
           onClick={handleOpenTipModal}
@@ -597,7 +611,6 @@ export function PostCard({ post }: { post: FeedPost }) {
         </button>
       </div>
 
-      {/* ✅ LIGHTBOX MODAL via Portal */}
       {lightboxImage && typeof document !== "undefined" && createPortal(
         <div
           className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/95 p-4"
@@ -645,7 +658,6 @@ export function PostCard({ post }: { post: FeedPost }) {
         document.body
       )}
 
-      {/* ✅ TIP MODAL via Portal */}
       {isTipModalOpen && typeof document !== "undefined" && createPortal(
         <div
           className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 p-4"
