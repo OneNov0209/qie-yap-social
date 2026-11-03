@@ -9,8 +9,6 @@ import { API_BASE } from "@/lib/posts";
 export function Sidebar() {
   const { user } = useAuth();
   const path = useRouterState({ select: (s) => s.location.pathname });
-  const profilePath = user?.address ?? "0x0000000000000000000000000000000000000000";
-
   const { isOpen, toggle, close } = useSidebarStore();
 
   const [stats, setStats] = useState<{ totalYaps: number; totalQie: string; totalBroq: string } | null>(null);
@@ -50,7 +48,7 @@ export function Sidebar() {
     { to: "/referrals", label: "Referrals", icon: Users },
     { to: "/dashboard", label: "Dashboard", icon: Wallet },
     { to: "/leaderboard", label: "Leaderboard", icon: Trophy },
-    { to: `/profile/${profilePath}`, label: "Profile", icon: User },
+    { to: user ? `/profile/${user.address}` : "/profile", label: "Profile", icon: User },
     { to: "/add-qie-network", label: "Add Network", icon: PlusCircle },
     { to: "/projects", label: "Projects", icon: Code },
   ];
