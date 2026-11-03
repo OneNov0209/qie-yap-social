@@ -1,8 +1,6 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { createFileRoute, redirect, Link } from "@tanstack/react-router";
 import { useAuth } from "@/lib/auth-store";
 import { Header } from "@/components/header";
-import { Link } from "@tanstack/react-router";
 import { Wallet } from "lucide-react";
 
 export const Route = createFileRoute("/profile")({
@@ -11,20 +9,12 @@ export const Route = createFileRoute("/profile")({
 
 function ProfileRedirect() {
   const { user } = useAuth();
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    if (user?.address) {
-      navigate({ to: `/profile/${user.address}`, replace: true });
-    }
-  }, [user, navigate]);
 
   if (user?.address) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <p className="text-muted-foreground animate-pulse">Redirecting to your profile...</p>
-      </div>
-    );
+    throw redirect({
+      to: `/profile/${user.address}`,
+      replace: true,
+    });
   }
 
   return (
@@ -38,7 +28,10 @@ function ProfileRedirect() {
         <p className="mt-2 text-muted-foreground">
           You need to connect your QIE Wallet to view your profile on QIE Yap.
         </p>
-        <Link to="/feed" className="mt-6 inline-block rounded-full bg-brand px-6 py-2 text-sm font-semibold text-white hover:bg-brand/90 transition-colors">
+        <Link
+          to="/feed"
+          className="mt-6 inline-block rounded-full bg-brand px-6 py-2 text-sm font-semibold text-white hover:bg-brand/90 transition-colors"
+        >
           Go to Feed & Connect
         </Link>
       </div>
