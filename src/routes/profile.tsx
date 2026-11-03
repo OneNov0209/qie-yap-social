@@ -1,4 +1,4 @@
-import { createFileRoute, redirect, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
 import { useAuth } from "@/lib/auth-store";
 import { Header } from "@/components/header";
 import { Wallet } from "lucide-react";
@@ -11,10 +11,7 @@ function ProfileRedirect() {
   const { user } = useAuth();
 
   if (user?.address) {
-    throw redirect({
-      to: `/profile/${user.address}`,
-      replace: true,
-    });
+    return <Navigate to={`/profile/${user.address}`} replace />;
   }
 
   return (
