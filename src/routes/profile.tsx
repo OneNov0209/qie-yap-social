@@ -13,14 +13,16 @@ function ProfilePage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (user?.address) {
+    // Tunggu sampai user benar-benar ada
+    if (!connecting && user?.address) {
+      console.log("Redirecting to profile:", user.address);
       navigate({
         to: "/profile/$address",
         params: { address: user.address },
         replace: true,
       });
     }
-  }, [user?.address, navigate]);
+  }, [user?.address, connecting, navigate]);
 
   if (connecting) {
     return (
@@ -29,9 +31,6 @@ function ProfilePage() {
         <div className="mx-auto max-w-2xl px-4 py-20 text-center">
           <Loader2 className="mx-auto mb-4 size-12 animate-spin text-brand" />
           <h1 className="font-display text-2xl font-bold">Connecting wallet...</h1>
-          <p className="mt-2 text-muted-foreground">
-            Please approve the connection in your QIE Wallet.
-          </p>
         </div>
       </div>
     );
@@ -59,9 +58,6 @@ function ProfilePage() {
         <h1 className="font-display text-2xl font-bold">Connect to see your profile</h1>
         <p className="mt-2 text-muted-foreground">
           You need to connect your QIE Wallet to view your profile on QIE Yap.
-        </p>
-        <p className="mt-4 text-sm text-muted-foreground">
-          Once you connect, you'll be redirected to your profile automatically.
         </p>
         <Link
           to="/feed"
