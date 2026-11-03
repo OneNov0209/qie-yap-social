@@ -5,6 +5,8 @@ import { getReferredBy, clearReferralFromUrl, generateRegisterMessage } from '@/
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://api.yap.onenov.xyz/api";
 
+const WALLETCONNECT_PROJECT_ID = "7f5230a2da0f45798f150d028660356f";
+
 export interface User {
   id: string;
   address: string;
@@ -27,6 +29,39 @@ interface AuthState {
   signMessage: (args: { message: string }) => Promise<string>;
 }
 
+
+let wcProvider: any = null;
+
+async function getProvider() {
+  
+  if (typeof window !== 'undefined' && window.ethereum) {
+    return window.ethereum;
+  }
+
+  
+  if (!wcProvider) {
+    const { EthereumProvider } = await import('@walletconnect/ethereum-provider');
+    
+    wcProvider = await EthereumProvider.init({
+      projectId: WALLETCONNECT_PROJECT_ID,
+      chains: [1990], 
+      optionalChains: [1990],
+      showQrModal: true,
+      metadata: {
+        name: 'QIE Yap',
+        description: 'The on-chain reputation layer for QIE',
+        url: 'https://qie.yap.onenov.xyz',
+        icons: ['https://raw.githubusercontent.com/OneNov0209/logo/refs/heads/main/qie-logo.png'],
+      },
+      rpcMap: {
+        1990: 'https://rpc2mainnet.qie.digital',
+      },
+    });
+  }
+
+  return wcProvider;
+}
+
 export const useAuth = create<AuthState>()(
   persist(
     (set, get) => ({
@@ -38,15 +73,25 @@ export const useAuth = create<AuthState>()(
         set({ connecting: true, connectStep: 'Connecting wallet...' });
 
         try {
-          if (typeof window === 'undefined' || !window.ethereum) {
-            throw new Error('QIE Wallet extension not detected. Please install QIE Wallet.');
+          
+          const provider = await getProvider();
+          
+          if (!provider) {
+            throw new Error('No wallet available. Please install QIE Wallet or use a mobile wallet.');
           }
 
-          const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+          
+          if (provider !== window.ethereum) {
+            set({ connectStep: 'Scan QR code with your wallet...' });
+            await provider.connect();
+          }
+
+          set({ connectStep: 'Requesting accounts...' });
+          const accounts = await provider.request({ method: 'eth_requestAccounts' });
           const address = (accounts as string[])[0];
           
           if (!address) {
-            throw new Error('No accounts found in QIE Wallet.');
+            throw new Error('No accounts found in wallet.');
           }
 
           set({ connectStep: 'Checking profile...' });
@@ -66,7 +111,7 @@ export const useAuth = create<AuthState>()(
 
             let signature: string;
             try {
-              signature = await window.ethereum.request({
+              signature = await provider.request({
                 method: 'personal_sign',
                 params: [message, address],
               }) as string;
@@ -140,7 +185,18 @@ export const useAuth = create<AuthState>()(
         }
       },
 
-      disconnect: () => set({ user: null, connecting: false, connectStep: null }),
+      disconnect: async () => {
+        // Disconnect WalletConnect
+        if (wcProvider && wcProvider.session) {
+          try {
+            await wcProvider.disconnect();
+          } catch (e) {
+            console.warn("WalletConnect disconnect error:", e);
+          }
+          wcProvider = null;
+        }
+        set({ user: null, connecting: false, connectStep: null });
+      },
 
       updateProfile: (updates) => {
         const current = get().user;
@@ -149,15 +205,18 @@ export const useAuth = create<AuthState>()(
       },
 
       signMessage: async ({ message }) => {
-        if (typeof window === 'undefined' || !window.ethereum) {
-          throw new Error('QIE Wallet not detected.');
-        }
         const currentUser = get().user;
         if (!currentUser) {
           throw new Error('Please connect your wallet first.');
         }
+
+        const provider = await getProvider();
+        if (!provider) {
+          throw new Error('No wallet connected.');
+        }
+
         try {
-          const signature = await window.ethereum.request({
+          const signature = await provider.request({
             method: 'personal_sign',
             params: [message, currentUser.address],
           }) as string;
