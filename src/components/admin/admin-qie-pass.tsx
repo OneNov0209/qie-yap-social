@@ -75,7 +75,7 @@ export function AdminQiePass() {
         body: JSON.stringify({ profile_id: profileId, action, qie_id: qieId }),
       });
       if (res.ok) {
-        toast.success(action === "verify" ? "✅ User verified" : action === "unverify" ? "❌ User unverified" : "✅ QIE ID updated");
+        toast.success(action === "verify" ? "User verified" : action === "unverify" ? "User unverified" : "QIE ID updated");
         await load();
       } else {
         const data = await res.json();
@@ -94,7 +94,7 @@ export function AdminQiePass() {
 
   const handleRecheck = async (profileId: string) => {
     setProcessing((p) => new Set(p).add(profileId));
-    toast.loading("Checking QIE Pass API...", { id: `recheck-${profileId}` });
+    toast.loading("Checking QIE ID API...", { id: `recheck-${profileId}` });
     try {
       const res = await adminFetch(`${API_BASE}/admin/qie-pass/recheck/${profileId}`, {
         method: "POST",
@@ -102,10 +102,10 @@ export function AdminQiePass() {
       const data = await res.json();
       toast.dismiss(`recheck-${profileId}`);
       if (data.verified) {
-        toast.success("✅ User is verified on QIE Pass!");
+        toast.success("User is verified on QIE ID!");
         await load();
       } else {
-        toast.warning(data.message || "User not KYC-verified");
+        toast.warning(data.message || "User not QIE ID verified");
       }
     } catch (err) {
       toast.dismiss(`recheck-${profileId}`);
@@ -185,7 +185,7 @@ export function AdminQiePass() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `qie_pass_${tab}_${Date.now()}.csv`;
+    a.download = `qie_id_${tab}_${Date.now()}.csv`;
     a.click();
     URL.revokeObjectURL(url);
     toast.success("Exported!");
@@ -219,7 +219,7 @@ export function AdminQiePass() {
               tab === "verified" ? "bg-emerald-500 text-white" : "text-muted-foreground hover:text-foreground"
             )}
           >
-            ✅ Verified ({stats.verified})
+            Verified ({stats.verified})
           </button>
           <button
             onClick={() => setTab("unverified")}
@@ -228,7 +228,7 @@ export function AdminQiePass() {
               tab === "unverified" ? "bg-amber-500 text-white" : "text-muted-foreground hover:text-foreground"
             )}
           >
-            ⏳ Unverified ({stats.unverified})
+            Unverified ({stats.unverified})
           </button>
         </div>
 
@@ -301,7 +301,7 @@ export function AdminQiePass() {
           <div className="text-4xl mb-2">🔍</div>
           <div className="font-semibold">No users found</div>
           <div className="text-xs text-muted-foreground mt-1">
-            {search ? "Try different search" : tab === "verified" ? "No verified users yet" : "All users verified! 🎉"}
+            {search ? "Try different search" : tab === "verified" ? "No verified users yet" : "All users verified!"}
           </div>
         </div>
       ) : (
@@ -421,12 +421,12 @@ export function AdminQiePass() {
                   {user.qie_pass_verified ? (
                     <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-1 text-[10px] font-bold text-emerald-500">
                       <Check className="size-3" />
-                      Verified
+                      QIE ID Verified
                     </span>
                   ) : (
                     <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2.5 py-1 text-[10px] font-bold text-amber-500">
                       <AlertCircle className="size-3" />
-                      Unverified
+                      Not Verified
                     </span>
                   )}
                 </div>
