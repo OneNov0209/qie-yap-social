@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState, useCallback } from "react";
-import { BadgeCheck, X, BarChart2, Coins, Box, Users, Award, Code, Star, Briefcase, Loader2, Wallet } from "lucide-react";
+import { BadgeCheck, X, BarChart2, Users, Code, Star, Briefcase, Loader2, Wallet } from "lucide-react";
 import { Header } from "@/components/header";
 import { PostCard } from "@/components/post-card";
 import { StakingBadgeChip } from "@/components/staking-badge";
@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/lib/auth-store";
-import { shortAddr, type FeedPost, fetchFeed, fetchUserPosts, API_BASE } from "@/lib/posts";
+import { shortAddr, type FeedPost, fetchUserPosts, API_BASE } from "@/lib/posts";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
@@ -17,8 +17,8 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 export const Route = createFileRoute("/profile/$address")({
   head: ({ params }) => ({
     meta: [
-      { title: `${shortAddr(params.address)} — QIE Yap` },
-      { name: "description", content: `Profile of ${shortAddr(params.address)} on QIE Yap.` },
+      { title: `${shortAddr(params.address || "")} — QIE Yap` },
+      { name: "description", content: `Profile of ${shortAddr(params.address || "")} on QIE Yap.` },
     ],
   }),
   component: ProfilePage,
@@ -45,7 +45,8 @@ const POSTS_PER_PAGE = 20;
 
 function ProfilePage() {
   const { address } = Route.useParams();
-  const { user, updateProfile } = useAuth();
+  const { user, updateProfile, disconnect } = useAuth();
+  
   const [profile, setProfile] = useState<FeedProfile | null>(null);
   const [yaps, setYaps] = useState<FeedPost[]>([]);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -59,6 +60,8 @@ function ProfilePage() {
   });
   const [isFollowing, setIsFollowing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editName, setEditName] = useState("");
   const [editBio, setEditBio] = useState("");
@@ -69,9 +72,17 @@ function ProfilePage() {
   const [chartData, setChartData] = useState<any[]>([]);
   const [chartLoading, setChartLoading] = useState(true);
 
-  const isOwn = user?.address?.toLowerCase() === address?.toLowerCase();
+  const safeAddress = typeof address === "string" ? address : "";
+  const isOwn = user?.address?.toLowerCase() === safeAddress.toLowerCase();
 
-  // ✅ SEMUA HOOKS DIPANGGIL DI SINI (SEBELUM ADA RETURN)
+  // Safe Guard: Logout paksa jika state user korup
+  useEffect(() => {
+    if (user && (!user.id || !user.address)) {
+      console.warn("[Security] Corrupt user state, forcing re-login");
+      disconnect();
+    }
+  }, [user, disconnect]);
+
   const loadMorePosts = useCallback(async (profileId: string) => {
     if (loadingMore || !hasMore) return;
     setLoadingMore(true);
@@ -89,19 +100,27 @@ function ProfilePage() {
   }, [loadingMore, hasMore, yaps.length]);
 
   useEffect(() => {
-    // Jika belum login, jangan fetch data profil
-    if (!user) {
+    if (!user || !user.id) {
       setLoading(false);
+      return;
+    }
+
+    if (!safeAddress.startsWith("0x") || safeAddress.length < 10) {
+      setLoading(false);
+      setErrorMsg("Invalid wallet address in URL.");
       return;
     }
 
     const loadData = async () => {
       setLoading(true);
+      setErrorMsg(null);
       setYaps([]);
       setHasMore(true);
+
       try {
         let profileData: any = null;
-        if (user && user.address === address) {
+        
+        if (user.address.toLowerCase() === safeAddress.toLowerCase()) {
           profileData = {
             id: user.id,
             address: user.address,
@@ -110,19 +129,19 @@ function ProfilePage() {
             bio: user.bio || "",
             avatarSeed: user.avatarSeed,
             isValidator: user.isValidator,
-            badge: user.badge,
+            badge: user.badge || 'shrimp',
           };
         } else {
-          const res = await fetch(`${API_BASE}/profiles/${address}`);
+          const res = await fetch(`${API_BASE}/profiles/${safeAddress}`);
           if (res.ok) {
             const data = await res.json();
             profileData = {
               id: data.id,
               address: data.address,
               username: data.username || data.address.slice(0, 8),
-              displayName: data.display_name || `${address.slice(0, 6)}…${address.slice(-4)}`,
+              displayName: data.display_name || `${safeAddress.slice(0, 6)}…${safeAddress.slice(-4)}`,
               bio: data.bio || "",
-              avatarSeed: data.avatar_seed || address,
+              avatarSeed: data.avatar_seed || safeAddress,
               isValidator: Boolean(data.is_validator),
               badge: 'shrimp',
               builder_score: data.builder_score || 0,
@@ -134,6 +153,7 @@ function ProfilePage() {
             };
           }
         }
+
         if (!profileData) {
           setProfile(null);
           setLoading(false);
@@ -191,15 +211,16 @@ function ProfilePage() {
         }
         setChartLoading(false);
 
-      } catch (err) {
+      } catch (err: any) {
         console.error("Load error:", err);
+        setErrorMsg(err.message || "Failed to load profile data.");
       } finally {
         setLoading(false);
       }
     };
-    loadData();
-  }, [address, user]);
 
+    loadData();
+  }, [safeAddress, user]);
 
   const toggleFollow = async () => {
     if (!user || !profile) return toast("Connect your wallet to follow");
@@ -280,9 +301,8 @@ function ProfilePage() {
     }
   };
 
-  // ✅ SEKARANG BARU BOLEH ADA RETURN (Kondisional)
-  
-  // 1. Tampilan jika belum login
+  // --- RENDER ---
+
   if (!user) {
     return (
       <div className="min-h-screen bg-background">
@@ -303,7 +323,6 @@ function ProfilePage() {
     );
   }
 
-  // 2. Tampilan Loading Skeleton
   if (loading) return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -318,31 +337,34 @@ function ProfilePage() {
             <div className="h-8 w-48 rounded bg-muted" />
             <div className="h-4 w-32 rounded bg-muted" />
             <div className="h-4 w-full rounded bg-muted" />
-            <div className="grid grid-cols-4 gap-2 pt-2">
-              <div className="h-16 rounded-xl bg-muted" />
-              <div className="h-16 rounded-xl bg-muted" />
-              <div className="h-16 rounded-xl bg-muted" />
-              <div className="h-16 rounded-xl bg-muted" />
-            </div>
           </div>
         </div>
       </div>
     </div>
   );
 
-  // 3. Tampilan jika profil tidak ditemukan
+  if (errorMsg) return (
+    <div className="min-h-screen bg-background">
+      <Header />
+      <div className="mx-auto max-w-2xl px-4 py-20 text-center">
+        <h1 className="font-display text-2xl font-bold">Something went wrong</h1>
+        <p className="mt-2 text-muted-foreground">{errorMsg}</p>
+        <Link to="/feed" className="mt-6 inline-block text-brand hover:underline">← Back to feed</Link>
+      </div>
+    </div>
+  );
+
   if (!profile) return (
     <div className="min-h-screen bg-background">
       <Header />
       <div className="mx-auto max-w-2xl px-4 py-20 text-center">
         <h1 className="font-display text-2xl font-bold">Profile not found</h1>
-        <p className="mt-2 text-muted-foreground"><span className="font-mono">{shortAddr(address)}</span> hasn't signed in.</p>
+        <p className="mt-2 text-muted-foreground"><span className="font-mono">{shortAddr(safeAddress)}</span> hasn't signed in.</p>
         <Link to="/" className="mt-6 inline-block text-brand hover:underline">← Back to feed</Link>
       </div>
     </div>
   );
 
-  // 4. Tampilan Utama Profil
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-12">
       <Header />
