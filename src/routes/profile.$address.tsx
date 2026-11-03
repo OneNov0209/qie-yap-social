@@ -70,12 +70,10 @@ function ProfilePage() {
   const [isSaving, setIsSaving] = useState(false);
 
   const [chartData, setChartData] = useState<any[]>([]);
-  const [chartLoading, setChartLoading] = useState(true);
 
   const safeAddress = typeof address === "string" ? address : "";
   const isOwn = user?.address?.toLowerCase() === safeAddress.toLowerCase();
 
-  // Safe Guard: Logout paksa jika state user korup
   useEffect(() => {
     if (user && (!user.id || !user.address)) {
       console.warn("[Security] Corrupt user state, forcing re-login");
@@ -161,12 +159,24 @@ function ProfilePage() {
         }
         setProfile(profileData);
 
-        const [followersRes, followingRes, statusRes] = await Promise.all([
+        // ✅ PARALLEL FETCH: semua request jalan bersamaan
+        const [
+          followersRes,
+          followingRes,
+          statusRes,
+          firstBatch,
+          dashRes,
+          chartRes,
+        ] = await Promise.all([
           fetch(`${API_BASE}/follows?following_id=${profileData.id}&count=followers`),
           fetch(`${API_BASE}/follows?follower_id=${profileData.id}&count=following`),
           user ? fetch(`${API_BASE}/follows?follower_id=${user.id}&following_id=${profileData.id}`) : null,
+          fetchUserPosts(profileData.id, POSTS_PER_PAGE, 0),
+          fetch(`${API_BASE}/dashboard/${profileData.id}`).catch(() => null),
+          fetch(`${API_BASE}/stats/chart?days=7`).catch(() => null),
         ]);
-        
+
+        // Proses responses
         if (followersRes.ok) {
           const data = await followersRes.json();
           setCounts(prev => ({ ...prev, followers: data.count || 0 }));
@@ -180,36 +190,27 @@ function ProfilePage() {
           setIsFollowing(data.isFollowing || false);
         }
 
-        const firstBatch = await fetchUserPosts(profileData.id, POSTS_PER_PAGE, 0);
         setYaps(firstBatch);
         if (firstBatch.length < POSTS_PER_PAGE) setHasMore(false);
 
-        try {
-          const dashRes = await fetch(`${API_BASE}/dashboard/${profileData.id}`);
-          if (dashRes.ok) {
-            const dash = await dashRes.json();
-            setCounts(prev => ({
-              ...prev,
-              totalQieReceived: dash.qie?.total_received || 0,
-              totalBroqReceived: dash.broq?.total_received || 0,
-              yaps: dash.posts?.total ?? firstBatch.length,
-              followers: dash.followers ?? prev.followers,
-              following: dash.following ?? prev.following,
-            }));
-          } else {
-            setCounts(prev => ({ ...prev, yaps: firstBatch.length }));
-          }
-        } catch (err) {
-          console.warn("Dashboard stats fetch failed:", err);
+        if (dashRes && dashRes.ok) {
+          const dash = await dashRes.json();
+          setCounts(prev => ({
+            ...prev,
+            totalQieReceived: dash.qie?.total_received || 0,
+            totalBroqReceived: dash.broq?.total_received || 0,
+            yaps: dash.posts?.total ?? firstBatch.length,
+            followers: dash.followers ?? prev.followers,
+            following: dash.following ?? prev.following,
+          }));
+        } else {
           setCounts(prev => ({ ...prev, yaps: firstBatch.length }));
         }
 
-        const chartRes = await fetch(`${API_BASE}/stats/chart?days=7`);
-        if (chartRes.ok) {
+        if (chartRes && chartRes.ok) {
           const chart = await chartRes.json();
           setChartData(chart);
         }
-        setChartLoading(false);
 
       } catch (err: any) {
         console.error("Load error:", err);
@@ -301,8 +302,6 @@ function ProfilePage() {
     }
   };
 
-  // --- RENDER ---
-
   if (!user) {
     return (
       <div className="min-h-screen bg-background">
@@ -338,6 +337,23 @@ function ProfilePage() {
             <div className="h-4 w-32 rounded bg-muted" />
             <div className="h-4 w-full rounded bg-muted" />
           </div>
+          <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-2">
+            <div className="h-16 rounded-xl bg-muted" />
+            <div className="h-16 rounded-xl bg-muted" />
+            <div className="h-16 rounded-xl bg-muted" />
+            <div className="h-16 rounded-xl bg-muted" />
+          </div>
+          <div className="mt-4 h-20 rounded-2xl bg-muted" />
+          <div className="mt-2 h-16 rounded-2xl bg-muted" />
+        </div>
+        <div className="mt-6 px-4">
+          <div className="h-4 w-20 rounded bg-muted mb-3" />
+          <div className="h-44 rounded-2xl bg-muted" />
+        </div>
+        <div className="mt-6 px-4 space-y-4">
+          <div className="h-4 w-16 rounded bg-muted" />
+          <div className="h-40 rounded-2xl bg-muted" />
+          <div className="h-40 rounded-2xl bg-muted" />
         </div>
       </div>
     </div>
@@ -401,7 +417,7 @@ function ProfilePage() {
               <StakingBadgeChip badge={profile.badge} />
               {profile.qie_pass_verified && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-500">
-                  ✅ QIE ID holder
+                  QIE ID holder
                 </span>
               )}
               {profile.qie_id && (
@@ -466,11 +482,7 @@ function ProfilePage() {
               <BarChart2 className="size-5 text-brand" />
               <h3 className="text-sm font-semibold">Activity (Last 7 Days)</h3>
             </div>
-            {chartLoading ? (
-              <div className="flex h-32 items-center justify-center text-muted-foreground text-sm">
-                Loading chart...
-              </div>
-            ) : chartData.length === 0 ? (
+            {chartData.length === 0 ? (
               <div className="flex h-32 items-center justify-center text-muted-foreground text-sm">
                 No activity data yet
               </div>
