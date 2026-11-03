@@ -2,16 +2,32 @@ import { useAuth } from "@/lib/auth-store";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useState } from "react";
+import { useNavigate, useRouterState } from "@tanstack/react-router";
 
 export function ConnectWalletButton() {
   const { user, connect, connecting, connectStep, disconnect } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   const handleConnect = async () => {
     if (connecting || isLoading) return;
     setIsLoading(true);
     try {
       await connect();
+      
+      // ✅ Setelah login sukses, cek state terbaru
+      const currentUser = useAuth.getState().user;
+      if (currentUser?.address) {
+        // Jika user sedang di /profile atau /feed, arahkan ke profil mereka
+        if (pathname === "/profile" || pathname === "/") {
+          navigate({
+            to: "/profile/$address",
+            params: { address: currentUser.address },
+            replace: true,
+          });
+        }
+      }
     } catch (error: any) {
       console.error("Connect error:", error);
       if (error.message?.includes("not detected")) {
