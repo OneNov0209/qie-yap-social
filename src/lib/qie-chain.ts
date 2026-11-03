@@ -4,14 +4,14 @@ export const QIE_CHAIN = defineChain({
   id: 1990,
   name: "QIE Mainnet",
   nativeCurrency: { name: "QIE", symbol: "QIE", decimals: 18 },
-  rpcUrls: { 
-    default: { 
+  rpcUrls: {
+    default: {
       http: [
         "https://rpc-evm.qie.onenov.xyz",
         "https://rpc2mainnet.qie.digital",
         "https://rpc3mainnet.qie.digital"
-      ] 
-    } 
+      ]
+    }
   },
   blockExplorers: { default: { name: "QIE Explorer", url: "https://qie.explorer.onenov.xyz" } },
 });
@@ -106,7 +106,7 @@ export async function getQieYapContract(contractAddress: `0x${string}`) {
 
 export async function checkWalletConnection(): Promise<boolean> {
   if (typeof window === "undefined" || !window.ethereum) {
-    console.error("❌ QIE Wallet tidak terdeteksi. Install QIE Wallet.");
+    console.error("QIE Wallet not detected. Please install QIE Wallet.");
     return false;
   }
   try {
@@ -119,11 +119,11 @@ export async function checkWalletConnection(): Promise<boolean> {
 
 export async function getWalletClient() {
   if (typeof window === "undefined" || !window.ethereum) {
-    throw new Error("❌ QIE Wallet tidak terdeteksi. Harap install QIE Wallet dan login.");
+    throw new Error("QIE Wallet not detected. Please install QIE Wallet and log in.");
   }
   const accounts = await window.ethereum.request({ method: "eth_requestAccounts" }) as string[];
   const address = accounts[0];
-  if (!address) throw new Error("Tidak ada akun yang ditemukan di QIE Wallet.");
+  if (!address) throw new Error("No accounts found in QIE Wallet.");
   const walletClient = createWalletClient({
     chain: QIE_CHAIN,
     transport: custom(window.ethereum),
@@ -132,7 +132,7 @@ export async function getWalletClient() {
 }
 
 export async function sendTip(contractAddress: `0x${string}`, recipient: `0x${string}`, amountInQie: string, message: string) {
-  console.log("📤 Sending tip to:", recipient, "amount:", amountInQie);
+  console.log("Sending tip to:", recipient, "amount:", amountInQie);
   const { walletClient, address } = await getWalletClient();
   try {
     const hash = await walletClient.writeContract({
@@ -143,16 +143,16 @@ export async function sendTip(contractAddress: `0x${string}`, recipient: `0x${st
       value: parseEther(amountInQie),
       account: address,
     });
-    console.log("✅ Tip sent:", hash);
+    console.log("Tip sent:", hash);
     return hash;
   } catch (error: any) {
-    console.error("❌ Tip error:", error);
-    throw new Error(error.message || "Tip gagal");
+    console.error("Tip error:", error);
+    throw new Error(error.message || "Tip failed");
   }
 }
 
 export async function createSuperYap(contractAddress: `0x${string}`) {
-  console.log("📤 Creating SuperYap");
+  console.log("Creating SuperYap");
   const { walletClient, address } = await getWalletClient();
   try {
     const hash = await walletClient.writeContract({
@@ -162,16 +162,16 @@ export async function createSuperYap(contractAddress: `0x${string}`) {
       value: parseEther("0.01"),
       account: address,
     });
-    console.log("✅ SuperYap created:", hash);
+    console.log("SuperYap created:", hash);
     return hash;
   } catch (error: any) {
-    console.error("❌ SuperYap error:", error);
-    throw new Error(error.message || "SuperYap gagal");
+    console.error("SuperYap error:", error);
+    throw new Error(error.message || "Super Yap failed");
   }
 }
 
 export async function boostPost(contractAddress: `0x${string}`, postId: bigint, durationHours: bigint) {
-  console.log("📤 Boosting post:", postId, "duration:", durationHours);
+  console.log("Boosting post:", postId, "duration:", durationHours);
   const { walletClient, address } = await getWalletClient();
   const cost = 0.005 * Number(durationHours);
   try {
@@ -183,26 +183,24 @@ export async function boostPost(contractAddress: `0x${string}`, postId: bigint, 
       value: parseEther(cost.toString()),
       account: address,
     });
-    console.log("✅ Boost sent:", hash);
+    console.log("Boost sent:", hash);
     return hash;
   } catch (error: any) {
-    console.error("❌ Boost error:", error);
-    throw new Error(error.message || "Boost gagal");
+    console.error("Boost error:", error);
+    throw new Error(error.message || "Boost failed");
   }
 }
 
-// ✅ TAMBAHAN BARU: Ambil bytecode kontrak (internal)
 export async function getContractCode(address: `0x${string}`): Promise<string | null> {
   try {
     const code = await qiePublicClient.getCode({ address });
     return code;
   } catch (error) {
-    console.error("❌ Gagal mengambil bytecode:", error);
+    console.error("Failed to fetch bytecode:", error);
     return null;
   }
 }
 
-// ✅ TAMBAHAN BARU: Ambil info kontrak dari API (opsional)
 export async function getContractInfo(address: `0x${string}`): Promise<any | null> {
   try {
     const res = await fetch(`https://mainnet.qie.digital/api?module=contract&action=getsourcecode&address=${address}`);
@@ -216,7 +214,6 @@ export async function getContractInfo(address: `0x${string}`): Promise<any | nul
   }
 }
 
-// ✅ SCAN KONTRAK BARU DARI RPC
 export async function scanNewContracts(blockCount: number = 100): Promise<any[]> {
   try {
     const contracts: any[] = [];
@@ -228,9 +225,7 @@ export async function scanNewContracts(blockCount: number = 100): Promise<any[]>
       if (!block.transactions) continue;
 
       for (const tx of block.transactions) {
-        // Jika to = null atau undefined, ini adalah transaksi deploy kontrak
         if (!tx.to) {
-          // Ambil receipt untuk mendapatkan contractAddress
           const receipt = await qiePublicClient.getTransactionReceipt({ hash: tx.hash });
           if (receipt?.contractAddress) {
             contracts.push({
@@ -246,7 +241,7 @@ export async function scanNewContracts(blockCount: number = 100): Promise<any[]>
     }
     return contracts;
   } catch (error) {
-    console.error("❌ Error scanning contracts:", error);
+    console.error("Error scanning contracts:", error);
     return [];
   }
 }
