@@ -38,7 +38,6 @@ function TokensPage() {
           const updatedTokens = await Promise.all(
             data.map(async (token) => {
               try {
-                // Panggil API Explorer QIE secara langsung (bukan lewat proxy backend)
                 const expRes = await fetch(`https://mainnet.qie.digital/api/v2/tokens/${token.id}`);
                 if (expRes.ok) {
                   const expData = await expRes.json();
@@ -49,7 +48,7 @@ function TokensPage() {
                   };
                 }
               } catch (e) {
-                console.error("Gagal ambil data explorer untuk", token.symbol, e);
+                console.error("Failed to fetch explorer data for", token.symbol, e);
               }
               return token;
             })
@@ -82,13 +81,10 @@ function TokensPage() {
 
   const formatSupply = (supply: string | undefined, decimals: number | undefined) => {
     if (!supply) return "0";
-    
-    // Jika data dari Explorer tidak ada, kembalikan 0
     if (decimals === undefined) return "-";
 
     const raw = Number(supply);
     const dec = Number(decimals);
-    
     const realVal = raw / Math.pow(10, dec);
     
     return realVal.toLocaleString('en-US', { maximumFractionDigits: 2 });
