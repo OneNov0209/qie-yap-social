@@ -2,14 +2,14 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useAuth } from "@/lib/auth-store";
 import { Header } from "@/components/header";
-import { Wallet } from "lucide-react";
+import { Wallet, Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/profile")({
   component: ProfilePage,
 });
 
 function ProfilePage() {
-  const { user } = useAuth();
+  const { user, connecting } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -21,6 +21,33 @@ function ProfilePage() {
       });
     }
   }, [user?.address, navigate]);
+
+  if (connecting) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <div className="mx-auto max-w-2xl px-4 py-20 text-center">
+          <Loader2 className="mx-auto mb-4 size-12 animate-spin text-brand" />
+          <h1 className="font-display text-2xl font-bold">Connecting wallet...</h1>
+          <p className="mt-2 text-muted-foreground">
+            Please approve the connection in your QIE Wallet.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (user?.address) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <div className="mx-auto max-w-2xl px-4 py-20 text-center">
+          <Loader2 className="mx-auto mb-4 size-12 animate-spin text-brand" />
+          <h1 className="font-display text-2xl font-bold">Redirecting to your profile...</h1>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
