@@ -122,7 +122,7 @@ function DashboardView({ stats, extra, loading, onSelectTable }: any) {
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           <MiniCard icon="💎" label="QIE Tipped" value={Number(extra?.total_qie_tips || 0).toFixed(2)} sub="QIE" accent="green" />
           <MiniCard icon="🪙" label="BROQ Tipped" value={Number(extra?.total_broq_tips || 0).toLocaleString("id-ID", { maximumFractionDigits: 0 })} sub="BROQ" accent="purple" />
-          <MiniCard icon="✅" label="QIE Pass Verified" value={Number(extra?.qie_pass_verified || 0).toLocaleString("id-ID")} sub="KYC users" accent="gold" />
+          <MiniCard icon="✅" label="QIE ID Verified" value={Number(extra?.qie_pass_verified || 0).toLocaleString("id-ID")} sub="KYC users" accent="gold" />
           <MiniCard icon="🔥" label="Active Users" value={Number(extra?.active_users || 0).toLocaleString("id-ID")} sub="all time" accent="blue" />
         </div>
       </section>
