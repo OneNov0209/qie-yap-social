@@ -207,7 +207,7 @@ function ProjectDetailPage() {
             <div className="flex items-start gap-4">
               <Avatar seed={project.author?.avatar_seed} size={56} />
               <div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 flex-wrap">
                   <h1 className="font-display text-2xl font-bold">{project.name}</h1>
                   <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-brand/10 text-brand border border-brand/20">
                     {project.status}
@@ -215,6 +215,11 @@ function ProjectDetailPage() {
                   {project.isScanned && (
                     <span className="text-[10px] font-medium uppercase tracking-wider px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-500 border border-blue-500/20">
                       Auto-detected
+                    </span>
+                  )}
+                  {project.tx_hash?.startsWith("clone-") && (
+                    <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-500 border border-purple-500/20">
+                      Fork
                     </span>
                   )}
                 </div>
