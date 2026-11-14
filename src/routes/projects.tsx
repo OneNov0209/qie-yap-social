@@ -162,7 +162,7 @@ function ProjectsPage() {
                       size={40} 
                     />
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="font-semibold">{project.name}</h3>
                         <span className={cn(
                           "text-[10px] font-medium uppercase tracking-wider px-2 py-0.5 rounded-full",
@@ -173,6 +173,11 @@ function ProjectsPage() {
                         {project.isScanned && (
                           <span className="text-[10px] font-medium uppercase tracking-wider px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-500 border border-blue-500/20">
                             Auto-detected
+                          </span>
+                        )}
+                        {project.tx_hash?.startsWith("clone-") && (
+                          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-500 border border-purple-500/20">
+                            Fork
                           </span>
                         )}
                       </div>
