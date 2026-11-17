@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { useAuth } from "@/lib/auth-store";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { X } from "lucide-react";
+import { X, Loader2 } from "lucide-react";
 import { Avatar } from "./avatar-img";
+import { API_BASE, resolveQieName } from "@/lib/posts";
 
 interface EditProfileModalProps {
   isOpen: boolean;
@@ -15,11 +15,14 @@ interface EditProfileModalProps {
 }
 
 export function EditProfileModal({ isOpen, onClose, onProfileUpdated }: EditProfileModalProps) {
-  const { user } = useAuth();
+  const { user, updateProfile } = useAuth();
   const [displayName, setDisplayName] = useState(user?.displayName || "");
   const [bio, setBio] = useState(user?.bio || "");
   const [avatarSeed, setAvatarSeed] = useState(user?.avatarSeed || "");
+  const [qieId, setQieId] = useState((user as any)?.qie_id || "");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isValidatingQieId, setIsValidatingQieId] = useState(false);
+  const [qieIdError, setQieIdError] = useState<string | null>(null);
 
   if (!isOpen || !user) return null;
 
@@ -31,16 +34,46 @@ export function EditProfileModal({ isOpen, onClose, onProfileUpdated }: EditProf
 
     setIsSubmitting(true);
     try {
-      const { error } = await supabase
-        .from("profiles")
-        .update({
+      // Jika user mengisi QIE ID, validasi dulu via MCP
+      let finalQieId = qieId.trim().toLowerCase();
+      if (finalQieId) {
+        setIsValidatingQieId(true);
+        const resolved = await resolveQieName(finalQieId);
+        setIsValidatingQieId(false);
+        
+        if (!resolved) {
+          setQieIdError("QIE ID not found in QIE Mainnet");
+          toast.error("QIE ID not found. Please check the spelling.");
+          setIsSubmitting(false);
+          return;
+        }
+        if (resolved.address.toLowerCase() !== user.address.toLowerCase()) {
+          setQieIdError("This QIE ID belongs to another wallet");
+          toast.error("This QIE ID belongs to another wallet.");
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
+      const res = await fetch(`${API_BASE}/profiles/${user.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
           display_name: displayName.trim(),
           bio: bio.trim(),
           avatar_seed: avatarSeed.trim() || user.address,
-        })
-        .eq("id", user.id);
+          qie_id: finalQieId || null,
+        }),
+      });
 
-      if (error) throw error;
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to update profile");
+
+      updateProfile({
+        displayName: displayName.trim(),
+        bio: bio.trim(),
+        avatarSeed: avatarSeed.trim() || user.address,
+      });
 
       toast.success("Profile updated successfully!");
       onProfileUpdated();
@@ -53,8 +86,8 @@ export function EditProfileModal({ isOpen, onClose, onProfileUpdated }: EditProf
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-2xl bg-card p-6 shadow-xl border border-border relative">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 overflow-y-auto">
+      <div className="w-full max-w-md rounded-2xl bg-card p-6 shadow-xl border border-border relative my-8">
         <button
           onClick={onClose}
           className="absolute right-4 top-4 rounded-full p-1 text-muted-foreground hover:bg-muted"
@@ -65,7 +98,6 @@ export function EditProfileModal({ isOpen, onClose, onProfileUpdated }: EditProf
         <h2 className="text-xl font-bold mb-4">Edit Profile</h2>
 
         <div className="space-y-4">
-          {/* Avatar Preview */}
           <div className="flex items-center gap-4">
             <Avatar seed={avatarSeed || user.address} size={64} />
             <div className="flex-1">
@@ -82,7 +114,27 @@ export function EditProfileModal({ isOpen, onClose, onProfileUpdated }: EditProf
             </div>
           </div>
 
-          {/* Display Name */}
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">QIE ID (Optional)</label>
+            <Input
+              value={qieId}
+              onChange={(e) => {
+                setQieId(e.target.value);
+                setQieIdError(null);
+              }}
+              placeholder="example: name.qie"
+              className="mt-1"
+            />
+            {qieIdError && (
+              <p className="text-[10px] text-destructive mt-1">{qieIdError}</p>
+            )}
+            {!qieIdError && (
+              <p className="text-[10px] text-muted-foreground mt-1">
+                Enter your .qie name. We'll verify it on QIE Mainnet.
+              </p>
+            )}
+          </div>
+
           <div>
             <label className="text-xs font-medium text-muted-foreground">Display Name</label>
             <Input
@@ -93,7 +145,6 @@ export function EditProfileModal({ isOpen, onClose, onProfileUpdated }: EditProf
             />
           </div>
 
-          {/* Bio */}
           <div>
             <label className="text-xs font-medium text-muted-foreground">Bio</label>
             <Textarea
@@ -109,8 +160,15 @@ export function EditProfileModal({ isOpen, onClose, onProfileUpdated }: EditProf
             <Button variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button onClick={handleSave} disabled={isSubmitting} className="bg-brand">
-              {isSubmitting ? "Saving..." : "Save Changes"}
+            <Button onClick={handleSave} disabled={isSubmitting || isValidatingQieId} className="bg-brand">
+              {isSubmitting || isValidatingQieId ? (
+                <>
+                  <Loader2 className="size-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Save Changes"
+              )}
             </Button>
           </div>
         </div>
