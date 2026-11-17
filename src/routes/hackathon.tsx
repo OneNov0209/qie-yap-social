@@ -1,9 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Header } from "@/components/header";
 import { API_BASE } from "@/lib/posts";
 import { toast } from "sonner";
-import { Trophy, Users, Rocket, Loader2, CheckCircle2, Wallet, Link2, Share2, FileText, Github, Globe, Youtube, Twitter, MessageCircle, Send, Calendar, Tag } from "lucide-react";
+import { Trophy, Users, Rocket, Loader2, CheckCircle2, Wallet, Link2, Share2, FileText, Calendar, Tag, ExternalLink, ShieldCheck, AlertCircle } from "lucide-react";
 import { useAuth } from "@/lib/auth-store";
 import { cn } from "@/lib/utils";
 
@@ -29,20 +29,21 @@ const CATEGORIES = [
   { id: "dev", title: "Developer Infrastructure & Tooling", icon: "🏗️" },
 ];
 
-const DEMO_LINKS = {
-  github: "https://github.com/OneNov0209/Qie-yap",
-  website: "https://qie.yap.onenov.xyz",
-  video: "https://youtube.com/shorts/Bu_M9nzvndM?si=fyX6Iq8vnlJ6IQt2",
-  twitter: "@Surya021282",
-  discord: "SuryaOne#6296",
-  telegram: "@OneNov02",
-};
+const RULES = [
+  "Project must be built on QIE Mainnet.",
+  "Submissions close on 30 November 2026, 23:59 CET.",
+  "All code must be open-source (GitHub repo required).",
+  "Demo video must be under 3 minutes.",
+  "Only original work is allowed. Forks of existing projects must add significant value.",
+  "Winners will be announced in December 2026.",
+];
 
 function HackathonPage() {
   const { user } = useAuth();
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [showRules, setShowRules] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState({
     team_name: "",
@@ -130,6 +131,27 @@ function HackathonPage() {
           <p className="text-sm text-muted-foreground">
             <strong>Deadline:</strong> 30 November 2026, 23:59 CET. Submit your project and join the QIE ecosystem.
           </p>
+          
+          <div className="mt-4">
+            <button
+              onClick={() => setShowRules(!showRules)}
+              className="inline-flex items-center gap-2 text-xs font-semibold text-brand hover:text-brand/80 transition-colors"
+            >
+              <ShieldCheck className="size-4" />
+              {showRules ? "Hide Rules" : "View Rules & Requirements"}
+            </button>
+            
+            {showRules && (
+              <div className="mt-3 rounded-xl border border-border/30 bg-card/50 p-4 space-y-2">
+                {RULES.map((rule, i) => (
+                  <div key={i} className="flex items-start gap-2 text-xs text-foreground/80">
+                    <CheckCircle2 className="size-3.5 text-emerald-500 mt-0.5 shrink-0" />
+                    <span>{rule}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="flex items-center justify-between mb-6">
@@ -161,68 +183,33 @@ function HackathonPage() {
             <p className="text-sm text-muted-foreground">Be the first to register!</p>
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {participants.map((p) => (
-              <div key={p.id} className="rounded-2xl border border-border/50 bg-card/50 p-4 sm:p-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-brand-soft">
-                    <Users className="size-6 text-brand" />
+              <div key={p.id} className="rounded-2xl border border-border/50 bg-card/50 p-4 hover:border-brand/30 transition-colors">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand-soft">
+                    <Users className="size-5 text-brand" />
                   </div>
                   <div className="min-w-0">
-                    <h3 className="text-lg sm:text-xl font-bold truncate">{p.project_name}</h3>
-                    <p className="text-sm text-muted-foreground truncate">{p.team_members || "Solo Developer"}</p>
+                    <h3 className="text-base font-bold truncate">{p.project_name}</h3>
+                    <p className="text-xs text-muted-foreground truncate">{p.team_members || "Solo Developer"}</p>
                   </div>
                 </div>
 
                 {p.description && (
-                  <div className="mb-4">
-                    <p className="text-sm font-semibold text-muted-foreground mb-1">Project Description</p>
-                    <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap break-words">{p.description}</p>
-                  </div>
+                  <p className="text-xs text-foreground/80 leading-relaxed line-clamp-3 mb-3">{p.description}</p>
                 )}
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                  <div>
-                    <p className="text-sm font-semibold text-muted-foreground mb-2">Project Links</p>
-                    <div className="space-y-2">
-                      <a href={DEMO_LINKS.github} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-brand hover:underline truncate">
-                        <Github className="size-4 shrink-0" /> GitHub Repository
-                      </a>
-                      <a href={DEMO_LINKS.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-brand hover:underline truncate">
-                        <Globe className="size-4 shrink-0" /> Project Website
-                      </a>
-                      <a href={DEMO_LINKS.video} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-brand hover:underline truncate">
-                        <Youtube className="size-4 shrink-0" /> Demo Video
-                      </a>
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-muted-foreground mb-2">Social & Contact</p>
-                    <div className="space-y-2">
-                      <p className="flex items-center gap-2 text-sm truncate">
-                        <Twitter className="size-4 shrink-0 text-muted-foreground" /> {DEMO_LINKS.twitter}
-                      </p>
-                      <p className="flex items-center gap-2 text-sm truncate">
-                        <MessageCircle className="size-4 shrink-0 text-muted-foreground" /> {DEMO_LINKS.discord}
-                      </p>
-                      <p className="flex items-center gap-2 text-sm truncate">
-                        <Send className="size-4 shrink-0 text-muted-foreground" /> {DEMO_LINKS.telegram}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-border/30">
-                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <Calendar className="size-3.5" />
-                    {new Date(p.created_at).toLocaleDateString()}
-                  </span>
-                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <Tag className="size-3.5" />
+                <div className="flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
+                  <span className="flex items-center gap-1 bg-muted/50 px-2 py-1 rounded-md">
+                    <Tag className="size-3" />
                     {p.track || "N/A"}
                   </span>
-                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <Wallet className="size-3.5" />
+                  <span className="flex items-center gap-1 bg-muted/50 px-2 py-1 rounded-md">
+                    <Calendar className="size-3" />
+                    {new Date(p.created_at).toLocaleDateString()}
+                  </span>
+                  <span className="flex items-center gap-1 bg-muted/50 px-2 py-1 rounded-md font-mono">
                     {p.wallet_address.slice(0, 6)}...{p.wallet_address.slice(-4)}
                   </span>
                 </div>
