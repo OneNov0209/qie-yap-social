@@ -1,9 +1,9 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Header } from "@/components/header";
 import { API_BASE } from "@/lib/posts";
 import { toast } from "sonner";
-import { Trophy, Users, Rocket, Loader2, CheckCircle2, Wallet, Link2, Share2, FileText, Calendar, Tag, ExternalLink, ShieldCheck, AlertCircle } from "lucide-react";
+import { Trophy, Users, Rocket, Loader2, CheckCircle2, Wallet, Link2, Share2, FileText, Calendar, Tag, ShieldCheck, X, ExternalLink } from "lucide-react";
 import { useAuth } from "@/lib/auth-store";
 import { cn } from "@/lib/utils";
 
@@ -44,6 +44,7 @@ function HackathonPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [showRules, setShowRules] = useState(false);
+  const [selectedParticipant, setSelectedParticipant] = useState<Participant | null>(null);
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState({
     team_name: "",
@@ -185,7 +186,11 @@ function HackathonPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {participants.map((p) => (
-              <div key={p.id} className="rounded-2xl border border-border/50 bg-card/50 p-4 hover:border-brand/30 transition-colors">
+              <button
+                key={p.id}
+                onClick={() => setSelectedParticipant(p)}
+                className="text-left rounded-2xl border border-border/50 bg-card/50 p-4 hover:border-brand/30 hover:bg-card/80 transition-all cursor-pointer"
+              >
                 <div className="flex items-center gap-3 mb-3">
                   <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand-soft">
                     <Users className="size-5 text-brand" />
@@ -197,7 +202,7 @@ function HackathonPage() {
                 </div>
 
                 {p.description && (
-                  <p className="text-xs text-foreground/80 leading-relaxed line-clamp-3 mb-3">{p.description}</p>
+                  <p className="text-xs text-foreground/80 leading-relaxed line-clamp-2 mb-3">{p.description}</p>
                 )}
 
                 <div className="flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
@@ -213,11 +218,69 @@ function HackathonPage() {
                     {p.wallet_address.slice(0, 6)}...{p.wallet_address.slice(-4)}
                   </span>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         )}
       </div>
+
+      {selectedParticipant && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="w-full max-w-lg rounded-2xl bg-card p-6 border border-border shadow-2xl relative max-h-[90vh] overflow-y-auto">
+            <button
+              onClick={() => setSelectedParticipant(null)}
+              className="absolute right-4 top-4 rounded-full p-1.5 text-muted-foreground hover:bg-muted transition-colors"
+            >
+              <X className="size-5" />
+            </button>
+
+            <div className="flex items-center gap-3 mb-4 pr-8">
+              <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-brand-soft">
+                <Users className="size-6 text-brand" />
+              </div>
+              <div className="min-w-0">
+                <h2 className="text-xl font-bold break-words">{selectedParticipant.project_name}</h2>
+                <p className="text-sm text-muted-foreground truncate">{selectedParticipant.team_members || "Solo Developer"}</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Description</p>
+                <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap break-words">
+                  {selectedParticipant.description || "No description provided."}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-xl border border-border/30 bg-muted/10 p-3">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Category</p>
+                  <p className="text-xs font-medium">{selectedParticipant.track || "N/A"}</p>
+                </div>
+                <div className="rounded-xl border border-border/30 bg-muted/10 p-3">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Submitted</p>
+                  <p className="text-xs font-medium">{new Date(selectedParticipant.created_at).toLocaleDateString()}</p>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-border/30 bg-muted/10 p-3">
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Wallet Address</p>
+                <div className="flex items-center gap-2">
+                  <code className="text-xs font-mono break-all flex-1">{selectedParticipant.wallet_address}</code>
+                  <a
+                    href={`https://mainnet.qie.digital/address/${selectedParticipant.wallet_address}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="shrink-0 rounded-md p-1 text-muted-foreground hover:text-brand hover:bg-muted transition-colors"
+                  >
+                    <ExternalLink className="size-4" />
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
