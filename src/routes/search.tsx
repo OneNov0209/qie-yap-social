@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/lib/auth-store";
-import { fetchFeed, shortAddr, type FeedPost, API_BASE } from "@/lib/posts";
+import { fetchFeed, shortAddr, type FeedPost, API_BASE, resolveQieName } from "@/lib/posts";
 import { Search, User, FileText, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 
@@ -59,6 +59,16 @@ function SearchPage() {
 
     try {
       let users: SearchUser[] = [];
+      let qieIdAddress: string | null = null;
+
+      // ✅ Jika query mengandung ".qie", coba resolve via MCP
+      if (searchTerm.toLowerCase().endsWith(".qie")) {
+        const resolved = await resolveQieName(searchTerm.toLowerCase());
+        if (resolved && resolved.address) {
+          qieIdAddress = resolved.address;
+        }
+      }
+
       try {
         const usersRes = await fetch(
           `${API_BASE}/search/users?q=${encodeURIComponent(searchTerm)}&limit=10`
@@ -80,6 +90,29 @@ function SearchPage() {
         }
       } catch (err) {
         console.error("User search error:", err);
+      }
+
+      // ✅ Jika MCP menemukan alamat, tapi belum ada di hasil pencarian, cari profilnya
+      if (qieIdAddress) {
+        const isAlreadyInResults = users.some(u => u.address.toLowerCase() === qieIdAddress!.toLowerCase());
+        if (!isAlreadyInResults) {
+          try {
+            const profileRes = await fetch(`${API_BASE}/profiles/${qieIdAddress}`);
+            if (profileRes.ok) {
+              const profileData = await profileRes.json();
+              users.push({
+                id: profileData.id,
+                address: profileData.address,
+                username: profileData.username || qieIdAddress.slice(0, 8),
+                display_name: profileData.display_name || qieIdAddress.slice(0, 8),
+                avatar_seed: profileData.avatar_seed || qieIdAddress,
+                is_validator: Boolean(profileData.is_validator),
+              });
+            }
+          } catch (err) {
+            console.error("Failed to fetch profile by QIE ID address:", err);
+          }
+        }
       }
 
       const allPosts = await fetchFeed("latest", user?.id || null);
@@ -145,7 +178,7 @@ function SearchPage() {
               <Input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search users, Yaps, or addresses..."
+                placeholder="Search users, Yaps, addresses, or .qie names..."
                 className="pl-9 pr-9"
                 autoFocus
               />
@@ -218,7 +251,7 @@ function SearchPage() {
             <div className="mx-auto mb-3 grid size-12 place-items-center rounded-full bg-muted text-2xl">🔍</div>
             <h3 className="font-display text-lg font-semibold">No results found</h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              Try searching for a different keyword or wallet address.
+              Try searching for a different keyword, wallet address, or .qie name.
             </p>
           </div>
         )}
