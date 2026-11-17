@@ -387,3 +387,25 @@ export async function adminFetch(url: string, options: RequestInit = {}) {
     credentials: 'include',
   });
 }
+
+export async function resolveQieName(name: string): Promise<{ address: string; name: string } | null> {
+  try {
+    const res = await fetch(`${API_BASE}/qie-id/resolve/${encodeURIComponent(name)}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data?.result?.structuredContent || null;
+  } catch {
+    return null;
+  }
+}
+
+export async function reverseLookupQieId(address: string): Promise<{ address: string; name: string } | null> {
+  try {
+    const res = await fetch(`${API_BASE}/qie-id/reverse/${address}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data?.result?.structuredContent || null;
+  } catch {
+    return null;
+  }
+}
