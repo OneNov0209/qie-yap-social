@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
-import { BadgeCheck, Search, Loader2, RefreshCw, X, Check, AlertCircle, ExternalLink, Copy, Edit2, Save, CheckSquare, Square, Download } from "lucide-react";
+import { BadgeCheck, Search, Loader2, RefreshCw, X, Check, AlertCircle, ExternalLink, Copy, Edit2, Save, CheckSquare, Square, Download, Sparkles } from "lucide-react";
 import { API_BASE, adminFetch } from "@/lib/posts";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -24,6 +24,7 @@ export function AdminQiePass() {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [stats, setStats] = useState({ verified: 0, unverified: 0, total: 0 });
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [processing, setProcessing] = useState<Set<string>>(new Set());
@@ -54,6 +55,28 @@ export function AdminQiePass() {
     setSelected(new Set());
     setSearch("");
   }, [tab]);
+
+  const handleSync = async () => {
+    if (!confirm("This will sync QIE IDs from QIE Mainnet for all users without a QIE ID. It may take a few minutes. Continue?")) return;
+    setSyncing(true);
+    const toastId = toast.loading("Syncing QIE IDs from Mainnet...");
+    try {
+      const res = await adminFetch(`${API_BASE}/admin/qie-pass/sync-all`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(`Sync complete! Updated ${data.updated} of ${data.total} users.`, { id: toastId });
+        await load();
+      } else {
+        toast.error(data.error || "Sync failed", { id: toastId });
+      }
+    } catch (err) {
+      toast.error("Sync failed", { id: toastId });
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const filtered = useMemo(() => {
     if (!search.trim()) return users;
@@ -261,6 +284,15 @@ export function AdminQiePass() {
             </button>
           </>
         )}
+
+        <button
+          onClick={handleSync}
+          disabled={syncing}
+          className="flex items-center gap-1.5 rounded-xl border border-purple-500/30 bg-purple-500/10 px-3 py-2.5 text-xs font-semibold text-purple-500 hover:bg-purple-500 hover:text-white transition-colors disabled:opacity-50"
+        >
+          <Sparkles className={cn("size-3.5", syncing && "animate-spin")} />
+          {syncing ? "Syncing..." : "Sync QIE IDs"}
+        </button>
 
         <button
           onClick={load}
