@@ -45,11 +45,11 @@ export function mapPost(item: any): FeedPost {
   const qie_pass_verified = Boolean(authorData.qie_pass_verified || false);
 
   let badge: "shrimp" | "fish" | "dolphin" | "shark" | "whale" = "shrimp";
-const totalQie = Number(item.tip_total_qie || 0);
-if (totalQie >= 100000) badge = "whale";
-else if (totalQie >= 10000) badge = "shark";
-else if (totalQie >= 1000) badge = "dolphin";
-else if (totalQie >= 100) badge = "fish";
+  const totalQie = Number(item.tip_total_qie || 0);
+  if (totalQie >= 100000) badge = "whale";
+  else if (totalQie >= 10000) badge = "shark";
+  else if (totalQie >= 1000) badge = "dolphin";
+  else if (totalQie >= 100) badge = "fish";
 
   return {
     id: item.id,
@@ -242,14 +242,12 @@ export function shortAddr(addr: string): string {
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
 }
 
-// ✅ Upload to backend (Pinata proxy) - Dengan Verifikasi Signature
 export async function uploadToIPFS(
   file: File,
   address: string,
   signMessage: (args: { message: string }) => Promise<string>
 ): Promise<string | null> {
   try {
-    // 1. Minta user tanda tangan pesan
     const timestamp = Date.now();
     const message = `Sign to upload image to QIE Yap\n\nAddress: ${address}\nTimestamp: ${timestamp}`;
 
@@ -261,7 +259,6 @@ export async function uploadToIPFS(
       throw new Error("Signature required to upload image. Please approve the popup in your wallet.");
     }
 
-    // 2. Kirim file beserta signature ke backend
     const formData = new FormData();
     formData.append("file", file);
     formData.append("address", address);
@@ -388,23 +385,48 @@ export async function adminFetch(url: string, options: RequestInit = {}) {
   });
 }
 
-export async function resolveQieName(name: string): Promise<{ address: string; name: string } | null> {
+export async function resolveQieName(name: string): Promise<{ address: string; name: string; domainType: string } | null> {
   try {
     const res = await fetch(`${API_BASE}/qie-id/resolve/${encodeURIComponent(name)}`);
     if (!res.ok) return null;
     const data = await res.json();
-    return data?.result?.structuredContent || null;
+    const content = data?.result?.structuredContent;
+    if (!content) return null;
+    return {
+      address: content.owner,
+      name: content.domainName,
+      domainType: content.domainType,
+    };
   } catch {
     return null;
   }
 }
 
-export async function reverseLookupQieId(address: string): Promise<{ address: string; name: string } | null> {
+export async function reverseLookupQieId(address: string): Promise<{ address: string; name: string; domainType: string } | null> {
   try {
-    const res = await fetch(`${API_BASE}/qie-id/reverse/${address}`);
+    const res = await fetch(`${API_BASE}/qie-id/reverse/${encodeURIComponent(address)}`);
     if (!res.ok) return null;
     const data = await res.json();
-    return data?.result?.structuredContent || null;
+    const content = data?.result?.structuredContent;
+    if (!content) return null;
+    return {
+      address: content.owner,
+      name: content.domainName,
+      domainType: content.domainType,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export async function checkKycStatus(address: string): Promise<{ verified: boolean } | null> {
+  try {
+    const res = await fetch(`${API_BASE}/qie-id/kyc/${encodeURIComponent(address)}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const content = data?.result?.structuredContent;
+    if (!content) return null;
+    return { verified: Boolean(content.verified) };
   } catch {
     return null;
   }
