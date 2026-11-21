@@ -410,9 +410,9 @@ export async function reverseLookupQieId(address: string): Promise<{ address: st
     const content = data?.result?.structuredContent;
     if (!content) return null;
     return {
-      address: content.owner,
-      name: content.domainName,
-      domainType: content.domainType,
+      address: content.address,
+      name: content.domains?.[0]?.domainName || null,
+      domainType: content.domains?.[0]?.domainType || null,
     };
   } catch {
     return null;
