@@ -57,7 +57,12 @@ function FeedPage() {
         if (data.length === 0) {
           setHasMore(false);
         } else {
-          setPosts((prev) => reset ? data : [...prev, ...data]);
+          setPosts((prev) => {
+            if (reset) return data;
+            const existingIds = new Set(prev.map(p => p.id));
+            const unique = data.filter(p => !existingIds.has(p.id));
+            return [...prev, ...unique];
+          });
           setOffset((prev) => reset ? data.length : prev + data.length);
         }
       }
