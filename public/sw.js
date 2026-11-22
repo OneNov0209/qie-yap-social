@@ -1,14 +1,15 @@
-const CACHE_VERSION = 'qie-yap-v3';
+const CACHE_VERSION = 'qie-yap-v1';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
-
 const PRECACHE_URLS = [
   '/',
   '/feed',
   '/manifest.json',
+  '/favicon.ico',
+  '/icon-192.png',
+  '/icon-512.png',
 ];
 
 self.addEventListener('install', (event) => {
-  self.skipWaiting();
   event.waitUntil(
     caches.open(STATIC_CACHE).then((cache) => {
       return cache.addAll(PRECACHE_URLS).catch((err) => {
@@ -16,6 +17,7 @@ self.addEventListener('install', (event) => {
       });
     })
   );
+  self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
@@ -26,8 +28,9 @@ self.addEventListener('activate', (event) => {
           .filter((key) => key.startsWith('qie-yap-') && key !== STATIC_CACHE)
           .map((key) => caches.delete(key))
       )
-    ).then(() => self.clients.claim())
+    )
   );
+  self.clients.claim();
 });
 
 self.addEventListener('fetch', (event) => {
@@ -35,7 +38,9 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url);
 
   if (request.method !== 'GET') return;
+
   if (url.pathname.startsWith('/api/')) return;
+
   if (url.origin !== self.location.origin) return;
 
   if (request.mode === 'navigate' || request.headers.get('accept')?.includes('text/html')) {
@@ -52,19 +57,16 @@ self.addEventListener('fetch', (event) => {
   }
 
   event.respondWith(
-    fetch(request)
-      .then((response) => {
+    caches.match(request).then((cached) => {
+      if (cached) return cached;
+      return fetch(request).then((response) => {
+        
         if (response.ok && response.status === 200) {
           const clone = response.clone();
           caches.open(STATIC_CACHE).then((cache) => cache.put(request, clone));
         }
         return response;
-      })
-      .catch(() => {
-        return caches.match(request).then((cached) => {
-          if (cached) return cached;
-          return new Response('Offline', { status: 503 });
-        });
-      })
+      });
+    })
   );
 });
